@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Package, ArrowUpDown, Truck, Clock, CheckCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 
+
 interface StatsCard {
   title: string;
   value: number;
@@ -10,12 +11,14 @@ interface StatsCard {
   color: string;
 }
 
+
 const statsData: StatsCard[] = [
   { title: "Hàng chờ nhận", value: 25, icon: <Package className="h-6 w-6" />, color: "text-blue-500" },
   { title: "Đã phân loại", value: 142, icon: <ArrowUpDown className="h-6 w-6" />, color: "text-green-500" },
   { title: "Chờ xuất kho", value: 18, icon: <Truck className="h-6 w-6" />, color: "text-orange-500" },
   { title: "Hoàn thành", value: 89, icon: <CheckCircle className="h-6 w-6" />, color: "text-purple-500" },
 ];
+
 
 export default function PostalWorkerIndex() {
   return (
@@ -34,20 +37,15 @@ export default function PostalWorkerIndex() {
           ))}
         </div>
 
+
         {/* Quick Actions */}
         <div className="space-y-3">
           <h3 className="font-medium">Thao tác nhanh</h3>
           <div className="grid gap-2">
-            <Link to="/postal-worker/ingest">
+            <Link to="/postal-worker/package">
               <Button variant="outline" className="justify-start h-12 w-full">
                 <Package className="h-4 w-4 mr-3" />
-                Quét hàng mới nhận
-              </Button>
-            </Link>
-            <Link to="/postal-worker/sorting">
-              <Button variant="outline" className="justify-start h-12 w-full">
-                <ArrowUpDown className="h-4 w-4 mr-3" />
-                Phân loại theo tuyến
+                Quản lý kiện hàng
               </Button>
             </Link>
             <Link to="/postal-worker/dispatch">
@@ -58,6 +56,7 @@ export default function PostalWorkerIndex() {
             </Link>
           </div>
         </div>
+
 
         {/* Recent Activity */}
         <div className="space-y-3">

@@ -14,10 +14,9 @@ import DriverIndex from "./pages/delivery-driver/Index";
 import { Scanner } from "./pages/delivery-driver/Scanner";
 import { DeliveriesMap } from "./pages/delivery-driver/DeliveriesMap";
 import PostalWorkerIndex from "./pages/postal-worker/Index";
-import PostalWorkerIngest from "./pages/postal-worker/Ingest";
-import PostalWorkerSorting from "./pages/postal-worker/Sorting";
 import PostalWorkerDispatch from "./pages/postal-worker/Dispatch";
 import PackageList from "./pages/postal-worker/PackageList";
+import PostalWorkerPackage from "./pages/postal-worker/Package";
 
 const queryClient = new QueryClient();
 
@@ -42,8 +41,7 @@ const App = () => (
 
                     
           <Route path="/postal-worker" element={<PostalWorkerIndex />} />
-          <Route path="/postal-worker/ingest" element={<PostalWorkerIngest />} />
-          <Route path="/postal-worker/sorting" element={<PostalWorkerSorting />} />
+          <Route path="/postal-worker/package" element={<PostalWorkerPackage />} />
           <Route path="/postal-worker/dispatch" element={<PostalWorkerDispatch />} />
           <Route path="/postal-worker/packages" element={<PackageList />} />
           

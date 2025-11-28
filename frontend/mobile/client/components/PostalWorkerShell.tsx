@@ -18,8 +18,7 @@ interface PostalWorkerShellProps {
 
 const tabs = [
   { to: "/postal-worker", label: "Dashboard", icon: House },
-  { to: "/postal-worker/ingest", label: "Nhận hàng", icon: Package },
-  { to: "/postal-worker/sorting", label: "Phân loại", icon: ArrowUpDown },
+  { to: "/postal-worker/package", label: "Đơn hàng", icon: Package },
   { to: "/postal-worker/dispatch", label: "Xuất kho", icon: Truck },
   { to: "/postal-worker/packages", label: "Tra cứu", icon: List },
 ];

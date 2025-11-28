@@ -1,71 +1,141 @@
 import CustomerShell from "@/components/CustomerShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Combobox } from "@/components/ui/combobox";
-import { fetchCustomerInfo, fetchOrders } from "@/services/mockApi";
-import { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Package, User, Phone, MapPin, Calendar, Check, ChevronsUpDown } from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
-interface FormState {
-  name: string;
-  phone: string;
-  email: string;
-  tracking: string;
-  type: string;
+interface PackageData {
+  orderNumber: string;
+  senderName: string;
+  senderPhone: string;
+  senderAddress: string;
+  receiverName: string;
+  receiverPhone: string;
+  receiverAddress: string;
+  weight: string;
+  service: string;
+  cod: string;
+  pickupTime: string;
+  deliverTime: string;
+  channel: string;
+}
+
+interface ComplaintFormState {
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  trackingNumber: string;
+  complaintType: string;
   detail: string;
   channel: string;
-  claim: string;
+  claimAmount: string;
 }
+
+// Mock list of tracking numbers for autocomplete
+const mockTrackingNumbers = [
+  "VN123456789VN",
+  "VN987654321VN",
+  "VN555666777VN",
+  "VN111222333VN",
+  "VN444555666VN",
+];
+
+// Mock function to fetch package data by tracking number
+const fetchPackageData = async (trackingNumber: string): Promise<PackageData | null> => {
+  await new Promise(resolve => setTimeout(resolve, 800));
+  
+  if (trackingNumber.startsWith("VN")) {
+    return {
+      orderNumber: trackingNumber,
+      senderName: "Nguyễn Văn A",
+      senderPhone: "0901234567",
+      senderAddress: "123 Nguyễn Huệ, Q1, TP.HCM",
+      receiverName: "Trần Thị B",
+      receiverPhone: "0907654321",
+      receiverAddress: "456 Lê Lợi, Q3, TP.HCM",
+      weight: "2.5",
+      service: "express",
+      cod: "250000",
+      pickupTime: "2024-01-15T09:00",
+      deliverTime: "2024-01-16T14:00",
+      channel: "App"
+    };
+  }
+  return null;
+};
+
+const formatService = (service: string) => {
+  const serviceMap: Record<string, string> = {
+    express: "Hỏa tốc",
+    fast: "Nhanh",
+    economy: "Tiết kiệm"
+  };
+  return serviceMap[service] || service;
+};
+
+const formatCurrency = (amount: string) => {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND'
+  }).format(Number(amount));
+};
+
+const formatDateTime = (datetime: string) => {
+  if (!datetime) return "";
+  return new Date(datetime).toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
 
 export default function ComplaintCreate() {
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState<{ value: string; label: string }[]>([]);
-  const [formData, setFormData] = useState<FormState>({
-    name: "",
-    phone: "",
-    email: "",
-    tracking: "",
-    type: "late",
+  const [loading, setLoading] = useState(false);
+  const [packageNotFound, setPackageNotFound] = useState(false);
+  const [packageData, setPackageData] = useState<PackageData | null>(null);
+  const [open, setOpen] = useState(false);
+  
+  const [formData, setFormData] = useState<ComplaintFormState>({
+    customerName: "",
+    customerPhone: "",
+    customerEmail: "",
+    trackingNumber: "",
+    complaintType: "late",
     detail: "",
-    channel: "App",
-    claim: "",
+    channel: "",
+    claimAmount: "",
   });
 
-  // Load customer info and orders on mount
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const [customerInfo, ordersList] = await Promise.all([
-          fetchCustomerInfo(),
-          fetchOrders(),
-        ]);
-
-        // Autofill customer info
-        setFormData((prev) => ({
-          ...prev,
-          name: customerInfo.name,
-          phone: customerInfo.phone,
-          email: customerInfo.email,
-        }));
-
-        // Transform orders for combobox
-        const orderOptions = ordersList.map((order) => ({
-          value: order.orderNumber,
-          label: `${order.orderNumber} - ${order.recipientName}`,
-        }));
-        setOrders(orderOptions);
-      } catch (error) {
-        console.error("Failed to load data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -73,69 +143,97 @@ export default function ComplaintCreate() {
     }));
   };
 
-  const handleOrderSelect = (value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      tracking: value,
-    }));
+  const handleTrackingNumberChange = (value: string) => {
+      setFormData((prev) => ({
+        ...prev,
+        trackingNumber: value,
+      }));
+    };
+
+    const fetchAndLoadPackageData = async (trackingNumber: string) => {
+    if (!trackingNumber.trim()) {
+      setPackageData(null);
+      setPackageNotFound(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setPackageNotFound(false);
+      const data = await fetchPackageData(trackingNumber);
+      
+      if (data) {
+        setPackageData(data);
+        setFormData((prev) => ({
+          ...prev,
+          customerName: data.senderName,
+          customerPhone: data.senderPhone,
+          channel: data.channel,
+        }));
+      } else {
+        setPackageNotFound(true);
+        setPackageData(null);
+      }
+    } catch (error) {
+      console.error("Failed to fetch package data:", error);
+      setPackageNotFound(true);
+      setPackageData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTrackingNumberBlur = () => {
+    fetchAndLoadPackageData(formData.trackingNumber);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    // Reset form after 3 seconds
     setTimeout(() => {
       setSubmitted(false);
-      setFormData((prev) => ({
-        ...prev,
-        tracking: "",
-        type: "late",
-        detail: "",
-        claim: "",
-      }));
     }, 3000);
   };
-
-  if (loading) {
-    return (
-      <CustomerShell title="Gửi khiếu nại" userName="Nguyễn Văn A" role="Khách hàng">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-muted-foreground">Đang tải...</div>
-        </div>
-      </CustomerShell>
-    );
-  }
 
   return (
     <CustomerShell title="Gửi khiếu nại" userName="Nguyễn Văn A" role="Khách hàng">
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Thông tin Khách hàng</CardTitle>
+            <CardTitle className="text-base">Thông tin liên lạc</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-3">
-            <Input
-              label="Họ và tên"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-            />
-            <Input
-              label="Số điện thoại"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-              required
-              pattern="^(0|\+?84)[0-9]{8,10}$"
-            />
-            <Input
-              label="Email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleInputChange}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="customerName">Họ và tên</Label>
+              <Input
+                id="customerName"
+                name="customerName"
+                value={formData.customerName}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customerPhone">Số điện thoại</Label>
+              <Input
+                id="customerPhone"
+                name="customerPhone"
+                value={formData.customerPhone}
+                onChange={handleInputChange}
+                required
+                pattern="^(0|\+?84)[0-9]{8,10}$"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customerEmail">Email</Label>
+              <Input
+                id="customerEmail"
+                name="customerEmail"
+                type="email"
+                value={formData.customerEmail}
+                onChange={handleInputChange}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -144,72 +242,240 @@ export default function ComplaintCreate() {
             <CardTitle className="text-base">Đơn hàng liên quan</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-3">
-            <Combobox
-              label="Mã vận đơn"
-              options={orders}
-              value={formData.tracking}
-              onChange={handleOrderSelect}
-              placeholder="Chọn hoặc nhập mã vận đơn..."
-              allowCustomInput={true}
-            />
-
-            <div>
-              <label className="text-sm font-medium">Loại khiếu nại</label>
-              <select
-                name="type"
-                value={formData.type}
-                onChange={handleInputChange}
-                className="mt-1 w-full rounded-md border bg-background px-3 py-2"
-              >
-                <option value="late">Giao chậm</option>
-                <option value="lost">Mất hàng</option>
-                <option value="damage">Hư hỏng</option>
-                <option value="cod">Sai COD</option>
-                <option value="other">Khác</option>
-              </select>
+            <div className="space-y-2">
+              <Label>Mã vận đơn</Label>
+              <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full justify-between font-normal"
+                    type="button"
+                  >
+                    {formData.trackingNumber || "Chọn hoặc nhập mã vận đơn..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder="Tìm kiếm hoặc nhập mã..."
+                      value={formData.trackingNumber}
+                      onValueChange={handleTrackingNumberChange}
+                      onBlur={handleTrackingNumberBlur}
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        <div className="py-2 text-center text-sm">
+                          {formData.trackingNumber ? (
+                            <div>
+                              <p className="text-muted-foreground mb-2">Không tìm thấy trong danh sách</p>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    setOpen(false);
+                                    fetchAndLoadPackageData(formData.trackingNumber);
+                                  }}
+                                  type="button"
+                                >
+                                  Sử dụng "{formData.trackingNumber}"
+                                </Button>
+                            </div>
+                          ) : (
+                            "Nhập mã vận đơn..."
+                          )}
+                        </div>
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {mockTrackingNumbers
+                          .filter((number) =>
+                            number.toLowerCase().includes(formData.trackingNumber.toLowerCase())
+                          )
+                          .map((number) => (
+                            <CommandItem
+                              key={number}
+                              value={number}
+                              onSelect={(currentValue) => {
+                                const upperValue = currentValue.toUpperCase();
+                                handleTrackingNumberChange(upperValue);
+                                setOpen(false);
+                                // Call fetch directly with the selected value
+                                fetchAndLoadPackageData(upperValue);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.trackingNumber === number ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {number}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {loading && (
+                <p className="text-xs text-blue-600">Đang tải thông tin đơn hàng...</p>
+              )}
+              {packageNotFound && (
+                <p className="text-xs text-red-600">
+                  Không tìm thấy đơn hàng. Vui lòng kiểm tra lại mã vận đơn.
+                </p>
+              )}
             </div>
 
-            <div>
-              <label className="text-sm font-medium">Mô tả chi tiết</label>
-              <textarea
+            {/* Display-Only Package Information */}
+            {packageData && (
+              <Card className="bg-green-50 border-green-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm text-green-800 flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Thông tin đơn hàng
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  {/* Sender Info */}
+                  <div className="space-y-2">
+                    <p className="font-semibold text-green-900 text-xs uppercase">Người gửi</p>
+                    <div className="space-y-1.5 bg-white/50 rounded p-2">
+                      <div className="flex items-center gap-2">
+                        <User className="h-3.5 w-3.5 text-green-700" />
+                        <span>{packageData.senderName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5 text-green-700" />
+                        <span>{packageData.senderPhone}</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-3.5 w-3.5 text-green-700 mt-0.5" />
+                        <span className="flex-1">{packageData.senderAddress}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Receiver Info */}
+                  <div className="space-y-2">
+                    <p className="font-semibold text-green-900 text-xs uppercase">Người nhận</p>
+                    <div className="space-y-1.5 bg-white/50 rounded p-2">
+                      <div className="flex items-center gap-2">
+                        <User className="h-3.5 w-3.5 text-green-700" />
+                        <span>{packageData.receiverName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5 text-green-700" />
+                        <span>{packageData.receiverPhone}</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-3.5 w-3.5 text-green-700 mt-0.5" />
+                        <span className="flex-1">{packageData.receiverAddress}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Package Details */}
+                  <div className="space-y-2">
+                    <p className="font-semibold text-green-900 text-xs uppercase">Chi tiết</p>
+                    <div className="grid grid-cols-2 gap-2 bg-white/50 rounded p-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Khối lượng</p>
+                        <p className="font-medium">{packageData.weight} kg</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Dịch vụ</p>
+                        <p className="font-medium">{formatService(packageData.service)}</p>
+                      </div>
+                      {Number(packageData.cod) > 0 && (
+                        <div className="col-span-2">
+                          <p className="text-xs text-muted-foreground">COD</p>
+                          <p className="font-medium text-amber-700">{formatCurrency(packageData.cod)}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Timeline */}
+                  {(packageData.pickupTime || packageData.deliverTime) && (
+                    <div className="space-y-2">
+                      <p className="font-semibold text-green-900 text-xs uppercase flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" />
+                        Thời gian
+                      </p>
+                      <div className="space-y-1.5 bg-white/50 rounded p-2">
+                        {packageData.pickupTime && (
+                          <div>
+                            <p className="text-xs text-muted-foreground">Lấy hàng</p>
+                            <p className="font-medium">{formatDateTime(packageData.pickupTime)}</p>
+                          </div>
+                        )}
+                        {packageData.deliverTime && (
+                          <div>
+                            <p className="text-xs text-muted-foreground">Giao hàng dự kiến</p>
+                            <p className="font-medium">{formatDateTime(packageData.deliverTime)}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="complaintType">Loại khiếu nại</Label>
+              <Select
+                value={formData.complaintType}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, complaintType: value }))
+                }
+              >
+                <SelectTrigger id="complaintType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="late">Giao chậm</SelectItem>
+                  <SelectItem value="lost">Mất hàng</SelectItem>
+                  <SelectItem value="damage">Hư hỏng</SelectItem>
+                  <SelectItem value="cod">Sai COD</SelectItem>
+                  <SelectItem value="other">Khác</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="detail">Mô tả chi tiết</Label>
+              <Textarea
+                id="detail"
                 name="detail"
                 value={formData.detail}
                 onChange={handleInputChange}
                 rows={4}
-                className="mt-1 w-full rounded-md border bg-background px-3 py-2"
                 placeholder="Mô tả vấn đề gặp phải..."
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3 items-end">
-              <div>
-                <label className="text-sm font-medium">Kênh tiếp nhận đơn hàng</label>
-                <select
-                  name="channel"
-                  value={formData.channel}
-                  onChange={handleInputChange}
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2"
-                >
-                  <option>App</option>
-                  <option>Web</option>
-                  <option>Hotline</option>
-                  <option>Quầy</option>
-                </select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="claimAmount">Số tiền bồi thường mong muốn (₫)</Label>
               <Input
-                label="Số tiền bồi thường mong muốn (₫)"
-                name="claim"
+                id="claimAmount"
+                name="claimAmount"
                 type="number"
-                value={formData.claim}
-                onChange={handleInputChange}
                 min={0}
+                value={formData.claimAmount}
+                onChange={handleInputChange}
               />
             </div>
           </CardContent>
         </Card>
 
-        <Button className="w-full h-12 rounded-xl">Gửi khiếu nại</Button>
-
+        <Button className="w-full h-12 rounded-xl" disabled={loading} type="submit">
+          {loading ? "Đang tải..." : "Gửi khiếu nại"}
+        </Button>
+        
         {submitted && (
           <div className="rounded-lg border bg-amber-50 p-3 text-sm text-amber-700">
             Khiếu nại đã được tiếp nhận. Chúng tôi sẽ phản hồi trong thời gian sớm nhất.
@@ -217,20 +483,5 @@ export default function ComplaintCreate() {
         )}
       </form>
     </CustomerShell>
-  );
-}
-
-function Input({
-  label,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
-  return (
-    <div>
-      <label className="text-sm font-medium">{label}</label>
-      <input
-        {...props}
-        className="mt-1 w-full rounded-md border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-ring"
-      />
-    </div>
   );
 }
