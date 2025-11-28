@@ -2,6 +2,7 @@ export interface CustomerInfo {
   name: string;
   phone: string;
   email: string;
+  address: string;
 }
 
 export interface TrackingEvent {
@@ -30,6 +31,7 @@ const mockCustomerInfo: CustomerInfo = {
   name: "Nguyễn Văn A",
   phone: "0901234567",
   email: "nguyenva@example.com",
+  address: "Hàn Thuyên, Khu phố 6, P.Thủ Đức, TP.HCM"
 };
 
 // Mock order history - in a real app this would come from a backend API

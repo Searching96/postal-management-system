@@ -59,6 +59,7 @@ export default function PickupRequest() {
           ...prev,
           senderName: customerInfo.name,
           senderPhone: customerInfo.phone,
+          senderAddress: customerInfo.address
         }));
       } catch (error) {
         console.error("Failed to load customer info:", error);

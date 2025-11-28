@@ -11,11 +11,13 @@ import CustomerComplaint from "./pages/customer/Complaint";
 import CustomerOrders from "./pages/customer/Orders";
 import CustomerTracking from "./pages/customer/Tracking";
 import DriverIndex from "./pages/delivery-driver/Index";
-import {
-  ConfirmPickup,
-  ConfirmDeliverySuccess,
-  ReportDeliveryFailure,
-} from "./pages/delivery-driver/Operations";
+import { Scanner } from "./pages/delivery-driver/Scanner";
+import { DeliveriesMap } from "./pages/delivery-driver/DeliveriesMap";
+import PostalWorkerIndex from "./pages/postal-worker/Index";
+import PostalWorkerIngest from "./pages/postal-worker/Ingest";
+import PostalWorkerSorting from "./pages/postal-worker/Sorting";
+import PostalWorkerDispatch from "./pages/postal-worker/Dispatch";
+import PackageList from "./pages/postal-worker/PackageList";
 
 const queryClient = new QueryClient();
 
@@ -35,9 +37,15 @@ const App = () => (
           <Route path="/customer/complaint" element={<CustomerComplaint />} />
           
           <Route path="/delivery-driver" element={<DriverIndex />} />
-          <Route path="/delivery-driver/pickup-confirm" element={<ConfirmPickup />} />
-          <Route path="/delivery-driver/deliver-success" element={<ConfirmDeliverySuccess />} />
-          <Route path="/delivery-driver/deliver-fail" element={<ReportDeliveryFailure />} />
+          <Route path="/delivery-driver/scanner" element={<Scanner />} />
+          <Route path="/delivery-driver/map" element={<DeliveriesMap/>} />
+
+                    
+          <Route path="/postal-worker" element={<PostalWorkerIndex />} />
+          <Route path="/postal-worker/ingest" element={<PostalWorkerIngest />} />
+          <Route path="/postal-worker/sorting" element={<PostalWorkerSorting />} />
+          <Route path="/postal-worker/dispatch" element={<PostalWorkerDispatch />} />
+          <Route path="/postal-worker/packages" element={<PackageList />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

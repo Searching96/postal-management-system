@@ -2,12 +2,14 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   House,
-  QrCode,
-  MapPin,
+  Package,
+  ArrowUpDown,
+  Truck,
+  List,
 } from "lucide-react";
 import { ReactNode } from "react";
 
-interface DriverShellProps {
+interface PostalWorkerShellProps {
   title?: string;
   children: ReactNode;
   userName?: string;
@@ -15,12 +17,14 @@ interface DriverShellProps {
 }
 
 const tabs = [
-  { to: "/delivery-driver", label: "Dashboard", icon: House },
-  { to: "/delivery-driver/scanner", label: "QR Scanner", icon: QrCode },
-  { to: "/delivery-driver/map", label: "Bản đồ", icon: MapPin },
+  { to: "/postal-worker", label: "Dashboard", icon: House },
+  { to: "/postal-worker/ingest", label: "Nhận hàng", icon: Package },
+  { to: "/postal-worker/sorting", label: "Phân loại", icon: ArrowUpDown },
+  { to: "/postal-worker/dispatch", label: "Xuất kho", icon: Truck },
+  { to: "/postal-worker/packages", label: "Tra cứu", icon: List },
 ];
 
-export default function DriverShell({ title, children, userName, role }: DriverShellProps) {
+export default function PostalWorkerShell({ title, children, userName, role }: PostalWorkerShellProps) {
   const location = useLocation();
 
   return (
@@ -31,8 +35,8 @@ export default function DriverShell({ title, children, userName, role }: DriverS
             <div className="font-extrabold tracking-tight text-lg">PostalFlow</div>
             <div className="flex items-center gap-2 text-xs">
               <div className="text-right leading-tight">
-                <div className="font-medium">{userName ?? "Nguyễn Văn A"}</div>
-                <div className="text-muted-foreground">{role ?? "Bưu tá"}</div>
+                <div className="font-medium">{userName ?? "Nguyễn Thị E"}</div>
+                <div className="text-muted-foreground">{role ?? "Nhân viên bưu điện"}</div>
               </div>
             </div>
           </div>
@@ -46,7 +50,7 @@ export default function DriverShell({ title, children, userName, role }: DriverS
         <main className="flex-1 px-4 py-4">{children}</main>
 
         <nav className="sticky bottom-0 z-20 border-t bg-background/95 backdrop-blur">
-          <ul className="grid grid-cols-3">
+          <ul className="grid grid-cols-4">
             {tabs.map(({ to, label, icon: Icon }) => {
               const active = location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
               return (

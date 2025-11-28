@@ -8,12 +8,6 @@ export default function DriverIndex() {
   return (
     <DriverShell title="Bảng điều khiển" userName="Nguyễn Văn A" role="Bưu tá">
       <section className="space-y-4">
-        <div className="grid grid-cols-3 gap-3">
-          <QuickAction to="/delivery-driver/pickup-confirm" icon={<ClipboardCheck className="h-5 w-5"/>} label="Xác nhận lấy"/>
-          <QuickAction to="/delivery-driver/deliver-success" icon={<CheckCircle2 className="h-5 w-5"/>} label="Giao thành công"/>
-          <QuickAction to="/delivery-driver/deliver-fail" icon={<XCircle className="h-5 w-5"/>} label="Giao thất bại"/>
-        </div>
-
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="text-base">Thống kê hôm nay</CardTitle>

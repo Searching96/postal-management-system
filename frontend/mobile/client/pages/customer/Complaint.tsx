@@ -183,7 +183,7 @@ export default function ComplaintCreate() {
 
             <div className="grid grid-cols-2 gap-3 items-end">
               <div>
-                <label className="text-sm font-medium">Kênh tiếp nhận đơn h��ng</label>
+                <label className="text-sm font-medium">Kênh tiếp nhận đơn hàng</label>
                 <select
                   name="channel"
                   value={formData.channel}

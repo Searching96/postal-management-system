@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Truck, ShoppingCart } from "lucide-react";
+import { Truck, ShoppingCart, Package } from "lucide-react";
 
 export default function Home() {
   return (
@@ -31,11 +31,21 @@ export default function Home() {
               </div>
             </Button>
           </Link>
+
+          <Link to="/postal-worker" className="block">
+            <Button variant="secondary" className="w-full h-32 rounded-xl flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-shadow">
+              <Package className="h-8 w-8" />
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-base font-semibold">Nhân viên bưu điện</span>
+                <span className="text-xs text-muted-foreground">Nhận và phân loại hàng</span>
+              </div>
+            </Button>
+          </Link>
         </div>
 
         <div className="mt-8 p-4 rounded-lg bg-muted/50">
           <p className="text-xs text-muted-foreground text-center">
-            Đây là chế độ demo cho phép bạn khám phá cả hai quy trình
+            Đây là chế độ demo cho phép bạn khám phá tất cả các quy trình
           </p>
         </div>
       </div>
