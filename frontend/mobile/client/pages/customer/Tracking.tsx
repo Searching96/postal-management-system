@@ -1,7 +1,7 @@
 import CustomerShell from "@/components/CustomerShell";
 import { fetchOrderTracking, formatDateTime, TrackingEvent } from "@/services/mockApi";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Truck, Package, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -16,12 +16,12 @@ interface TrackingData {
 
 
 export default function Tracking() {
-  const [searchParams] = useSearchParams();
-  const orderNumber = searchParams.get("order") || "";
+  const location = useLocation();
+  const order = location.state?.order;
 
 
   const [data, setData] = useState<TrackingData>({
-    orderNumber,
+    orderNumber: order?.orderNumber || "",
     trackingHistory: [],
     currentMilestoneIndex: -1,
     loading: true,
@@ -30,11 +30,11 @@ export default function Tracking() {
 
   useEffect(() => {
     const loadTracking = async () => {
-      if (!orderNumber) {
+      if (!order?.orderNumber) {
         setData((prev) => ({
           ...prev,
           loading: false,
-          error: "Order number not provided",
+          error: "Order data not provided",
         }));
         return;
       }
@@ -43,9 +43,9 @@ export default function Tracking() {
       try {
         setData((prev) => ({ ...prev, loading: true }));
         const { trackingHistory, currentMilestoneIndex } =
-          await fetchOrderTracking(orderNumber);
+          await fetchOrderTracking(order.orderNumber);
         setData({
-          orderNumber,
+          orderNumber: order.orderNumber,
           trackingHistory,
           currentMilestoneIndex,
           loading: false,
@@ -61,13 +61,13 @@ export default function Tracking() {
 
 
     loadTracking();
-  }, [orderNumber]);
+  }, [order]);
 
 
   if (data.loading) {
     return (
       <CustomerShell
-        title={`Theo dõi ${orderNumber}`}
+        title={`Theo dõi ${data.orderNumber}`}
         userName="Nguyễn Văn A"
         role="Khách hàng"
       >
@@ -107,63 +107,104 @@ export default function Tracking() {
 
   return (
     <CustomerShell
-      title={`Theo dõi ${orderNumber}`}
+      title={`Theo dõi ${data.orderNumber}`}
       userName="Nguyễn Văn A"
       role="Khách hàng"
     >
       <div className="space-y-6">
-        {/* Progress Bar */}
+        {/* Order Details */}
+        {order && (
+          <div className="bg-card rounded-lg p-4 space-y-3">
+            <h3 className="font-semibold text-sm">Thông tin đơn hàng</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Người nhận:</span>
+                <span>{order.recipientName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Địa chỉ:</span>
+                <span className="text-right">{order.address}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Nội dung:</span>
+                <span>{order.items}</span>
+              </div>
+              {order.codAmount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">COD:</span>
+                  <span className="font-medium">{formatCurrency(order.codAmount)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Horizontal Progress Bar */}
         <div className="bg-card rounded-lg p-6 space-y-4">
-          <h3 className="font-semibold text-sm">Tiến trình vận chuyển</h3>
-
-
-          {/* Milestone Bar */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-lg">Tiến trình vận chuyển</h3>
+          
+          {/* Horizontal Milestone Timeline */}
+          <div className="relative flex items-center justify-between">
+            {/* Background Track */}
+            <div className="absolute inset-0 h-1 bg-secondary/30 rounded-full" />
+            
+            <div className="flex items-center w-full z-10">
               {milestones.map((milestone, index) => {
                 const Icon = milestone.icon;
                 const isCompleted = index < data.currentMilestoneIndex;
                 const isCurrent = index === data.currentMilestoneIndex;
-                const isFuture = index > data.currentMilestoneIndex;
+                
+                const getStatusColor = () => {
+                  // First 3 milestones: blue when activated (completed or current)
+                  if (index < 3 && (isCompleted || isCurrent)) {
+                    return 'bg-blue-500 border-blue-500 text-white shadow-blue-200/50';
+                  }
+                  
+                  // 4th milestone (index 3): yellow for returned, green for delivered
+                  if (index === 3) {
+                    if (order?.status === 'delivered') {
+                      return 'bg-green-500 border-green-500 text-white shadow-green-200/50';
+                    }
+                    if (order?.status === 'returned') {
+                      return 'bg-yellow-500 border-yellow-500 text-white shadow-yellow-200/50';
+                    }
+                    // Default for 4th milestone when current but not final status
+                    if (isCurrent) {
+                      return 'bg-blue-500 border-blue-500 text-white shadow-blue-200/50';
+                    }
+                  }
+                  
+                  // Future milestones (including 4th when not reached)
+                  return 'bg-secondary/20 border-secondary/50 text-muted-foreground shadow-sm';
+                };
 
+                // Progress fill up to current milestone (first 3 always blue when reached)
+                const progressWidth = ((Math.min(data.currentMilestoneIndex, 3) + 1) / milestones.length) * 100;
 
                 return (
-                  <div key={milestone.key} className="flex-1">
-                    {/* Milestone Dot and Icon */}
-                    <div className="flex flex-col items-center gap-2">
-                      <div
-                        className={`h-10 w-10 rounded-full flex items-center justify-center border-2 transition-colors ${isCurrent
-                            ? "bg-green-100 border-green-500 text-green-600"
-                            : isCompleted
-                              ? "bg-primary/10 border-primary text-primary"
-                              : "bg-secondary/10 border-secondary text-secondary"
-                          }`}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <span className="text-xs font-medium text-center text-muted-foreground">
-                        {milestone.label}
-                      </span>
+                  <div key={milestone.key} className="flex flex-col items-center gap-2 flex-1">
+                    {/* Milestone Circle */}
+                    <div className={`h-12 w-12 rounded-full flex items-center justify-center border-3 shadow-lg ${getStatusColor()}`}>
+                      <Icon className="h-6 w-6" />
                     </div>
-
-
-                    {/* Connecting Line */}
-                    {index < milestones.length - 1 && (
-                      <div className="flex items-center justify-center h-1 mt-2">
-                        <div
-                          className={`flex-1 h-1 ${isCurrent
-                              ? "bg-green-500"
-                              : isCompleted
-                                ? "bg-primary"
-                                : "bg-secondary/30"
-                            }`}
-                        />
-                      </div>
-                    )}
+                    
+                    {/* Label */}
+                    <p className="text-xs font-medium text-center text-muted-foreground px-1 whitespace-nowrap">
+                      {milestone.label}
+                    </p>
                   </div>
                 );
               })}
             </div>
+            
+            {/* Progress Fill - Blue for first 3, stops before 4th unless delivered */}
+            <div 
+              className={`absolute top-0 left-0 h-1 rounded-full transition-all duration-300 ${
+                order?.status === 'delivered' 
+                  ? 'bg-green-500' 
+                  : 'bg-blue-500'
+              }`}
+            />
           </div>
         </div>
 
@@ -249,4 +290,13 @@ function TrackingEventCard({
       )}
     </div>
   );
+}
+
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    minimumFractionDigits: 0,
+  }).format(amount);
 }

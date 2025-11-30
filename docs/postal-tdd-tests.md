@@ -87,17 +87,19 @@
 
 ### 16.3 Enum Value Coverage
 
-#### Status Enum (Orders)
+#### DeliveryStatus Enum (Unified)
 | Value | Create Order | Transition To | Transition From | Query Filter | Invalid Value |
 |-------|--------------|---------------|-----------------|--------------|---------------|
-| PENDING | ✅ | ✅ | ❌ | ✅ | ✅ |
-| PICKED_UP | ❌ | ✅ | ✅ | ✅ | ✅ |
-| IN_TRANSIT | ❌ | ✅ | ✅ | ✅ | ✅ |
-| OUT_FOR_DELIVERY | ❌ | ✅ | ✅ | ✅ | ✅ |
-| DELIVERED | ❌ | ✅ | ✅ | ✅ | ✅ |
-| FAILED | ❌ | ✅ | ✅ | ✅ | ✅ |
-| RETURNED | ❌ | ✅ | ✅ | ✅ | ✅ |
-| CANCELLED | ❌ | ✅ | ⛔ | ✅ | ✅ |
+| pickup_pending | ✅ | ✅ | ✅ | ✅ | ✅ |
+| received | ❌ | ✅ | ✅ | ✅ | ✅ |
+| sorted | ❌ | ✅ | ✅ | ✅ | ✅ |
+| export_pending | ❌ | ✅ | ✅ | ✅ | ✅ |
+| in-transit | ❌ | ✅ | ✅ | ✅ | ✅ |
+| out-for-delivery | ❌ | ✅ | ✅ | ✅ | ✅ |
+| delivered | ❌ | ✅ | ✅ | ✅ | ✅ |
+| failed | ❌ | ✅ | ✅ | ✅ | ✅ |
+| returned | ❌ | ✅ | ⛔ | ✅ | ✅ |
+| cancelled | ❌ | ✅ | ⛔ | ✅ | ✅ |
 
 #### Role Enum (Users)
 | Value | Create User | Query | Permission Test |
@@ -2762,11 +2764,3 @@ This test plan ensures **FULL PATH COVERAGE** including:
 - Run full test suite nightly
 - Generate coverage reports
 - Alert on test failures
-
----
-
-**Total Test Cases Designed: 165+**
-
-**Estimated Test Development Time: 40-60 hours**
-
-**Estimated Test Execution Time: 4-6 hours (full suite)**

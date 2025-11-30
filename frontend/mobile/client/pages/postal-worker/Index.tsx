@@ -1,10 +1,12 @@
 import PostalWorkerShell from "@/components/PostalWorkerShell";
 import { Button } from "@/components/ui/button";
-import { Package, ArrowUpDown, Truck, Clock, CheckCircle } from "lucide-react";
+import { Package, ArrowUpDown, Truck, Clock, CheckCircle, List } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { fetchPostalWorkerStats, PostalWorkerStats } from "@/services/mockApi";
 
 
-interface StatsCard {
+interface StatsCardProps {
   title: string;
   value: number;
   icon: React.ReactNode;
@@ -12,15 +14,21 @@ interface StatsCard {
 }
 
 
-const statsData: StatsCard[] = [
-  { title: "Hàng chờ nhận", value: 25, icon: <Package className="h-6 w-6" />, color: "text-blue-500" },
-  { title: "Đã phân loại", value: 142, icon: <ArrowUpDown className="h-6 w-6" />, color: "text-green-500" },
-  { title: "Chờ xuất kho", value: 18, icon: <Truck className="h-6 w-6" />, color: "text-orange-500" },
-  { title: "Hoàn thành", value: 89, icon: <CheckCircle className="h-6 w-6" />, color: "text-purple-500" },
-];
-
-
 export default function PostalWorkerIndex() {
+  const [stats, setStats] = useState<PostalWorkerStats | null>(null);
+
+  useEffect(() => {
+    fetchPostalWorkerStats().then(setStats);
+  }, []);
+
+  const statsData: StatsCardProps[] = [
+    { title: "Hàng chờ nhận", value: stats?.pendingIngest ?? 0, icon: <Package className="h-6 w-6" />, color: "text-blue-500" },
+    { title: "Đã phân loại", value: stats?.sorted ?? 0, icon: <ArrowUpDown className="h-6 w-6" />, color: "text-green-500" },
+    { title: "Chờ xuất kho", value: stats?.pendingDispatch ?? 0, icon: <Truck className="h-6 w-6" />, color: "text-orange-500" },
+    { title: "Hoàn thành", value: stats?.completedToday ?? 0, icon: <CheckCircle className="h-6 w-6" />, color: "text-purple-500" },
+  ];
+
+
   return (
     <PostalWorkerShell title="Dashboard" userName="Nguyễn Thị E" role="Nhân viên bưu điện">
       <div className="space-y-6">
@@ -48,10 +56,16 @@ export default function PostalWorkerIndex() {
                 Quản lý kiện hàng
               </Button>
             </Link>
-            <Link to="/postal-worker/dispatch">
+            <Link to="/postal-worker/container">
               <Button variant="outline" className="justify-start h-12 w-full">
                 <Truck className="h-4 w-4 mr-3" />
                 Chuẩn bị xuất kho
+              </Button>
+            </Link>
+            <Link to="/postal-worker/packages">
+              <Button variant="outline" className="justify-start h-12 w-full">
+                <List className="h-4 w-4 mr-3" />
+                Danh sách đơn hàng
               </Button>
             </Link>
           </div>

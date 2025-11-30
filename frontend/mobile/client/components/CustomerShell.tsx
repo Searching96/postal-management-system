@@ -16,7 +16,7 @@ interface CustomerShellProps {
 }
 
 const tabs = [
-  { to: "/", label: "Trang chủ", icon: House },
+  { to: "/customer/home", label: "Trang chủ", icon: House },
   { to: "/customer/orders", label: "Đơn hàng", icon: Inbox },
   { to: "/customer/pickup", label: "Lấy hàng", icon: PackagePlus },
   { to: "/customer/complaint", label: "Khiếu nại", icon: MessageSquareMore },
@@ -24,6 +24,11 @@ const tabs = [
 
 export default function CustomerShell({ title, children, userName, role }: CustomerShellProps) {
   const location = useLocation();
+
+  const isActive = (to: string) => {
+    if (to === "/") return location.pathname === "/";
+    return location.pathname === to || location.pathname.startsWith(`${to}/`);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex items-start justify-center">
@@ -50,7 +55,7 @@ export default function CustomerShell({ title, children, userName, role }: Custo
         <nav className="sticky bottom-0 z-20 border-t bg-background/95 backdrop-blur">
           <ul className="grid grid-cols-4">
             {tabs.map(({ to, label, icon: Icon }) => {
-              const active = location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
+              const active = isActive(to);
               return (
                 <li key={to}>
                   <Link

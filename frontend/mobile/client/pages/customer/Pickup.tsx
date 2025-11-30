@@ -1,6 +1,11 @@
 import CustomerShell from "@/components/CustomerShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { fetchCustomerInfo } from "@/services/mockApi";
 import { useEffect, useState } from "react";
 
@@ -108,28 +113,37 @@ export default function PickupRequest() {
             <CardTitle className="text-base">Thông tin Người gửi</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-3">
-            <Input
-              name="senderName"
-              label="Họ và tên"
-              value={formData.senderName}
-              onChange={handleInputChange}
-              required
-            />
-            <Input
-              name="senderPhone"
-              label="Số điện thoại"
-              value={formData.senderPhone}
-              onChange={handleInputChange}
-              required
-              pattern="^(0|\+?84)[0-9]{8,10}$"
-            />
-            <Input
-              name="senderAddress"
-              label="Địa chỉ"
-              value={formData.senderAddress}
-              onChange={handleInputChange}
-              required
-            />
+            <div className="space-y-2">
+              <Label htmlFor="senderName">Họ và tên</Label>
+              <Input
+                id="senderName"
+                name="senderName"
+                value={formData.senderName}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="senderPhone">Số điện thoại</Label>
+              <Input
+                id="senderPhone"
+                name="senderPhone"
+                value={formData.senderPhone}
+                onChange={handleInputChange}
+                required
+                pattern="^(0|\+?84)[0-9]{8,10}$"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="senderAddress">Địa chỉ</Label>
+              <Input
+                id="senderAddress"
+                name="senderAddress"
+                value={formData.senderAddress}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -138,28 +152,37 @@ export default function PickupRequest() {
             <CardTitle className="text-base">Thông tin Người nhận</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-3">
-            <Input
-              name="receiverName"
-              label="Họ và tên"
-              value={formData.receiverName}
-              onChange={handleInputChange}
-              required
-            />
-            <Input
-              name="receiverPhone"
-              label="Số điện thoại"
-              value={formData.receiverPhone}
-              onChange={handleInputChange}
-              required
-              pattern="^(0|\+?84)[0-9]{8,10}$"
-            />
-            <Input
-              name="receiverAddress"
-              label="Địa chỉ"
-              value={formData.receiverAddress}
-              onChange={handleInputChange}
-              required
-            />
+            <div className="space-y-2">
+              <Label htmlFor="receiverName">Họ và tên</Label>
+              <Input
+                id="receiverName"
+                name="receiverName"
+                value={formData.receiverName}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="receiverPhone">Số điện thoại</Label>
+              <Input
+                id="receiverPhone"
+                name="receiverPhone"
+                value={formData.receiverPhone}
+                onChange={handleInputChange}
+                required
+                pattern="^(0|\+?84)[0-9]{8,10}$"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="receiverAddress">Địa chỉ</Label>
+              <Input
+                id="receiverAddress"
+                name="receiverAddress"
+                value={formData.receiverAddress}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -168,55 +191,70 @@ export default function PickupRequest() {
             <CardTitle className="text-base">Chi tiết Bưu kiện</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
-            <Input
-              name="weight"
-              label="Khối lượng (kg)"
-              type="number"
-              step="0.01"
-              min={0}
-              value={formData.weight}
-              onChange={handleInputChange}
-              required
-            />
-            <Input
-              name="value"
-              label="Giá trị khai (₫)"
-              type="number"
-              min={0}
-              value={formData.value}
-              onChange={handleInputChange}
-            />
-            <Input
-              name="length"
-              label="Dài (cm)"
-              type="number"
-              min={0}
-              value={formData.length}
-              onChange={handleInputChange}
-            />
-            <Input
-              name="width"
-              label="Rộng (cm)"
-              type="number"
-              min={0}
-              value={formData.width}
-              onChange={handleInputChange}
-            />
-            <Input
-              name="height"
-              label="Cao (cm)"
-              type="number"
-              min={0}
-              value={formData.height}
-              onChange={handleInputChange}
-            />
-            <div className="col-span-2">
-              <label className="text-sm font-medium">Ghi chú</label>
-              <textarea
+            <div className="space-y-2">
+              <Label htmlFor="weight">Khối lượng (kg)</Label>
+              <Input
+                id="weight"
+                name="weight"
+                type="number"
+                step="0.01"
+                min={0}
+                value={formData.weight}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="value">Giá trị khai (₫)</Label>
+              <Input
+                id="value"
+                name="value"
+                type="number"
+                min={0}
+                value={formData.value}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="length">Dài (cm)</Label>
+              <Input
+                id="length"
+                name="length"
+                type="number"
+                min={0}
+                value={formData.length}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="width">Rộng (cm)</Label>
+              <Input
+                id="width"
+                name="width"
+                type="number"
+                min={0}
+                value={formData.width}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="height">Cao (cm)</Label>
+              <Input
+                id="height"
+                name="height"
+                type="number"
+                min={0}
+                value={formData.height}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="col-span-2 space-y-2">
+              <Label htmlFor="note">Ghi chú</Label>
+              <Textarea
+                id="note"
                 name="note"
                 value={formData.note}
                 onChange={handleInputChange}
-                className="mt-1 w-full resize-y rounded-md border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-ring"
                 rows={3}
                 placeholder="Hàng dễ vỡ, vui lòng gọi trước..."
               />
@@ -229,66 +267,70 @@ export default function PickupRequest() {
             <CardTitle className="text-base">Tùy chọn Dịch vụ</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-3">
-            <div className="grid grid-cols-3 gap-2">
-              <Radio
-                name="service"
-                value="express"
-                label="Hỏa tốc"
-                checked={formData.service === "express"}
-                onChange={handleInputChange}
-              />
-              <Radio
-                name="service"
-                value="fast"
-                label="Nhanh"
-                checked={formData.service === "fast"}
-                onChange={handleInputChange}
-              />
-              <Radio
-                name="service"
-                value="economy"
-                label="Tiết kiệm"
-                checked={formData.service === "economy"}
-                onChange={handleInputChange}
-              />
+            <div className="space-y-2">
+              <Label>Dịch vụ</Label>
+              <RadioGroup
+                value={formData.service}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, service: value }))}
+                className="grid grid-cols-3 gap-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="express" id="express" />
+                  <Label htmlFor="express">Hỏa tốc</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="fast" id="fast" />
+                  <Label htmlFor="fast">Nhanh</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="economy" id="economy" />
+                  <Label htmlFor="economy">Tiết kiệm</Label>
+                </div>
+              </RadioGroup>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Input
-                name="cod"
-                label="Thu hộ COD (₫)"
-                type="number"
-                min={0}
-                value={formData.cod}
-                onChange={handleInputChange}
-              />
-              <Input
-                name="insurance"
-                label="Bảo hiểm (₫)"
-                type="number"
-                min={0}
-                value={formData.insurance}
-                onChange={handleInputChange}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="cod">Thu hộ COD (₫)</Label>
+                <Input
+                  id="cod"
+                  name="cod"
+                  type="number"
+                  min={0}
+                  value={formData.cod}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="insurance">Bảo hiểm (₫)</Label>
+                <Input
+                  id="insurance"
+                  name="insurance"
+                  type="number"
+                  min={0}
+                  value={formData.insurance}
+                  onChange={handleInputChange}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium">Thời gian lấy dự kiến</label>
-                <input
+              <div className="space-y-2">
+                <Label htmlFor="pickupTime">Thời gian lấy dự kiến</Label>
+                <Input
+                  id="pickupTime"
                   name="pickupTime"
                   type="datetime-local"
                   value={formData.pickupTime}
                   onChange={handleInputChange}
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium">Hẹn giờ giao</label>
-                <input
+              <div className="space-y-2">
+                <Label htmlFor="deliverTime">Hẹn giờ giao</Label>
+                <Input
+                  id="deliverTime"
                   name="deliverTime"
                   type="datetime-local"
                   value={formData.deliverTime}
                   onChange={handleInputChange}
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
             </div>
@@ -304,32 +346,5 @@ export default function PickupRequest() {
         )}
       </form>
     </CustomerShell>
-  );
-}
-
-function Input({
-  label,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
-  return (
-    <div>
-      <label className="text-sm font-medium">{label}</label>
-      <input
-        {...props}
-        className="mt-1 w-full rounded-md border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-ring"
-      />
-    </div>
-  );
-}
-
-function Radio({
-  label,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
-  return (
-    <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-      <input type="radio" {...props} />
-      {label}
-    </label>
   );
 }

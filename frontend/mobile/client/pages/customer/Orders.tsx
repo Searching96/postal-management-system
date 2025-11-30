@@ -51,7 +51,7 @@ function OrderCard({ order }: { order: Order }) {
   const navigate = useNavigate();
 
   const handleTracking = () => {
-    navigate(`/customer/tracking?order=${order.orderNumber}`);
+    navigate('/customer/tracking', { state: { order } });
   };
 
   return (

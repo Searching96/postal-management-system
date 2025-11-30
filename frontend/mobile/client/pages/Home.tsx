@@ -12,7 +12,7 @@ export default function Home() {
         </div>
 
         <div className="space-y-4">
-          <Link to="/customer" className="block">
+          <Link to="/customer/home" className="block">
             <Button variant="secondary" className="w-full h-32 rounded-xl flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-shadow">
               <ShoppingCart className="h-8 w-8" />
               <div className="flex flex-col items-center gap-1">
@@ -22,7 +22,7 @@ export default function Home() {
             </Button>
           </Link>
 
-          <Link to="/delivery-driver" className="block">
+          <Link to="/delivery-driver/home" className="block">
             <Button variant="secondary" className="w-full h-32 rounded-xl flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-shadow">
               <Truck className="h-8 w-8" />
               <div className="flex flex-col items-center gap-1">
@@ -32,7 +32,7 @@ export default function Home() {
             </Button>
           </Link>
 
-          <Link to="/postal-worker" className="block">
+          <Link to="/postal-worker/home" className="block">
             <Button variant="secondary" className="w-full h-32 rounded-xl flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-shadow">
               <Package className="h-8 w-8" />
               <div className="flex flex-col items-center gap-1">

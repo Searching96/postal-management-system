@@ -15,13 +15,18 @@ interface DriverShellProps {
 }
 
 const tabs = [
-  { to: "/delivery-driver", label: "Dashboard", icon: House },
+  { to: "/delivery-driver/home", label: "Dashboard", icon: House },
   { to: "/delivery-driver/scanner", label: "QR Scanner", icon: QrCode },
   { to: "/delivery-driver/map", label: "Bản đồ", icon: MapPin },
 ];
 
 export default function DriverShell({ title, children, userName, role }: DriverShellProps) {
   const location = useLocation();
+
+  const isActive = (to: string) => {
+    if (to === "/") return location.pathname === "/";
+    return location.pathname === to || location.pathname.startsWith(`${to}/`);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex items-start justify-center">
@@ -48,7 +53,7 @@ export default function DriverShell({ title, children, userName, role }: DriverS
         <nav className="sticky bottom-0 z-20 border-t bg-background/95 backdrop-blur">
           <ul className="grid grid-cols-3">
             {tabs.map(({ to, label, icon: Icon }) => {
-              const active = location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
+              const active = isActive(to);
               return (
                 <li key={to}>
                   <Link

@@ -16,7 +16,7 @@ import "./global.css";
 import { DeliveriesMap } from "./pages/delivery-driver/DeliveriesMap";
 import { Scanner } from "./pages/delivery-driver/Scanner";
 import PostalWorkerIndex from "./pages/postal-worker/Index";
-import PostalWorkerDispatch from "./pages/postal-worker/Dispatch";
+import PostalWorkerContainer from "./pages/postal-worker/Container";
 import PackageList from "./pages/postal-worker/PackageList";
 import PostalWorkerPackage from "./pages/postal-worker/Package";
 
@@ -31,6 +31,12 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Home />} />
           
+          {/* role home routes */}
+          <Route path="/customer/home" element={<CustomerIndex />} />
+          <Route path="/delivery-driver/home" element={<DriverIndex />} />
+          <Route path="/postal-worker/home" element={<PostalWorkerIndex />} />
+
+          {/* keep legacy/other routes */}
           <Route path="/customer" element={<CustomerIndex />} />
           <Route path="/customer/orders" element={<CustomerOrders />} />
           <Route path="/customer/tracking" element={<CustomerTracking />} />
@@ -43,7 +49,7 @@ const App = () => (
           
           <Route path="/postal-worker" element={<PostalWorkerIndex />} />
           <Route path="/postal-worker/package" element={<PostalWorkerPackage />} />
-          <Route path="/postal-worker/dispatch" element={<PostalWorkerDispatch />} />
+          <Route path="/postal-worker/containers" element={<PostalWorkerContainer />} />
           <Route path="/postal-worker/packages" element={<PackageList />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

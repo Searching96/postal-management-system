@@ -2,7 +2,8 @@ import PostalWorkerShell from "@/components/PostalWorkerShell";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Camera, Scan, Package, CheckCircle, ArrowUpDown, AlertCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchSortingBins, SortingBin } from "@/services/mockApi";
 
 interface IngestedPackage {
   id: string;
@@ -12,25 +13,11 @@ interface IngestedPackage {
   timestamp: string;
 }
 
-interface SortingBin {
-  containerCode: string;
-  route: string;
-  destination: string;
-  count: number;
-}
-
 interface ScannedPackage {
   orderNumber: string;
   destination: string;
   recommendedBin: string;
 }
-
-const mockSortingBins: SortingBin[] = [
-  { containerCode: "BIN-Q1", route: "Tuyến A - Q1, Q3", destination: "Quận 1, Quận 3", count: 12 },
-  { containerCode: "BIN-Q2", route: "Tuyến B - Q2, Thủ Đức", destination: "Quận 2, Thủ Đức", count: 8 },
-  { containerCode: "BIN-Q5", route: "Tuyến C - Q5, Q6, Q8", destination: "Quận 5, Quận 6, Quận 8", count: 15 },
-  { containerCode: "BIN-PN", route: "Tuyến D - Phú Nhuận, Bình Thạnh", destination: "Phú Nhuận, Bình Thạnh", count: 6 },
-];
 
 export default function PostalWorkerPackage() {
   // Ingest state
@@ -41,8 +28,12 @@ export default function PostalWorkerPackage() {
   const [scannedPackage, setScannedPackage] = useState<ScannedPackage | null>(null);
   const [scannedContainer, setScannedContainer] = useState<string>("");
   const [sortingError, setSortingError] = useState<string>("");
-  const [sortingBins, setSortingBins] = useState<SortingBin[]>(mockSortingBins);
+  const [sortingBins, setSortingBins] = useState<SortingBin[]>([]);
   const [sortedCount, setSortedCount] = useState(0);
+
+  useEffect(() => {
+    fetchSortingBins().then(setSortingBins);
+  }, []);
 
   // Ingest functions
   const mockScanPackage = async () => {
@@ -68,11 +59,8 @@ export default function PostalWorkerPackage() {
     const destinations = ["Quận 1", "Quận 2", "Quận 3", "Quận 5", "Phú Nhuận"];
     const randomDest = destinations[Math.floor(Math.random() * destinations.length)];
     
-    let recommendedBin = "";
-    if (randomDest.includes("1") || randomDest.includes("3")) recommendedBin = "BIN-Q1";
-    else if (randomDest.includes("2")) recommendedBin = "BIN-Q2";
-    else if (randomDest.includes("5")) recommendedBin = "BIN-Q5";
-    else recommendedBin = "BIN-PN";
+    const bin = sortingBins.find(b => b.district.includes(randomDest));
+    const recommendedBin = bin?.containerCode || "";
 
     setScannedPackage({
       orderNumber: `VN${Math.random().toString().slice(2, 11)}VN`,
@@ -269,9 +257,12 @@ export default function PostalWorkerPackage() {
 
           {/* Scanned Container */}
           {scannedContainer && (
-            <div className="bg-green-50 rounded-lg p-4">
-              <h3 className="font-semibold text-green-900">Container đã quét</h3>
-              <p className="text-xl font-bold text-green-700 mt-2">{scannedContainer}</p>
+            <div className={`rounded-lg p-4 ${scannedContainer !== scannedPackage?.recommendedBin ? 'bg-red-50 border border-red-200' : 'bg-green-50'}`}>
+              <h3 className={`font-semibold ${scannedContainer !== scannedPackage?.recommendedBin ? 'text-red-900' : 'text-green-900'}`}>Container đã quét</h3>
+              <p className={`text-xl font-bold mt-2 ${scannedContainer !== scannedPackage?.recommendedBin ? 'text-red-700' : 'text-green-700'}`}>{scannedContainer}</p>
+              {scannedContainer !== scannedPackage?.recommendedBin && (
+                <p className="text-sm text-red-600 mt-2">⚠️ Container sai! Đề xuất: {scannedPackage?.recommendedBin}</p>
+              )}
             </div>
           )}
 
@@ -294,9 +285,9 @@ export default function PostalWorkerPackage() {
             </Button>
             <Button
               onClick={confirmSorting}
-              disabled={!scannedPackage || !scannedContainer}
+              disabled={!scannedPackage || !scannedContainer || scannedContainer !== scannedPackage?.recommendedBin}
             >
-              Xác nhận phân loại
+              {scannedContainer && scannedContainer !== scannedPackage?.recommendedBin ? 'Container sai' : 'Xác nhận phân loại'}
             </Button>
           </div>
 
@@ -328,7 +319,7 @@ export default function PostalWorkerPackage() {
                     <div>
                       <div className="font-bold">{bin.containerCode}</div>
                       <div className="text-sm text-muted-foreground">{bin.route}</div>
-                      <div className="text-xs text-muted-foreground mt-1">{bin.destination}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{bin.district}</div>
                     </div>
                     <div className="bg-primary/10 text-primary rounded-full px-3 py-1 text-sm font-medium">
                       {bin.count}

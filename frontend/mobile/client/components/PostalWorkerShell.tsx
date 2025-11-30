@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import {
   House,
   Package,
-  ArrowUpDown,
   Truck,
   List,
 } from "lucide-react";
@@ -17,14 +16,19 @@ interface PostalWorkerShellProps {
 }
 
 const tabs = [
-  { to: "/postal-worker", label: "Dashboard", icon: House },
-  { to: "/postal-worker/package", label: "Đơn hàng", icon: Package },
-  { to: "/postal-worker/dispatch", label: "Xuất kho", icon: Truck },
+  { to: "/postal-worker/home", label: "Dashboard", icon: House },
+  { to: "/postal-worker/package", label: "Quản lý kiện hàng", icon: Package },
+  { to: "/postal-worker/containers", label: "Quản lý kho", icon: Truck },
   { to: "/postal-worker/packages", label: "Tra cứu", icon: List },
 ];
 
 export default function PostalWorkerShell({ title, children, userName, role }: PostalWorkerShellProps) {
   const location = useLocation();
+
+  const isActive = (to: string) => {
+    if (to === "/") return location.pathname === "/";
+    return location.pathname === to || location.pathname.startsWith(`${to}/`);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex items-start justify-center">
@@ -51,7 +55,7 @@ export default function PostalWorkerShell({ title, children, userName, role }: P
         <nav className="sticky bottom-0 z-20 border-t bg-background/95 backdrop-blur">
           <ul className="grid grid-cols-4">
             {tabs.map(({ to, label, icon: Icon }) => {
-              const active = location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
+              const active = isActive(to);
               return (
                 <li key={to}>
                   <Link

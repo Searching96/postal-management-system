@@ -14,7 +14,7 @@ import DriverIndex from "./pages/delivery-driver/Index";
 import { Scanner } from "./pages/delivery-driver/Scanner";
 import { DeliveriesMap } from "./pages/delivery-driver/DeliveriesMap";
 import PostalWorkerIndex from "./pages/postal-worker/Index";
-import PostalWorkerDispatch from "./pages/postal-worker/Dispatch";
+import PostalWorkerContainer from "./pages/postal-worker/Container";
 import PackageList from "./pages/postal-worker/PackageList";
 import PostalWorkerPackage from "./pages/postal-worker/Package";
 
@@ -29,20 +29,22 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Home />} />
           
-          <Route path="/customer" element={<CustomerIndex />} />
+          {/* role home routes */}
+          <Route path="/customer/home" element={<CustomerIndex />} />
+          <Route path="/delivery-driver/home" element={<DriverIndex />} />
+          <Route path="/postal-worker/home" element={<PostalWorkerIndex />} />
+
+          {/* keep legacy/other routes */}
           <Route path="/customer/orders" element={<CustomerOrders />} />
           <Route path="/customer/tracking" element={<CustomerTracking />} />
           <Route path="/customer/pickup" element={<CustomerPickup />} />
           <Route path="/customer/complaint" element={<CustomerComplaint />} />
           
-          <Route path="/delivery-driver" element={<DriverIndex />} />
           <Route path="/delivery-driver/scanner" element={<Scanner />} />
           <Route path="/delivery-driver/map" element={<DeliveriesMap/>} />
 
-                    
-          <Route path="/postal-worker" element={<PostalWorkerIndex />} />
           <Route path="/postal-worker/package" element={<PostalWorkerPackage />} />
-          <Route path="/postal-worker/dispatch" element={<PostalWorkerDispatch />} />
+          <Route path="/postal-worker/containers" element={<PostalWorkerContainer />} />
           <Route path="/postal-worker/packages" element={<PackageList />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

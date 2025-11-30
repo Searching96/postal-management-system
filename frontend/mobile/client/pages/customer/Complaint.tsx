@@ -25,13 +25,15 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Package, User, Phone, MapPin, Calendar, Check, ChevronsUpDown } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { fetchCustomerInfo } from "@/services/mockApi";
 
 interface PackageData {
   orderNumber: string;
   senderName: string;
   senderPhone: string;
+  senderEmail: string;  // Added senderEmail
   senderAddress: string;
   receiverName: string;
   receiverPhone: string;
@@ -73,6 +75,7 @@ const fetchPackageData = async (trackingNumber: string): Promise<PackageData | n
       orderNumber: trackingNumber,
       senderName: "Nguyễn Văn A",
       senderPhone: "0901234567",
+      senderEmail: "nguyenvana@example.com",  // Added senderEmail
       senderAddress: "123 Nguyễn Huệ, Q1, TP.HCM",
       receiverName: "Trần Thị B",
       receiverPhone: "0907654321",
@@ -133,6 +136,18 @@ export default function ComplaintCreate() {
     claimAmount: "",
   });
 
+  // Autofill contact info from logged-in user
+  useEffect(() => {
+    fetchCustomerInfo().then((data) => {
+      setFormData((prev) => ({
+        ...prev,
+        customerName: data.name,
+        customerPhone: data.phone,
+        customerEmail: data.email,
+      }));
+    });
+  }, []);
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -164,10 +179,9 @@ export default function ComplaintCreate() {
       
       if (data) {
         setPackageData(data);
+        // Removed contact info autofill from package data
         setFormData((prev) => ({
           ...prev,
-          customerName: data.senderName,
-          customerPhone: data.senderPhone,
           channel: data.channel,
         }));
       } else {
@@ -339,24 +353,6 @@ export default function ComplaintCreate() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm">
-                  {/* Sender Info */}
-                  <div className="space-y-2">
-                    <p className="font-semibold text-green-900 text-xs uppercase">Người gửi</p>
-                    <div className="space-y-1.5 bg-white/50 rounded p-2">
-                      <div className="flex items-center gap-2">
-                        <User className="h-3.5 w-3.5 text-green-700" />
-                        <span>{packageData.senderName}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-3.5 w-3.5 text-green-700" />
-                        <span>{packageData.senderPhone}</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <MapPin className="h-3.5 w-3.5 text-green-700 mt-0.5" />
-                        <span className="flex-1">{packageData.senderAddress}</span>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Receiver Info */}
                   <div className="space-y-2">

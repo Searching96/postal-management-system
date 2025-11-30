@@ -1,5 +1,6 @@
 import DriverShell from "@/components/DriverShell";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Camera, Scan, MapPin, Clock, CheckCircle, ImageIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -180,17 +181,17 @@ export function Scanner() {
               {scanResult.type === 'failed' && (
                 <div>
                   <label className="text-sm font-medium">Lý do thất bại</label>
-                  <select 
-                    value={failureReason}
-                    onChange={(e) => setFailureReason(e.target.value)}
-                    className="mt-1 w-full rounded-md border bg-background px-3 py-2"
-                  >
-                    <option value="">Chọn lý do</option>
-                    <option value="reschedule">Khách hẹn lại</option>
-                    <option value="no-contact">Không liên lạc được</option>
-                    <option value="wrong-address">Sai địa chỉ</option>
-                    <option value="refused">Khách từ chối nhận</option>
-                  </select>
+                  <Select value={failureReason} onValueChange={setFailureReason}>
+                    <SelectTrigger className="mt-1 w-full">
+                      <SelectValue placeholder="Chọn lý do" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="reschedule">Khách hẹn lại</SelectItem>
+                      <SelectItem value="no-contact">Không liên lạc được</SelectItem>
+                      <SelectItem value="wrong-address">Sai địa chỉ</SelectItem>
+                      <SelectItem value="refused">Khách từ chối nhận</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
