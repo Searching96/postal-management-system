@@ -1,6 +1,6 @@
 import PostalWorkerShell from "@/components/PostalWorkerShell";
 import { Button } from "@/components/ui/button";
-import { Package, ArrowUpDown, Truck, Clock, CheckCircle, List } from "lucide-react";
+import { Package, ArrowUpDown, Truck, Clock, CheckCircle, List, MessageSquare, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { fetchPostalWorkerStats, PostalWorkerStats } from "@/services/mockApi";
@@ -50,6 +50,12 @@ export default function PostalWorkerIndex() {
         <div className="space-y-3">
           <h3 className="font-medium">Thao tác nhanh</h3>
           <div className="grid gap-2">
+            <Link to="/postal-worker/ingest">
+              <Button variant="outline" className="justify-start h-12 w-full">
+                <Package className="h-4 w-4 mr-3" />
+                Nhận kiện hàng
+              </Button>
+            </Link>
             <Link to="/postal-worker/package">
               <Button variant="outline" className="justify-start h-12 w-full">
                 <Package className="h-4 w-4 mr-3" />
@@ -66,6 +72,25 @@ export default function PostalWorkerIndex() {
               <Button variant="outline" className="justify-start h-12 w-full">
                 <List className="h-4 w-4 mr-3" />
                 Danh sách đơn hàng
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Support Actions */}
+        <div className="space-y-3">
+          <h3 className="font-medium">Hỗ trợ khách hàng</h3>
+          <div className="grid gap-2">
+            <Link to="/postal-worker/complaints">
+              <Button variant="outline" className="justify-start h-12 w-full">
+                <MessageSquare className="h-4 w-4 mr-3" />
+                Giải quyết khiếu nại
+              </Button>
+            </Link>
+            <Link to="/postal-worker/tickets">
+              <Button variant="outline" className="justify-start h-12 w-full">
+                <AlertCircle className="h-4 w-4 mr-3" />
+                Quản lý ticket
               </Button>
             </Link>
           </div>

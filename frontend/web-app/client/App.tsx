@@ -1,5 +1,4 @@
 import { Toaster } from "@/components/ui/toaster";
-import { createRoot } from "react-dom/client";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,13 +11,11 @@ import CustomerComplaint from "./pages/customer/Complaint";
 import CustomerOrders from "./pages/customer/Orders";
 import CustomerTracking from "./pages/customer/Tracking";
 import DriverIndex from "./pages/delivery-driver/Index";
-import "./global.css";
-import { DeliveriesMap } from "./pages/delivery-driver/DeliveriesMap";
 import { Scanner } from "./pages/delivery-driver/Scanner";
+import { DeliveriesMap } from "./pages/delivery-driver/DeliveriesMap";
 import PostalWorkerIndex from "./pages/postal-worker/Index";
-import PostalWorkerContainer from "./pages/postal-worker/Container";
 import PackageList from "./pages/postal-worker/PackageList";
-import PostalWorkerPackage from "./pages/postal-worker/Package";
+import PackageIngest from "./pages/postal-worker/PackageIngest";
 import ComplaintResolver from "./pages/postal-worker/ComplaintResolver";
 import TicketManagement from "./pages/postal-worker/TicketManagement";
 
@@ -39,19 +36,15 @@ const App = () => (
           <Route path="/postal-worker/home" element={<PostalWorkerIndex />} />
 
           {/* keep legacy/other routes */}
-          <Route path="/customer" element={<CustomerIndex />} />
           <Route path="/customer/orders" element={<CustomerOrders />} />
           <Route path="/customer/tracking" element={<CustomerTracking />} />
           <Route path="/customer/pickup" element={<CustomerPickup />} />
           <Route path="/customer/complaint" element={<CustomerComplaint />} />
           
-          <Route path="/delivery-driver" element={<DriverIndex />} />
           <Route path="/delivery-driver/scanner" element={<Scanner />} />
-          <Route path="/delivery-driver/map" element={<DeliveriesMap />} />
-          
-          <Route path="/postal-worker" element={<PostalWorkerIndex />} />
-          <Route path="/postal-worker/package" element={<PostalWorkerPackage />} />
-          <Route path="/postal-worker/containers" element={<PostalWorkerContainer />} />
+          <Route path="/delivery-driver/map" element={<DeliveriesMap/>} />
+
+          <Route path="/postal-worker/package" element={<PackageIngest />} />
           <Route path="/postal-worker/packages" element={<PackageList />} />
           <Route path="/postal-worker/complaints" element={<ComplaintResolver />} />
           <Route path="/postal-worker/tickets" element={<TicketManagement />} />
@@ -64,4 +57,4 @@ const App = () => (
   </QueryClientProvider>
 );
 
-createRoot(document.getElementById("root")!).render(<App />);
+export default App;

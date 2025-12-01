@@ -17,6 +17,9 @@ import PostalWorkerIndex from "./pages/postal-worker/Index";
 import PostalWorkerContainer from "./pages/postal-worker/Container";
 import PackageList from "./pages/postal-worker/PackageList";
 import PostalWorkerPackage from "./pages/postal-worker/Package";
+import PackageIngest from "./pages/postal-worker/PackageIngest";
+import ComplaintResolver from "./pages/postal-worker/ComplaintResolver";
+import TicketManagement from "./pages/postal-worker/TicketManagement";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +49,9 @@ const App = () => (
           <Route path="/postal-worker/package" element={<PostalWorkerPackage />} />
           <Route path="/postal-worker/containers" element={<PostalWorkerContainer />} />
           <Route path="/postal-worker/packages" element={<PackageList />} />
+          <Route path="/postal-worker/ingest" element={<PackageIngest />} />
+          <Route path="/postal-worker/complaints" element={<ComplaintResolver />} />
+          <Route path="/postal-worker/tickets" element={<TicketManagement />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
