@@ -7,6 +7,12 @@ import {
   DashboardPage,
   CreateOrderPage,
   OrderListPage,
+  ParcelReceptionPage,
+  ManifestManagementPage,
+  DeliveryRouteManagementPage,
+  ComplaintManagementPage,
+  CODReconciliationPage,
+  PricingConfigurationPage,
 } from "./pages";
 
 const App: React.FC = () => {
@@ -34,10 +40,7 @@ const App: React.FC = () => {
             path="/users"
             element={<PlaceholderPage title="Quản lý người dùng" />}
           />
-          <Route
-            path="/pricing"
-            element={<PlaceholderPage title="Thiết lập bảng giá" />}
-          />
+          <Route path="/pricing" element={<PricingConfigurationPage />} />
           <Route
             path="/reports"
             element={<PlaceholderPage title="Tất cả báo cáo" />}
@@ -52,10 +55,7 @@ const App: React.FC = () => {
             path="/staff"
             element={<PlaceholderPage title="Quản lý nhân viên" />}
           />
-          <Route
-            path="/complaints"
-            element={<PlaceholderPage title="Quản lý khiếu nại" />}
-          />
+          <Route path="/complaints" element={<ComplaintManagementPage />} />
           <Route
             path="/organization"
             element={<PlaceholderPage title="Thông tin bưu cục" />}
@@ -64,6 +64,7 @@ const App: React.FC = () => {
           {/* CLERK Routes */}
           <Route path="/orders" element={<OrderListPage />} />
           <Route path="/orders/create" element={<CreateOrderPage />} />
+          <Route path="/reception/create" element={<ParcelReceptionPage />} />
           <Route
             path="/complaints/create"
             element={<PlaceholderPage title="Tiếp nhận khiếu nại" />}
@@ -78,21 +79,22 @@ const App: React.FC = () => {
             path="/scan/manifest"
             element={<PlaceholderPage title="Quét mã bảng kê" />}
           />
+          <Route path="/manifest/create" element={<ManifestManagementPage />} />
           <Route
-            path="/manifest/create"
-            element={<PlaceholderPage title="Lập bảng kê" />}
+            path="/warehouse/manifests"
+            element={<ManifestManagementPage />}
           />
 
           {/* DISPATCHER Routes */}
           <Route
             path="/delivery-routes"
-            element={<PlaceholderPage title="Quản lý tuyến giao hàng" />}
+            element={<DeliveryRouteManagementPage />}
           />
 
           {/* ACCOUNTANT Routes */}
           <Route
             path="/cod-reconciliation"
-            element={<PlaceholderPage title="Đối soát COD" />}
+            element={<CODReconciliationPage />}
           />
           <Route
             path="/debt"

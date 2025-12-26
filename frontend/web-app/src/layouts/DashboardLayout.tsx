@@ -1,5 +1,5 @@
 import React from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, NavLink } from "react-router-dom";
 import { useAuthStore } from "@/store";
 import {
   Home,
@@ -8,7 +8,6 @@ import {
   FileText,
   AlertCircle,
   Users,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -86,16 +85,22 @@ export const DashboardLayout: React.FC = () => {
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto py-4">
             {navigationItems.map((item) => (
-              <a
+              <NavLink
                 key={item.path}
-                href={item.path}
-                className="flex items-center px-4 py-3 text-secondary-700 hover:bg-primary-50 hover:text-primary-600 transition-colors"
+                to={item.path}
+                className={({ isActive }) =>
+                  `flex items-center px-4 py-3 transition-colors ${
+                    isActive
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-secondary-700 hover:bg-primary-50 hover:text-primary-600"
+                  }`
+                }
               >
                 <span className="flex-shrink-0">{ICON_MAP[item.icon]}</span>
                 {sidebarOpen && (
                   <span className="ml-3 text-sm font-medium">{item.label}</span>
                 )}
-              </a>
+              </NavLink>
             ))}
           </nav>
 
@@ -148,17 +153,23 @@ export const DashboardLayout: React.FC = () => {
               </div>
               <nav className="flex-1 overflow-y-auto py-4">
                 {navigationItems.map((item) => (
-                  <a
+                  <NavLink
                     key={item.path}
-                    href={item.path}
-                    className="flex items-center px-4 py-3 text-secondary-700 hover:bg-primary-50 hover:text-primary-600"
+                    to={item.path}
+                    className={({ isActive }) =>
+                      `flex items-center px-4 py-3 ${
+                        isActive
+                          ? "bg-primary-50 text-primary-600"
+                          : "text-secondary-700 hover:bg-primary-50 hover:text-primary-600"
+                      }`
+                    }
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     {ICON_MAP[item.icon]}
                     <span className="ml-3 text-sm font-medium">
                       {item.label}
                     </span>
-                  </a>
+                  </NavLink>
                 ))}
               </nav>
             </div>
