@@ -1,0 +1,77 @@
+{
+  "agent_profile": {
+    "role": "Senior Frontend Architect & Full-stack Developer",
+    "capabilities": ["System Design", "React", "TypeScript", "Tailwind CSS", "RESTful API Simulation"],
+    "language_preference": {
+      "code_comments": "English (for technical clarity)",
+      "ui_content": "VIETNAMESE (Strictly required for all labels, placeholders, buttons, and mock data)"
+    }
+  },
+  "project_context": {
+    "name": "Postal Management System (MVP)",
+    "input_documents": {
+      "business_requirements": "postal-management-v4.md",
+      "database_schema": "postal_mvp_db.sql"
+    },
+    "objective": "Build a scalable React Web Application where the Frontend Data Layer (Models/Services) strictly mirrors the provided SQL Schema."
+  },
+  "technical_stack": {
+    "core": "React 18+ (Vite)",
+    "language": "TypeScript (Strict Mode)",
+    "styling": "Tailwind CSS (Mobile-first, Responsive)",
+    "state_management": "Zustand (Global Store)",
+    "routing": "React Router DOM v6",
+    "http_client": "Axios (simulated with Mock Adapter)",
+    "utilities": "date-fns (for date handling), clsx/tailwind-merge",
+    "icons": "Lucide-React"
+  },
+  "architectural_principles": [
+    "SOLID: Components and Services must have single responsibilities.",
+    "DRY (Don't Repeat Yourself): Extract common UI and logic.",
+    "Clean Code: Descriptive naming, modular file structure.",
+    "Separation of Concerns: Strict division between View (React), Logic (Hooks), and Data (Services/Models)."
+  ],
+  "folder_structure_requirements": {
+    "src/models": "CRITICAL: Contains TypeScript Interfaces and Enums ONLY. Must map 1:1 to 'postal_mvp_db.sql' tables. Convert SQL 'snake_case' to TypeScript 'camelCase'. Define Enums for all SQL ENUM fields.",
+    "src/services": "CRITICAL: Contains Class-based Services (e.g., OrderService, AuthService). Implements methods simulating RESTful endpoints (GET, POST, PUT, DELETE) returning Promises with Mock Data and artificial delay (500ms).",
+    "src/components": "Reusable atomic UI components (Button, Input, Table, Modal, Badge).",
+    "src/layouts": "Layout wrappers (DashboardLayout, AuthLayout).",
+    "src/pages": "Page-level components mapping to Routes.",
+    "src/hooks": "Custom React hooks for logic reuse."
+  },
+  "implementation_workflow": {
+    "phase_1_data_layer": {
+      "step_1_models": {
+        "instruction": "Analyze 'postal_mvp_db.sql'. Create Interfaces for: User, Organization, Customer, Order, DeliveryRoute, Manifest, Complaint. Create Enums for: Role, OrderStatus, ServiceType, OrganizationType.",
+        "constraint": "Ensure types match SQL constraints (e.g., specific string lengths are comments, Enums match exact values)."
+      },
+      "step_2_services": {
+        "instruction": "Create Services: AuthService, OrderService, TrackingService, ComplaintService, MasterDataService (Location/Pricing).",
+        "constraint": "Populate with realistic VIETNAMESE Mock Data (e.g., 'Nguyễn Văn A', 'Phường Bến Nghé, Quận 1', 'VN123456VN')."
+      }
+    },
+    "phase_2_ui_foundation": {
+      "instruction": "Setup Tailwind config, Routes, and the Main Dashboard Layout.",
+      "layout_requirement": "Sidebar must reflect Role-Based Access defined in Markdown Section 1.3 (Admin, Transaction Clerk, Courier, Manager)."
+    },
+    "phase_3_features": {
+      "feature_a_reception": {
+        "ref": "Markdown Section 3.2 & Form 7.1",
+        "task": "Create 'New Parcel Reception' form. Handle dynamic pricing logic."
+      },
+      "feature_b_operations": {
+        "ref": "Markdown Section 3.3 & Form 7.2",
+        "task": "Create 'Manifest Management' (Bảng kê) view for Middle-Mile operations."
+      },
+      "feature_c_delivery": {
+        "ref": "Markdown Section 3.4 & Form 7.3",
+        "task": "Create 'Delivery Route' view and End-of-Day Report (Cash/COD reconciliation)."
+      },
+      "feature_d_complaints": {
+        "ref": "Markdown Section 3.4.B & Form 7.4",
+        "task": "Create 'Complaint Handling' dashboard."
+      }
+    }
+  },
+  "execution_instruction": "You will execute this incrementally. \n\n1. FIRST, output the proposed file tree structure for approval.\n2. SECOND, generate the code for 'src/models' and 'src/services' (Phase 1).\n3. STOP and wait for confirmation before proceeding to UI components."
+}
