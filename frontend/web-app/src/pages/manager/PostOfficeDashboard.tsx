@@ -15,7 +15,7 @@ import {
   Search,
 } from "lucide-react";
 
-export const DashboardPage: React.FC = () => {
+export const PostOfficeDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [stats, setStats] = React.useState({

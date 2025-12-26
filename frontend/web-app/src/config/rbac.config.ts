@@ -8,11 +8,17 @@ export interface RoleConfig {
 export const RBAC_CONFIG: Record<UserRole, RoleConfig> = {
   [UserRole.ADMIN]: {
     label: "Quản trị viên",
-    access: ["Quản lý người dùng", "Thiết lập bảng giá", "Tất cả báo cáo"],
+    access: [
+      "Bảng điều khiển Admin",
+      "Quản lý người dùng",
+      "Thiết lập bảng giá",
+      "Tất cả báo cáo",
+    ],
   },
   [UserRole.MANAGER]: {
     label: "Quản lý Bưu cục",
     access: [
+      "Bảng điều khiển Bưu cục",
       "Báo cáo bưu cục",
       "Quản lý nhân viên",
       "Quản lý khiếu nại",
@@ -21,11 +27,21 @@ export const RBAC_CONFIG: Record<UserRole, RoleConfig> = {
   },
   [UserRole.CLERK]: {
     label: "Giao dịch viên",
-    access: ["Quản lý vận đơn", "Tiếp nhận khiếu nại", "Thông tin bưu cục"],
+    access: [
+      "Bảng điều khiển Giao dịch",
+      "Quản lý vận đơn",
+      "Tiếp nhận khiếu nại",
+      "Thông tin bưu cục",
+    ],
   },
   [UserRole.WAREHOUSE]: {
     label: "Nhân viên Kho/Khai thác",
-    access: ["Quét mã vận đơn", "Quét mã bảng kê", "Lập bảng kê"],
+    access: [
+      "Bảng điều khiển Kho",
+      "Quét mã vận đơn",
+      "Quét mã bảng kê",
+      "Lập bảng kê",
+    ],
   },
   [UserRole.DISPATCHER]: {
     label: "Điều phối viên",
@@ -37,7 +53,7 @@ export const RBAC_CONFIG: Record<UserRole, RoleConfig> = {
   },
   [UserRole.COURIER]: {
     label: "Nhân viên giao hàng",
-    access: [],
+    access: ["Tuyến giao hàng của tôi", "Lịch sử giao hàng"],
   },
 };
 
@@ -50,6 +66,31 @@ export interface NavItem {
 }
 
 export const NAVIGATION_ITEMS: NavItem[] = [
+  // Dashboard navigation items (always first)
+  {
+    label: "Bảng điều khiển",
+    path: "/admin/dashboard",
+    icon: "Home",
+    permission: "Bảng điều khiển Admin",
+  },
+  {
+    label: "Bảng điều khiển",
+    path: "/manager/dashboard",
+    icon: "Home",
+    permission: "Bảng điều khiển Bưu cục",
+  },
+  {
+    label: "Bảng điều khiển",
+    path: "/clerk/dashboard",
+    icon: "Home",
+    permission: "Bảng điều khiển Giao dịch",
+  },
+  {
+    label: "Bảng điều khiển",
+    path: "/warehouse/dashboard",
+    icon: "Home",
+    permission: "Bảng điều khiển Kho",
+  },
   // ADMIN permissions
   {
     label: "Quản lý người dùng",
@@ -151,6 +192,19 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     path: "/reports/financial",
     icon: "TrendingUp",
     permission: "Báo cáo tài chính",
+  },
+  // COURIER permissions
+  {
+    label: "Tuyến giao hàng của tôi",
+    path: "/courier/my-route",
+    icon: "Truck",
+    permission: "Tuyến giao hàng của tôi",
+  },
+  {
+    label: "Lịch sử giao hàng",
+    path: "/courier/history",
+    icon: "FileText",
+    permission: "Lịch sử giao hàng",
   },
 ];
 

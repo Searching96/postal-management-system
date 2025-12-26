@@ -147,7 +147,9 @@ export const OrderListPage: React.FC = () => {
             <Input
               placeholder="Tìm kiếm theo mã vận đơn, tên, số điện thoại..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setSearchTerm(e.target.value)
+              }
               leftIcon={<Search size={18} />}
             />
           </div>
@@ -164,7 +166,9 @@ export const OrderListPage: React.FC = () => {
               { value: OrderStatus.CANCELLED, label: "Đã hủy" },
             ]}
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setStatusFilter(e.target.value)
+            }
           />
         </div>
       </Card>
@@ -180,7 +184,7 @@ export const OrderListPage: React.FC = () => {
             <Table
               columns={columns}
               data={filteredOrders}
-              onRowClick={(row) => navigate(`/orders/${row.id}`)}
+              onRowClick={(row: any) => navigate(`/orders/${row.id}`)}
               emptyMessage="Không tìm thấy đơn hàng nào"
             />
             <div className="mt-4 flex items-center justify-between text-sm text-secondary-600">

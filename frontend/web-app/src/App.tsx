@@ -3,16 +3,22 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store";
 import { DashboardLayout, AuthLayout } from "./layouts";
 import {
+  Home,
   LoginPage,
-  DashboardPage,
+  AdminDashboard,
+  PricingConfigurationPage,
+  PostOfficeDashboard,
+  ComplaintManagementPage,
+  ClerkDashboard,
   CreateOrderPage,
   OrderListPage,
   ParcelReceptionPage,
+  WarehouseDashboard,
   ManifestManagementPage,
   DeliveryRouteManagementPage,
-  ComplaintManagementPage,
   CODReconciliationPage,
-  PricingConfigurationPage,
+  MyRoute,
+  DeliveryHistory,
 } from "./pages";
 
 const App: React.FC = () => {
@@ -33,9 +39,11 @@ const App: React.FC = () => {
 
         {/* Protected Routes */}
         <Route element={<DashboardLayout />}>
-          <Route path="/" element={<DashboardPage />} />
+          {/* HOME - Role-based redirect */}
+          <Route path="/" element={<Home />} />
 
           {/* ADMIN Routes */}
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route
             path="/users"
             element={<PlaceholderPage title="Quản lý người dùng" />}
@@ -47,6 +55,7 @@ const App: React.FC = () => {
           />
 
           {/* MANAGER Routes */}
+          <Route path="/manager/dashboard" element={<PostOfficeDashboard />} />
           <Route
             path="/reports/organization"
             element={<PlaceholderPage title="Báo cáo bưu cục" />}
@@ -62,6 +71,7 @@ const App: React.FC = () => {
           />
 
           {/* CLERK Routes */}
+          <Route path="/clerk/dashboard" element={<ClerkDashboard />} />
           <Route path="/orders" element={<OrderListPage />} />
           <Route path="/orders/create" element={<CreateOrderPage />} />
           <Route path="/reception/create" element={<ParcelReceptionPage />} />
@@ -71,6 +81,7 @@ const App: React.FC = () => {
           />
 
           {/* WAREHOUSE Routes */}
+          <Route path="/warehouse/dashboard" element={<WarehouseDashboard />} />
           <Route
             path="/scan/package"
             element={<PlaceholderPage title="Quét mã vận đơn" />}
@@ -104,6 +115,10 @@ const App: React.FC = () => {
             path="/reports/financial"
             element={<PlaceholderPage title="Báo cáo tài chính" />}
           />
+
+          {/* COURIER Routes */}
+          <Route path="/courier/my-route" element={<MyRoute />} />
+          <Route path="/courier/history" element={<DeliveryHistory />} />
         </Route>
 
         {/* 404 Route */}
