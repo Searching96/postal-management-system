@@ -3,7 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { fetchCustomerInfo } from "@/services/mockApi";
@@ -16,68 +22,85 @@ interface FormState {
   receiverName: string;
   receiverPhone: string;
   receiverAddress: string;
-  weight: string;
-  value: string;
-  length: string;
-  width: string;
-  height: string;
+  weight: number;
+  value: number;
+  length: number;
+  width: number;
+  height: number;
   note: string;
   service: string;
-  cod: string;
-  insurance: string;
+  cod: number;
+  insurance: number;
   pickupTime: string;
   deliverTime: string;
 }
 
 export default function PickupRequest() {
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState<FormState>({
+  const initialFormData: FormState = {
     senderName: "",
     senderPhone: "",
     senderAddress: "",
     receiverName: "",
     receiverPhone: "",
     receiverAddress: "",
-    weight: "",
-    value: "",
-    length: "",
-    width: "",
-    height: "",
+    weight: 0,
+    value: 0,
+    length: 0,
+    width: 0,
+    height: 0,
     note: "",
     service: "express",
-    cod: "",
-    insurance: "",
+    cod: 0,
+    insurance: 0,
     pickupTime: "",
     deliverTime: "",
-  });
+  };
+
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState<FormState>(initialFormData);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const customerInfo = await fetchCustomerInfo();
+
+      // Autofill sender info from customer info
+      setFormData((prev) => ({
+        receiverName: "",
+        receiverPhone: "",
+        receiverAddress: "",
+        weight: 0,
+        value: 0,
+        length: 0,
+        width: 0,
+        height: 0,
+        note: "",
+        service: "express",
+        cod: 0,
+        insurance: 0,
+        pickupTime: "",
+        deliverTime: "",
+        senderName: customerInfo.name,
+        senderPhone: customerInfo.phone,
+        senderAddress: customerInfo.address,
+      }));
+    } catch (error) {
+      console.error("Failed to load customer info:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Load customer info on mount
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const customerInfo = await fetchCustomerInfo();
-
-        // Autofill sender info from customer info
-        setFormData((prev) => ({
-          ...prev,
-          senderName: customerInfo.name,
-          senderPhone: customerInfo.phone,
-          senderAddress: customerInfo.address
-        }));
-      } catch (error) {
-        console.error("Failed to load customer info:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadData();
   }, []);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value, type } = e.target;
     setFormData((prev) => ({
@@ -89,15 +112,20 @@ export default function PickupRequest() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setSubmitted(false);
-    }, 3000);
+  };
+
+  const handleReset = () => {
+    setSubmitted(false);
+    loadData();
   };
 
   if (loading) {
     return (
-      <CustomerShell title="Yêu cầu lấy hàng" userName="Nguyễn Văn A" role="Khách hàng">
+      <CustomerShell
+        title="Yêu cầu lấy hàng"
+        userName="Nguyễn Văn A"
+        role="Khách hàng"
+      >
         <div className="flex items-center justify-center py-12">
           <div className="text-muted-foreground">Đang tải...</div>
         </div>
@@ -105,8 +133,127 @@ export default function PickupRequest() {
     );
   }
 
+  if (submitted) {
+    return (
+      <CustomerShell
+        title="Yêu cầu lấy hàng"
+        userName="Nguyễn Văn A"
+        role="Khách hàng"
+      >
+        <div className="space-y-6">
+          <div className="rounded-lg border bg-green-50 p-6 text-center text-green-700">
+            <h2 className="text-xl font-semibold mb-2">
+              Đã gửi yêu cầu thành công!
+            </h2>
+            <p>Chúng tôi đã ghi nhận yêu cầu lấy hàng của bạn.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Thông tin Người gửi</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div>
+                  <span className="font-semibold">Họ tên:</span>{" "}
+                  {formData.senderName}
+                </div>
+                <div>
+                  <span className="font-semibold">SĐT:</span>{" "}
+                  {formData.senderPhone}
+                </div>
+                <div>
+                  <span className="font-semibold">Địa chỉ:</span>{" "}
+                  {formData.senderAddress}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Thông tin Người nhận
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div>
+                  <span className="font-semibold">Họ tên:</span>{" "}
+                  {formData.receiverName}
+                </div>
+                <div>
+                  <span className="font-semibold">SĐT:</span>{" "}
+                  {formData.receiverPhone}
+                </div>
+                <div>
+                  <span className="font-semibold">Địa chỉ:</span>{" "}
+                  {formData.receiverAddress}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Chi tiết Bưu kiện</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div>
+                  <span className="font-semibold">Khối lượng:</span>{" "}
+                  {formData.weight} kg
+                </div>
+                <div>
+                  <span className="font-semibold">Kích thước:</span>{" "}
+                  {formData.length}x{formData.width}x{formData.height} cm
+                </div>
+                <div>
+                  <span className="font-semibold">Giá trị:</span>{" "}
+                  {formData.value.toLocaleString("vi-VN")} ₫
+                </div>
+                <div>
+                  <span className="font-semibold">Ghi chú:</span>{" "}
+                  {formData.note || "Không có"}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Dịch vụ</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div>
+                  <span className="font-semibold">Loại dịch vụ:</span>{" "}
+                  {formData.service === "express"
+                    ? "Hỏa tốc"
+                    : formData.service === "fast"
+                      ? "Nhanh"
+                      : "Tiết kiệm"}
+                </div>
+                <div>
+                  <span className="font-semibold">Thu hộ COD:</span>{" "}
+                  {formData.cod.toLocaleString("vi-VN")} ₫
+                </div>
+                <div>
+                  <span className="font-semibold">Bảo hiểm:</span>{" "}
+                  {formData.insurance.toLocaleString("vi-VN")} ₫
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Button className="w-full h-12 rounded-xl" onClick={handleReset}>
+            Tạo yêu cầu mới
+          </Button>
+        </div>
+      </CustomerShell>
+    );
+  }
+
   return (
-    <CustomerShell title="Yêu cầu lấy hàng" userName="Nguyễn Văn A" role="Khách hàng">
+    <CustomerShell
+      title="Yêu cầu lấy hàng"
+      userName="Nguyễn Văn A"
+      role="Khách hàng"
+    >
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
@@ -131,6 +278,7 @@ export default function PickupRequest() {
                 value={formData.senderPhone}
                 onChange={handleInputChange}
                 required
+                title="Vui lòng nhập đúng định dạng số điện thoại!"
                 pattern="^(0|\+?84)[0-9]{8,10}$"
               />
             </div>
@@ -170,6 +318,7 @@ export default function PickupRequest() {
                 value={formData.receiverPhone}
                 onChange={handleInputChange}
                 required
+                title="Vui lòng nhập đúng định dạng số điện thoại!"
                 pattern="^(0|\+?84)[0-9]{8,10}$"
               />
             </div>
@@ -197,7 +346,7 @@ export default function PickupRequest() {
                 id="weight"
                 name="weight"
                 type="number"
-                step="0.01"
+                step="0.1"
                 min={0}
                 value={formData.weight}
                 onChange={handleInputChange}
@@ -210,6 +359,7 @@ export default function PickupRequest() {
                 id="value"
                 name="value"
                 type="number"
+                step="1000"
                 min={0}
                 value={formData.value}
                 onChange={handleInputChange}
@@ -271,7 +421,9 @@ export default function PickupRequest() {
               <Label>Dịch vụ</Label>
               <RadioGroup
                 value={formData.service}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, service: value }))}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, service: value }))
+                }
                 className="grid grid-cols-3 gap-2"
               >
                 <div className="flex items-center space-x-2">
@@ -296,6 +448,7 @@ export default function PickupRequest() {
                   name="cod"
                   type="number"
                   min={0}
+                  step="1000"
                   value={formData.cod}
                   onChange={handleInputChange}
                 />
@@ -307,12 +460,13 @@ export default function PickupRequest() {
                   name="insurance"
                   type="number"
                   min={0}
+                  step="1000"
                   value={formData.insurance}
                   onChange={handleInputChange}
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            {/* <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="pickupTime">Thời gian lấy dự kiến</Label>
                 <Input
@@ -333,7 +487,7 @@ export default function PickupRequest() {
                   onChange={handleInputChange}
                 />
               </div>
-            </div>
+            </div> */}
           </CardContent>
         </Card>
 
