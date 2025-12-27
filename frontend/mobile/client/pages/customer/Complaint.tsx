@@ -24,7 +24,15 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Package, User, Phone, MapPin, Calendar, Check, ChevronsUpDown } from "lucide-react";
+import {
+  Package,
+  User,
+  Phone,
+  MapPin,
+  Calendar,
+  Check,
+  ChevronsUpDown,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { fetchCustomerInfo } from "@/services/mockApi";
@@ -33,7 +41,7 @@ interface PackageData {
   orderNumber: string;
   senderName: string;
   senderPhone: string;
-  senderEmail: string;  // Added senderEmail
+  senderEmail: string; // Added senderEmail
   senderAddress: string;
   receiverName: string;
   receiverPhone: string;
@@ -67,15 +75,17 @@ const mockTrackingNumbers = [
 ];
 
 // Mock function to fetch package data by tracking number
-const fetchPackageData = async (trackingNumber: string): Promise<PackageData | null> => {
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
+const fetchPackageData = async (
+  trackingNumber: string,
+): Promise<PackageData | null> => {
+  await new Promise((resolve) => setTimeout(resolve, 800));
+
   if (trackingNumber.startsWith("VN")) {
     return {
       orderNumber: trackingNumber,
       senderName: "Nguyễn Văn A",
       senderPhone: "0901234567",
-      senderEmail: "nguyenvana@example.com",  // Added senderEmail
+      senderEmail: "nguyenvana@example.com", // Added senderEmail
       senderAddress: "123 Nguyễn Huệ, Q1, TP.HCM",
       receiverName: "Trần Thị B",
       receiverPhone: "0907654321",
@@ -85,7 +95,7 @@ const fetchPackageData = async (trackingNumber: string): Promise<PackageData | n
       cod: "250000",
       pickupTime: "2024-01-15T09:00",
       deliverTime: "2024-01-16T14:00",
-      channel: "App"
+      channel: "App",
     };
   }
   return null;
@@ -95,26 +105,26 @@ const formatService = (service: string) => {
   const serviceMap: Record<string, string> = {
     express: "Hỏa tốc",
     fast: "Nhanh",
-    economy: "Tiết kiệm"
+    economy: "Tiết kiệm",
   };
   return serviceMap[service] || service;
 };
 
 const formatCurrency = (amount: string) => {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND'
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
   }).format(Number(amount));
 };
 
 const formatDateTime = (datetime: string) => {
   if (!datetime) return "";
-  return new Date(datetime).toLocaleString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+  return new Date(datetime).toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 
@@ -124,7 +134,7 @@ export default function ComplaintCreate() {
   const [packageNotFound, setPackageNotFound] = useState(false);
   const [packageData, setPackageData] = useState<PackageData | null>(null);
   const [open, setOpen] = useState(false);
-  
+
   const [formData, setFormData] = useState<ComplaintFormState>({
     customerName: "",
     customerPhone: "",
@@ -149,7 +159,7 @@ export default function ComplaintCreate() {
   }, []);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -159,13 +169,13 @@ export default function ComplaintCreate() {
   };
 
   const handleTrackingNumberChange = (value: string) => {
-      setFormData((prev) => ({
-        ...prev,
-        trackingNumber: value,
-      }));
-    };
+    setFormData((prev) => ({
+      ...prev,
+      trackingNumber: value,
+    }));
+  };
 
-    const fetchAndLoadPackageData = async (trackingNumber: string) => {
+  const fetchAndLoadPackageData = async (trackingNumber: string) => {
     if (!trackingNumber.trim()) {
       setPackageData(null);
       setPackageNotFound(false);
@@ -176,7 +186,7 @@ export default function ComplaintCreate() {
       setLoading(true);
       setPackageNotFound(false);
       const data = await fetchPackageData(trackingNumber);
-      
+
       if (data) {
         setPackageData(data);
         // Removed contact info autofill from package data
@@ -210,7 +220,11 @@ export default function ComplaintCreate() {
   };
 
   return (
-    <CustomerShell title="Gửi khiếu nại" userName="Nguyễn Văn A" role="Khách hàng">
+    <CustomerShell
+      title="Gửi khiếu nại"
+      userName="Nguyễn Văn A"
+      role="Khách hàng"
+    >
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
@@ -284,18 +298,22 @@ export default function ComplaintCreate() {
                         <div className="py-2 text-center text-sm">
                           {formData.trackingNumber ? (
                             <div>
-                              <p className="text-muted-foreground mb-2">Không tìm thấy trong danh sách</p>
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  onClick={() => {
-                                    setOpen(false);
-                                    fetchAndLoadPackageData(formData.trackingNumber);
-                                  }}
-                                  type="button"
-                                >
-                                  Sử dụng "{formData.trackingNumber}"
-                                </Button>
+                              <p className="text-muted-foreground mb-2">
+                                Không tìm thấy trong danh sách
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                  setOpen(false);
+                                  fetchAndLoadPackageData(
+                                    formData.trackingNumber,
+                                  );
+                                }}
+                                type="button"
+                              >
+                                Sử dụng "{formData.trackingNumber}"
+                              </Button>
                             </div>
                           ) : (
                             "Nhập mã vận đơn..."
@@ -305,7 +323,9 @@ export default function ComplaintCreate() {
                       <CommandGroup>
                         {mockTrackingNumbers
                           .filter((number) =>
-                            number.toLowerCase().includes(formData.trackingNumber.toLowerCase())
+                            number
+                              .toLowerCase()
+                              .includes(formData.trackingNumber.toLowerCase()),
                           )
                           .map((number) => (
                             <CommandItem
@@ -322,7 +342,9 @@ export default function ComplaintCreate() {
                               <Check
                                 className={cn(
                                   "mr-2 h-4 w-4",
-                                  formData.trackingNumber === number ? "opacity-100" : "opacity-0"
+                                  formData.trackingNumber === number
+                                    ? "opacity-100"
+                                    : "opacity-0",
                                 )}
                               />
                               {number}
@@ -334,7 +356,9 @@ export default function ComplaintCreate() {
                 </PopoverContent>
               </Popover>
               {loading && (
-                <p className="text-xs text-blue-600">Đang tải thông tin đơn hàng...</p>
+                <p className="text-xs text-blue-600">
+                  Đang tải thông tin đơn hàng...
+                </p>
               )}
               {packageNotFound && (
                 <p className="text-xs text-red-600">
@@ -353,10 +377,11 @@ export default function ComplaintCreate() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm">
-
                   {/* Receiver Info */}
                   <div className="space-y-2">
-                    <p className="font-semibold text-green-900 text-xs uppercase">Người nhận</p>
+                    <p className="font-semibold text-green-900 text-xs uppercase">
+                      Người nhận
+                    </p>
                     <div className="space-y-1.5 bg-white/50 rounded p-2">
                       <div className="flex items-center gap-2">
                         <User className="h-3.5 w-3.5 text-green-700" />
@@ -368,34 +393,44 @@ export default function ComplaintCreate() {
                       </div>
                       <div className="flex items-start gap-2">
                         <MapPin className="h-3.5 w-3.5 text-green-700 mt-0.5" />
-                        <span className="flex-1">{packageData.receiverAddress}</span>
+                        <span className="flex-1">
+                          {packageData.receiverAddress}
+                        </span>
                       </div>
                     </div>
                   </div>
 
                   {/* Package Details */}
                   <div className="space-y-2">
-                    <p className="font-semibold text-green-900 text-xs uppercase">Chi tiết</p>
+                    <p className="font-semibold text-green-900 text-xs uppercase">
+                      Chi tiết
+                    </p>
                     <div className="grid grid-cols-2 gap-2 bg-white/50 rounded p-2">
                       <div>
-                        <p className="text-xs text-muted-foreground">Khối lượng</p>
+                        <p className="text-xs text-muted-foreground">
+                          Khối lượng
+                        </p>
                         <p className="font-medium">{packageData.weight} kg</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Dịch vụ</p>
-                        <p className="font-medium">{formatService(packageData.service)}</p>
+                        <p className="font-medium">
+                          {formatService(packageData.service)}
+                        </p>
                       </div>
                       {Number(packageData.cod) > 0 && (
                         <div className="col-span-2">
                           <p className="text-xs text-muted-foreground">COD</p>
-                          <p className="font-medium text-amber-700">{formatCurrency(packageData.cod)}</p>
+                          <p className="font-medium text-amber-700">
+                            {formatCurrency(packageData.cod)}
+                          </p>
                         </div>
                       )}
                     </div>
                   </div>
 
                   {/* Timeline */}
-                  {(packageData.pickupTime || packageData.deliverTime) && (
+                  {/* {(packageData.pickupTime || packageData.deliverTime) && (
                     <div className="space-y-2">
                       <p className="font-semibold text-green-900 text-xs uppercase flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5" />
@@ -416,7 +451,7 @@ export default function ComplaintCreate() {
                         )}
                       </div>
                     </div>
-                  )}
+                  )} */}
                 </CardContent>
               </Card>
             )}
@@ -454,8 +489,10 @@ export default function ComplaintCreate() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="claimAmount">Số tiền bồi thường mong muốn (₫)</Label>
+            {/* <div className="space-y-2">
+              <Label htmlFor="claimAmount">
+                Số tiền bồi thường mong muốn (₫)
+              </Label>
               <Input
                 id="claimAmount"
                 name="claimAmount"
@@ -464,17 +501,22 @@ export default function ComplaintCreate() {
                 value={formData.claimAmount}
                 onChange={handleInputChange}
               />
-            </div>
+            </div> */}
           </CardContent>
         </Card>
 
-        <Button className="w-full h-12 rounded-xl" disabled={loading} type="submit">
+        <Button
+          className="w-full h-12 rounded-xl"
+          disabled={loading}
+          type="submit"
+        >
           {loading ? "Đang tải..." : "Gửi khiếu nại"}
         </Button>
-        
+
         {submitted && (
           <div className="rounded-lg border bg-amber-50 p-3 text-sm text-amber-700">
-            Khiếu nại đã được tiếp nhận. Chúng tôi sẽ phản hồi trong thời gian sớm nhất.
+            Khiếu nại đã được tiếp nhận. Chúng tôi sẽ phản hồi trong thời gian
+            sớm nhất.
           </div>
         )}
       </form>
