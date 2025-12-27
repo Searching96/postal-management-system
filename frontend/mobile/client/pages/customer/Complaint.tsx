@@ -277,6 +277,7 @@ export default function ComplaintCreate() {
                 value={formData.customerPhone}
                 onChange={handleInputChange}
                 required
+                title="Vui lòng nhập đúng định dạng số điện thoại!"
                 pattern="^(0|\+?84)[0-9]{8,10}$"
               />
             </div>
