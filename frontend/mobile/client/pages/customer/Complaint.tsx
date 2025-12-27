@@ -139,7 +139,7 @@ export default function ComplaintCreate() {
   const [trackingError, setTrackingError] = useState("");
   const [open, setOpen] = useState(false);
 
-  const [formData, setFormData] = useState<ComplaintFormState>({
+  const initialFormData: ComplaintFormState = {
     customerName: "",
     customerPhone: "",
     customerEmail: "",
@@ -148,7 +148,9 @@ export default function ComplaintCreate() {
     detail: "",
     channel: "",
     claimAmount: "",
-  });
+  };
+
+  const [formData, setFormData] = useState<ComplaintFormState>(initialFormData);
 
   const [files, setFiles] = useState<File[]>([]);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -252,10 +254,129 @@ export default function ComplaintCreate() {
     }
 
     setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-    }, 3000);
   };
+
+  const handleReset = () => {
+    setSubmitted(false);
+    setFormData(initialFormData);
+    setFiles([]);
+    setPackageData(null);
+    setPackageNotFound(false);
+    // Re-fetch customer info to autofill again
+    fetchCustomerInfo().then((data) => {
+      setFormData((prev) => ({
+        ...prev,
+        customerName: data.name,
+        customerPhone: data.phone,
+        customerEmail: data.email,
+      }));
+    });
+  };
+
+  if (submitted) {
+    const complaintTypeLabel =
+      {
+        late: "Giao chậm",
+        lost: "Mất hàng",
+        damage: "Hư hỏng",
+        cod: "Sai COD",
+        other: "Khác",
+      }[formData.complaintType] || formData.complaintType;
+
+    return (
+      <CustomerShell
+        title="Gửi khiếu nại"
+        userName="Nguyễn Văn A"
+        role="Khách hàng"
+      >
+        <div className="space-y-6">
+          <div className="rounded-lg border bg-green-50 p-6 text-center text-green-700">
+            <h2 className="text-xl font-semibold mb-2">
+              Gửi khiếu nại thành công!
+            </h2>
+            <p>
+              Chúng tôi đã tiếp nhận phản hồi của bạn và sẽ xử lý trong thời
+              gian sớm nhất.
+            </p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Thông tin khiếu nại</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="font-semibold text-muted-foreground text-xs uppercase mb-1">
+                    Người gửi
+                  </p>
+                  <p className="font-medium">{formData.customerName}</p>
+                  <p>{formData.customerPhone}</p>
+                  <p>{formData.customerEmail}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-muted-foreground text-xs uppercase mb-1">
+                    Đơn hàng
+                  </p>
+                  <p className="font-medium text-blue-600">
+                    {formData.trackingNumber}
+                  </p>
+                  {packageData && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Người nhận: {packageData.receiverName}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="font-semibold text-muted-foreground text-xs uppercase mb-1">
+                      Loại khiếu nại
+                    </p>
+                    <p className="font-medium">{complaintTypeLabel}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="font-semibold text-muted-foreground text-xs uppercase mb-1">
+                    Chi tiết
+                  </p>
+                  <p className="whitespace-pre-wrap">
+                    {formData.detail || "Không có mô tả chi tiết."}
+                  </p>
+                </div>
+              </div>
+
+              {files.length > 0 && (
+                <div className="border-t pt-4">
+                  <p className="font-semibold text-muted-foreground text-xs uppercase mb-2">
+                    Hình ảnh đính kèm
+                  </p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {files.map((file, index) => (
+                      <div key={index} className="relative aspect-square">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Evidence ${index}`}
+                          className="h-full w-full rounded-md object-cover border"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Button className="w-full h-12 rounded-xl" onClick={handleReset}>
+            Tạo khiếu nại mới
+          </Button>
+        </div>
+      </CustomerShell>
+    );
+  }
 
   return (
     <CustomerShell
