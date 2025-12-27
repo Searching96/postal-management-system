@@ -32,8 +32,11 @@ import {
   Calendar,
   Check,
   ChevronsUpDown,
+  Camera,
+  Image as ImageIcon,
+  X,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { fetchCustomerInfo } from "@/services/mockApi";
 
@@ -145,6 +148,31 @@ export default function ComplaintCreate() {
     channel: "",
     claimAmount: "",
   });
+
+  const [files, setFiles] = useState<File[]>([]);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files);
+      setFiles((prev) => [...prev, ...newFiles]);
+      // Reset input value to allow re-selection of the same file if needed
+      e.target.value = "";
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const triggerGallery = () => {
+    galleryInputRef.current?.click();
+  };
+
+  const triggerCamera = () => {
+    cameraInputRef.current?.click();
+  };
 
   // Autofill contact info from logged-in user
   useEffect(() => {
@@ -486,6 +514,68 @@ export default function ComplaintCreate() {
                 onChange={handleInputChange}
                 rows={4}
                 placeholder="Mô tả vấn đề gặp phải..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Hình ảnh minh chứng</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {files.map((file, index) => (
+                  <div key={index} className="relative aspect-square">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Preview ${index}`}
+                      className="h-full w-full rounded-md object-cover border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeFile(index)}
+                      className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-sm"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Upload Button - Gallery */}
+                <div
+                  onClick={triggerGallery}
+                  className="aspect-square cursor-pointer flex flex-col items-center justify-center rounded-md border border-dashed border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                >
+                  <ImageIcon className="h-6 w-6 mb-1 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground">
+                    Thư viện
+                  </span>
+                </div>
+
+                {/* Upload Button - Camera */}
+                <div
+                  onClick={triggerCamera}
+                  className="aspect-square cursor-pointer flex flex-col items-center justify-center rounded-md border border-dashed border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Camera className="h-6 w-6 mb-1 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground">
+                    Chụp ảnh
+                  </span>
+                </div>
+              </div>
+
+              {/* Hidden Inputs */}
+              <input
+                type="file"
+                ref={galleryInputRef}
+                className="hidden"
+                accept="image/*"
+                multiple
+                onChange={handleFileChange}
+              />
+              <input
+                type="file"
+                ref={cameraInputRef}
+                className="hidden"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileChange}
               />
             </div>
 
