@@ -136,6 +136,7 @@ export default function ComplaintCreate() {
   const [loading, setLoading] = useState(false);
   const [packageNotFound, setPackageNotFound] = useState(false);
   const [packageData, setPackageData] = useState<PackageData | null>(null);
+  const [trackingError, setTrackingError] = useState("");
   const [open, setOpen] = useState(false);
 
   const [formData, setFormData] = useState<ComplaintFormState>({
@@ -201,6 +202,9 @@ export default function ComplaintCreate() {
       ...prev,
       trackingNumber: value,
     }));
+    if (value.trim()) {
+      setTrackingError("");
+    }
   };
 
   const fetchAndLoadPackageData = async (trackingNumber: string) => {
@@ -241,6 +245,12 @@ export default function ComplaintCreate() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.trackingNumber.trim()) {
+      setTrackingError("Vui lòng nhập mã vận đơn");
+      return;
+    }
+
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);
@@ -327,7 +337,7 @@ export default function ComplaintCreate() {
                         <div className="py-2 text-center text-sm">
                           {formData.trackingNumber ? (
                             <div>
-                              <p className="text-muted-foreground mb-2">
+                              <p className="text-muted-foreground mb-4 px-4">
                                 Không tìm thấy trong danh sách
                               </p>
                               <Button
@@ -393,6 +403,9 @@ export default function ComplaintCreate() {
                 <p className="text-xs text-red-600">
                   Không tìm thấy đơn hàng. Vui lòng kiểm tra lại mã vận đơn.
                 </p>
+              )}
+              {trackingError && (
+                <p className="text-xs text-red-600">{trackingError}</p>
               )}
             </div>
 
