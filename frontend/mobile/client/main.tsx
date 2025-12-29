@@ -11,6 +11,7 @@ import CustomerPickup from "./pages/customer/Pickup";
 import CustomerComplaint from "./pages/customer/Complaint";
 import CustomerOrders from "./pages/customer/Orders";
 import CustomerTracking from "./pages/customer/Tracking";
+import CustomerProfile from "./pages/customer/Profile";
 import DriverIndex from "./pages/delivery-driver/Index";
 import "./global.css";
 import { DeliveriesMap } from "./pages/delivery-driver/DeliveriesMap";
@@ -32,7 +33,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
-          
+
           {/* role home routes */}
           <Route path="/customer/home" element={<CustomerIndex />} />
           <Route path="/delivery-driver/home" element={<DriverIndex />} />
@@ -44,18 +45,28 @@ const App = () => (
           <Route path="/customer/tracking" element={<CustomerTracking />} />
           <Route path="/customer/pickup" element={<CustomerPickup />} />
           <Route path="/customer/complaint" element={<CustomerComplaint />} />
-          
+          <Route path="/customer/profile" element={<CustomerProfile />} />
+
           <Route path="/delivery-driver" element={<DriverIndex />} />
           <Route path="/delivery-driver/scanner" element={<Scanner />} />
           <Route path="/delivery-driver/map" element={<DeliveriesMap />} />
-          
+
           <Route path="/postal-worker" element={<PostalWorkerIndex />} />
-          <Route path="/postal-worker/package" element={<PostalWorkerPackage />} />
-          <Route path="/postal-worker/containers" element={<PostalWorkerContainer />} />
+          <Route
+            path="/postal-worker/package"
+            element={<PostalWorkerPackage />}
+          />
+          <Route
+            path="/postal-worker/containers"
+            element={<PostalWorkerContainer />}
+          />
           <Route path="/postal-worker/packages" element={<PackageList />} />
-          <Route path="/postal-worker/complaints" element={<ComplaintResolver />} />
+          <Route
+            path="/postal-worker/complaints"
+            element={<ComplaintResolver />}
+          />
           <Route path="/postal-worker/tickets" element={<TicketManagement />} />
-          
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -40,6 +40,7 @@ import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { fetchCustomerInfo } from "@/services/mockApi";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { EmailInput } from "@/components/ui/email-input";
 
 interface PackageData {
   orderNumber: string;
@@ -413,10 +414,9 @@ export default function ComplaintCreate() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="customerEmail">Email</Label>
-              <Input
+              <EmailInput
                 id="customerEmail"
                 name="customerEmail"
-                type="email"
                 value={formData.customerEmail}
                 onChange={handleInputChange}
               />
