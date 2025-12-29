@@ -39,6 +39,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { fetchCustomerInfo } from "@/services/mockApi";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 interface PackageData {
   orderNumber: string;
@@ -402,14 +403,12 @@ export default function ComplaintCreate() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="customerPhone">Số điện thoại</Label>
-              <Input
+              <PhoneInput
                 id="customerPhone"
                 name="customerPhone"
                 value={formData.customerPhone}
                 onChange={handleInputChange}
                 required
-                title="Vui lòng nhập đúng định dạng số điện thoại!"
-                pattern="^(0|\+?84)[0-9]{8,10}$"
               />
             </div>
             <div className="space-y-2">

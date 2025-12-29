@@ -2,6 +2,7 @@ import CustomerShell from "@/components/CustomerShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -272,14 +273,12 @@ export default function PickupRequest() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="senderPhone">Số điện thoại</Label>
-              <Input
+              <PhoneInput
                 id="senderPhone"
                 name="senderPhone"
                 value={formData.senderPhone}
                 onChange={handleInputChange}
                 required
-                title="Vui lòng nhập đúng định dạng số điện thoại!"
-                pattern="^(0|\+?84)[0-9]{8,10}$"
               />
             </div>
             <div className="space-y-2">
@@ -312,14 +311,12 @@ export default function PickupRequest() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="receiverPhone">Số điện thoại</Label>
-              <Input
+              <PhoneInput
                 id="receiverPhone"
                 name="receiverPhone"
                 value={formData.receiverPhone}
                 onChange={handleInputChange}
                 required
-                title="Vui lòng nhập đúng định dạng số điện thoại!"
-                pattern="^(0|\+?84)[0-9]{8,10}$"
               />
             </div>
             <div className="space-y-2">
