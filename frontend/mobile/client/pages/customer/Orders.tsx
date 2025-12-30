@@ -1,6 +1,12 @@
 import CustomerShell from "@/components/CustomerShell";
 import { Button } from "@/components/ui/button";
-import { fetchOrders, getStatusLabel, getStatusColor, getStatusBgColor, Order } from "@/services/mockApi";
+import {
+  fetchOrders,
+  getStatusLabel,
+  getStatusColor,
+  getStatusBgColor,
+  Order,
+} from "@/services/mockApi";
 import { useEffect, useState } from "react";
 import { ChevronRight, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -21,7 +27,11 @@ export default function Orders() {
 
   if (loading) {
     return (
-      <CustomerShell title="Đơn hàng của tôi" userName="Nguyễn Văn A" role="Khách hàng">
+      <CustomerShell
+        title="Đơn hàng của tôi"
+        userName="Nguyễn Văn A"
+        role="Khách hàng"
+      >
         <div className="flex items-center justify-center py-12">
           <div className="text-muted-foreground">Đang tải...</div>
         </div>
@@ -30,16 +40,18 @@ export default function Orders() {
   }
 
   return (
-    <CustomerShell title="Đơn hàng của tôi" userName="Nguyễn Văn A" role="Khách hàng">
+    <CustomerShell
+      title="Đơn hàng của tôi"
+      userName="Nguyễn Văn A"
+      role="Khách hàng"
+    >
       <div className="space-y-3">
         {orders.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Bạn chưa có đơn hàng nào</p>
           </div>
         ) : (
-          orders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))
+          orders.map((order) => <OrderCard key={order.id} order={order} />)
         )}
       </div>
     </CustomerShell>
@@ -51,7 +63,7 @@ function OrderCard({ order }: { order: Order }) {
   const navigate = useNavigate();
 
   const handleTracking = () => {
-    navigate('/customer/tracking', { state: { order } });
+    navigate("/customer/tracking", { state: { order } });
   };
 
   return (
@@ -64,7 +76,9 @@ function OrderCard({ order }: { order: Order }) {
             {getStatusLabel(order.status)}
           </p>
         </div>
-        <span className={`text-xs px-2 py-1 rounded-full ${getStatusBgColor(order.status)} ${getStatusColor(order.status)}`}>
+        <span
+          className={`text-xs px-2 py-1 rounded-full ${getStatusBgColor(order.status)} ${getStatusColor(order.status)}`}
+        >
           {getStatusLabel(order.status)}
         </span>
       </div>
@@ -73,7 +87,8 @@ function OrderCard({ order }: { order: Order }) {
       <div className="pt-2 border-t space-y-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div>
-            <span className="font-medium">Dự kiến giao:</span> {formatDate(order.targetDeliveryDate)}
+            <span className="font-medium">Dự kiến giao:</span>{" "}
+            {formatDate(order.targetDeliveryDate)}
           </div>
           {order.codAmount > 0 && (
             <div className="font-medium text-foreground">
@@ -87,7 +102,9 @@ function OrderCard({ order }: { order: Order }) {
           className="w-full flex items-center justify-between text-xs text-primary hover:text-primary/80 font-medium mt-2"
         >
           <span>Chi tiết đơn hàng</span>
-          <ChevronRight className={`h-4 w-4 transition-transform ${expanded ? "rotate-90" : ""}`} />
+          <ChevronRight
+            className={`h-4 w-4 transition-transform ${expanded ? "rotate-90" : ""}`}
+          />
         </button>
       </div>
 
@@ -98,7 +115,7 @@ function OrderCard({ order }: { order: Order }) {
             <DetailRow label="Người nhận" value={order.recipientName} />
             <DetailRow label="Số điện thoại" value={order.recipientPhone} />
             <DetailRow label="Địa chỉ" value={order.address} />
-            <DetailRow label="Nội dung" value={order.items} />
+            <DetailRow label="Ghi chú" value={order.items} />
             <DetailRow label="Ngày tạo" value={formatDate(order.createdDate)} />
           </div>
           <div className="grid grid-cols-2 gap-2">
