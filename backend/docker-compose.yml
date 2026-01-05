@@ -7,12 +7,12 @@ services:
     container_name: postal-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: postal_management_mvp
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: pms_db
       MYSQL_USER: postal_user
       MYSQL_PASSWORD: postal_pass
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ../database/pms_db.sql:/docker-entrypoint-initdb.d/init.sql
@@ -46,7 +46,7 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/postal_management_mvp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pms_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: postal_user
       SPRING_DATASOURCE_PASSWORD: postal_pass
       SPRING_JPA_HIBERNATE_DDL_AUTO: update

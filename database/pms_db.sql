@@ -12,52 +12,57 @@ USE pms_db;
 
 -- 1. Đơn vị hành chính (Tỉnh/Huyện/Xã)
 CREATE TABLE IF NOT EXISTS administrative_units (
-    id SERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     code VARCHAR(20),                -- Mã hành chính (VD: 79 - TP.HCM)
     name VARCHAR(100) NOT NULL,      -- Tên (VD: Quận 1)
     level VARCHAR(20) NOT NULL,      -- 'PROVINCE', 'DISTRICT', 'WARD'
-    parent_id INTEGER REFERENCES administrative_units(id)
+    parent_id CHAR(36),
+    FOREIGN KEY (parent_id) REFERENCES administrative_units(id)
 );
 
 -- 2. Bưu cục / Hub / Kho
 CREATE TABLE IF NOT EXISTS offices (
-    id SERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     office_code VARCHAR(20) UNIQUE NOT NULL, -- Mã định danh (VD: BC-HCM-01)
     name VARCHAR(100) NOT NULL,
     type VARCHAR(20) NOT NULL,       -- 'HQ', 'HUB', 'POST_OFFICE'
     phone VARCHAR(20),
     address TEXT,
-    location_id INTEGER REFERENCES administrative_units(id), -- Liên kết địa lý
-    parent_id INTEGER REFERENCES offices(id), -- Bưu cục cha (Quản lý phân cấp)
-    status VARCHAR(20) DEFAULT 'ACTIVE'
+    location_id CHAR(36),            -- Liên kết địa lý
+    parent_id CHAR(36),              -- Bưu cục cha (Quản lý phân cấp)
+    status VARCHAR(20) DEFAULT 'ACTIVE',
+    FOREIGN KEY (location_id) REFERENCES administrative_units(id),
+    FOREIGN KEY (parent_id) REFERENCES offices(id)
 );
 
 -- 3. Người dùng (Nhân viên)
 CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE,
     phone VARCHAR(20),
     role VARCHAR(30) NOT NULL,       -- 'ADMIN', 'MANAGER', 'TELLER', 'SHIPPER', 'DRIVER', 'WAREHOUSE'
-    office_id INTEGER REFERENCES offices(id),
+    office_id CHAR(36),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (office_id) REFERENCES offices(id)
 );
 
 -- 4. Khách hàng (Người gửi)
 CREATE TABLE IF NOT EXISTS customers (
-    id SERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     full_name VARCHAR(100) NOT NULL,
     phone VARCHAR(20) UNIQUE NOT NULL, -- Định danh chính bằng SĐT
     email VARCHAR(100),
     address TEXT,
-    ward_id INTEGER REFERENCES administrative_units(id),
+    ward_id CHAR(36),
     customer_type VARCHAR(20) DEFAULT 'INDIVIDUAL', -- 'INDIVIDUAL', 'ENTERPRISE'
     contract_number VARCHAR(50),     -- Mã hợp đồng (nếu có)
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ward_id) REFERENCES administrative_units(id)
 );
 
 -- =============================================
@@ -66,7 +71,7 @@ CREATE TABLE IF NOT EXISTS customers (
 
 -- 5. Loại dịch vụ
 CREATE TABLE IF NOT EXISTS service_types (
-    id SERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     code VARCHAR(20) UNIQUE NOT NULL, -- 'STANDARD', 'EXPRESS', 'SAVING'
     name VARCHAR(100),
     description TEXT
@@ -74,22 +79,24 @@ CREATE TABLE IF NOT EXISTS service_types (
 
 -- 6. Vùng tính giá (Zone)
 CREATE TABLE IF NOT EXISTS pricing_zones (
-    id SERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     code VARCHAR(20) UNIQUE NOT NULL, -- 'NOI_THANH', 'NGOAI_THANH', 'LIEN_MIEN'
     name VARCHAR(100)
 );
 
 -- 7. Mapping Hành chính vào Vùng (Huyện X thuộc Vùng Y)
 CREATE TABLE IF NOT EXISTS zone_mappings (
-    id SERIAL PRIMARY KEY,
-    zone_id INTEGER REFERENCES pricing_zones(id),
-    administrative_unit_id INTEGER REFERENCES administrative_units(id),
-    UNIQUE(administrative_unit_id)
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    zone_id CHAR(36),
+    administrative_unit_id CHAR(36),
+    UNIQUE(administrative_unit_id),
+    FOREIGN KEY (zone_id) REFERENCES pricing_zones(id),
+    FOREIGN KEY (administrative_unit_id) REFERENCES administrative_units(id)
 );
 
 -- 8. Quản lý phiên bản Bảng giá
 CREATE TABLE IF NOT EXISTS price_books (
-    id SERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     name VARCHAR(100) NOT NULL,      -- VD: 'Bảng giá Q1-2025'
     valid_from TIMESTAMP NOT NULL,
     valid_to TIMESTAMP,              -- NULL = Vô thời hạn
@@ -99,11 +106,11 @@ CREATE TABLE IF NOT EXISTS price_books (
 
 -- 9. Công thức tính giá (Matrix giá)
 CREATE TABLE IF NOT EXISTS price_formulas (
-    id SERIAL PRIMARY KEY,
-    price_book_id INTEGER REFERENCES price_books(id),
-    service_type_id INTEGER REFERENCES service_types(id),
-    from_zone_id INTEGER REFERENCES pricing_zones(id),
-    to_zone_id INTEGER REFERENCES pricing_zones(id),
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    price_book_id CHAR(36),
+    service_type_id CHAR(36),
+    from_zone_id CHAR(36),
+    to_zone_id CHAR(36),
     
     -- Logic tính toán
     min_weight FLOAT DEFAULT 0,
@@ -112,7 +119,12 @@ CREATE TABLE IF NOT EXISTS price_formulas (
     
     -- Phụ phí vượt cân
     extra_weight_step FLOAT DEFAULT 0,
-    extra_price_per_step DECIMAL(15, 2) DEFAULT 0
+    extra_price_per_step DECIMAL(15, 2) DEFAULT 0,
+    
+    FOREIGN KEY (price_book_id) REFERENCES price_books(id),
+    FOREIGN KEY (service_type_id) REFERENCES service_types(id),
+    FOREIGN KEY (from_zone_id) REFERENCES pricing_zones(id),
+    FOREIGN KEY (to_zone_id) REFERENCES pricing_zones(id)
 );
 
 -- =============================================
@@ -121,21 +133,21 @@ CREATE TABLE IF NOT EXISTS price_formulas (
 
 -- 10. Vận đơn (Parcels) - Bảng quan trọng nhất
 CREATE TABLE IF NOT EXISTS parcels (
-    id BIGSERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     tracking_number VARCHAR(30) UNIQUE NOT NULL,
     
     -- Người gửi
-    sender_id INTEGER REFERENCES customers(id),
+    sender_id CHAR(36),
     sender_name VARCHAR(100),        -- Lưu cứng text để không bị đổi khi customer update
     sender_phone VARCHAR(20),
     sender_address TEXT,
-    sender_ward_id INTEGER REFERENCES administrative_units(id),
+    sender_ward_id CHAR(36),
     
     -- Người nhận
     receiver_name VARCHAR(100),
     receiver_phone VARCHAR(20),
     receiver_address TEXT,
-    receiver_ward_id INTEGER REFERENCES administrative_units(id),
+    receiver_ward_id CHAR(36),
     
     -- Hàng hóa
     weight_actual FLOAT NOT NULL,    -- kg
@@ -145,7 +157,7 @@ CREATE TABLE IF NOT EXISTS parcels (
     goods_content TEXT,
     
     -- Dịch vụ & Phí
-    service_type_id INTEGER REFERENCES service_types(id),
+    service_type_id CHAR(36),
     is_cod BOOLEAN DEFAULT FALSE,
     cod_amount DECIMAL(15, 2) DEFAULT 0,
     shipping_fee DECIMAL(15, 2) NOT NULL,
@@ -157,12 +169,19 @@ CREATE TABLE IF NOT EXISTS parcels (
     status VARCHAR(30) DEFAULT 'ACCEPTED', 
     -- Enum: ACCEPTED, SORTING, TRANSPORTING, DELIVERING, DELIVERED, CANCELLED, RETURNING, RETURNED
     
-    current_office_id INTEGER REFERENCES offices(id),
+    current_office_id CHAR(36),
     
-    created_by INTEGER REFERENCES users(id),
+    created_by CHAR(36),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expected_delivery_time TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    expected_delivery_time TIMESTAMP,
+    
+    FOREIGN KEY (sender_id) REFERENCES customers(id),
+    FOREIGN KEY (sender_ward_id) REFERENCES administrative_units(id),
+    FOREIGN KEY (receiver_ward_id) REFERENCES administrative_units(id),
+    FOREIGN KEY (service_type_id) REFERENCES service_types(id),
+    FOREIGN KEY (current_office_id) REFERENCES offices(id),
+    FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
 -- =============================================
@@ -171,67 +190,84 @@ CREATE TABLE IF NOT EXISTS parcels (
 
 -- 11. Phương tiện vận tải
 CREATE TABLE IF NOT EXISTS vehicles (
-    id SERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     license_plate VARCHAR(20) UNIQUE NOT NULL,
     type VARCHAR(20),                -- 'TRUCK_500KG', 'TRUCK_5TON', 'MOTORBIKE'
     load_capacity_kg FLOAT,
-    office_id INTEGER REFERENCES offices(id),
-    status VARCHAR(20) DEFAULT 'AVAILABLE'
+    office_id CHAR(36),
+    status VARCHAR(20) DEFAULT 'AVAILABLE',
+    FOREIGN KEY (office_id) REFERENCES offices(id)
 );
 
 -- 12. Bao hàng / Sọt hàng (Container)
 CREATE TABLE IF NOT EXISTS containers (
-    id BIGSERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     container_code VARCHAR(30) UNIQUE NOT NULL,
     type VARCHAR(20) DEFAULT 'BAG',  -- 'BAG', 'CAGE', 'BOX'
     
-    origin_office_id INTEGER REFERENCES offices(id),
-    destination_office_id INTEGER REFERENCES offices(id),
-    current_office_id INTEGER REFERENCES offices(id),
+    origin_office_id CHAR(36),
+    destination_office_id CHAR(36),
+    current_office_id CHAR(36),
     
     status VARCHAR(20) DEFAULT 'OPEN', -- 'OPEN', 'CLOSED', 'RECEIVED'
-    created_by INTEGER REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_by CHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (origin_office_id) REFERENCES offices(id),
+    FOREIGN KEY (destination_office_id) REFERENCES offices(id),
+    FOREIGN KEY (current_office_id) REFERENCES offices(id),
+    FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
 -- 13. Chi tiết Bao hàng (Mapping 1 Bao chứa nhiều Đơn)
 CREATE TABLE IF NOT EXISTS container_details (
-    container_id BIGINT REFERENCES containers(id),
-    parcel_id BIGINT REFERENCES parcels(id),
+    container_id CHAR(36),
+    parcel_id CHAR(36),
     added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (container_id, parcel_id)
+    PRIMARY KEY (container_id, parcel_id),
+    FOREIGN KEY (container_id) REFERENCES containers(id),
+    FOREIGN KEY (parcel_id) REFERENCES parcels(id)
 );
 
 -- 14. Bảng kê / Chuyến xe (Manifest)
 CREATE TABLE IF NOT EXISTS manifests (
-    id BIGSERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     manifest_code VARCHAR(30) UNIQUE NOT NULL,
     type VARCHAR(20) NOT NULL,       -- 'TRANSFER' (Giữa các Hub), 'DELIVERY' (Đi giao), 'PICKUP' (Đi lấy)
     
-    source_office_id INTEGER REFERENCES offices(id),
-    destination_office_id INTEGER REFERENCES offices(id),
+    source_office_id CHAR(36),
+    destination_office_id CHAR(36),
     
-    vehicle_id INTEGER REFERENCES vehicles(id),
-    driver_id INTEGER REFERENCES users(id),
+    vehicle_id CHAR(36),
+    driver_id CHAR(36),
     
     status VARCHAR(20) DEFAULT 'CREATED', -- 'CREATED', 'IN_TRANSIT', 'COMPLETED'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     departed_at TIMESTAMP,
-    arrived_at TIMESTAMP
+    arrived_at TIMESTAMP,
+    
+    FOREIGN KEY (source_office_id) REFERENCES offices(id),
+    FOREIGN KEY (destination_office_id) REFERENCES offices(id),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
+    FOREIGN KEY (driver_id) REFERENCES users(id)
 );
 
 -- 15. Chi tiết Bảng kê - Chứa Bao (Dành cho xe tải luân chuyển)
 CREATE TABLE IF NOT EXISTS manifest_containers (
-    manifest_id BIGINT REFERENCES manifests(id),
-    container_id BIGINT REFERENCES containers(id),
-    PRIMARY KEY (manifest_id, container_id)
+    manifest_id CHAR(36),
+    container_id CHAR(36),
+    PRIMARY KEY (manifest_id, container_id),
+    FOREIGN KEY (manifest_id) REFERENCES manifests(id),
+    FOREIGN KEY (container_id) REFERENCES containers(id)
 );
 
 -- 16. Chi tiết Bảng kê - Chứa Đơn lẻ (Dành cho Shipper đi giao/lấy)
 CREATE TABLE IF NOT EXISTS manifest_parcels (
-    manifest_id BIGINT REFERENCES manifests(id),
-    parcel_id BIGINT REFERENCES parcels(id),
-    PRIMARY KEY (manifest_id, parcel_id)
+    manifest_id CHAR(36),
+    parcel_id CHAR(36),
+    PRIMARY KEY (manifest_id, parcel_id),
+    FOREIGN KEY (manifest_id) REFERENCES manifests(id),
+    FOREIGN KEY (parcel_id) REFERENCES parcels(id)
 );
 
 -- =============================================
@@ -240,20 +276,24 @@ CREATE TABLE IF NOT EXISTS manifest_parcels (
 
 -- 17. Lịch sử hành trình (Tracking History)
 CREATE TABLE IF NOT EXISTS tracking_events (
-    id BIGSERIAL PRIMARY KEY,
-    parcel_id BIGINT REFERENCES parcels(id),
-    office_id INTEGER REFERENCES offices(id),
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    parcel_id CHAR(36),
+    office_id CHAR(36),
     status VARCHAR(30) NOT NULL,
     description TEXT,                -- Nội dung hiển thị cho khách
-    created_by INTEGER REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_by CHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (parcel_id) REFERENCES parcels(id),
+    FOREIGN KEY (office_id) REFERENCES offices(id),
+    FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
 -- 18. Lượt giao hàng (Delivery Attempt)
 CREATE TABLE IF NOT EXISTS delivery_attempts (
-    id BIGSERIAL PRIMARY KEY,
-    parcel_id BIGINT REFERENCES parcels(id),
-    shipper_id INTEGER REFERENCES users(id),
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    parcel_id CHAR(36),
+    shipper_id CHAR(36),
     attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     status VARCHAR(20),              -- 'SUCCESS', 'FAILED'
@@ -263,7 +303,10 @@ CREATE TABLE IF NOT EXISTS delivery_attempts (
     pod_image_url TEXT,              -- Ảnh chụp bằng chứng (Proof of Delivery)
     signature_url TEXT,              -- Chữ ký
     gps_lat FLOAT,                   -- Tọa độ
-    gps_long FLOAT
+    gps_long FLOAT,
+    
+    FOREIGN KEY (parcel_id) REFERENCES parcels(id),
+    FOREIGN KEY (shipper_id) REFERENCES users(id)
 );
 
 -- =============================================
@@ -272,31 +315,36 @@ CREATE TABLE IF NOT EXISTS delivery_attempts (
 
 -- 19. Ví điện tử (Công nợ)
 CREATE TABLE IF NOT EXISTS wallets (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),       -- Ví Shipper
-    customer_id INTEGER REFERENCES customers(id), -- Ví Shop
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id CHAR(36),                -- Ví Shipper
+    customer_id CHAR(36),            -- Ví Shop
     balance DECIMAL(15, 2) DEFAULT 0,
     blocked_balance DECIMAL(15, 2) DEFAULT 0,   -- Tiền chờ đối soát
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (customer_id) REFERENCES customers(id),
     CHECK (user_id IS NOT NULL OR customer_id IS NOT NULL)
 );
 
 -- 20. Giao dịch ví
 CREATE TABLE IF NOT EXISTS wallet_transactions (
-    id BIGSERIAL PRIMARY KEY,
-    wallet_id INTEGER REFERENCES wallets(id),
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    wallet_id CHAR(36),
     amount DECIMAL(15, 2) NOT NULL,
     type VARCHAR(30),                -- 'COD_COLLECT', 'SHIPPING_FEE', 'WITHDRAW'
     reference_code VARCHAR(50),      -- Mã đơn hoặc mã đối soát
     description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (wallet_id) REFERENCES wallets(id)
 );
 
 -- 21. Phiên đối soát COD (Cho khách hàng)
 CREATE TABLE IF NOT EXISTS cod_statements (
-    id BIGSERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     statement_code VARCHAR(30) UNIQUE,
-    customer_id INTEGER REFERENCES customers(id),
+    customer_id CHAR(36),
     
     start_date TIMESTAMP,
     end_date TIMESTAMP,
@@ -306,7 +354,9 @@ CREATE TABLE IF NOT EXISTS cod_statements (
     net_amount DECIMAL(15, 2) DEFAULT 0, -- = COD - Fee
     
     status VARCHAR(20) DEFAULT 'DRAFT',  -- 'DRAFT', 'CONFIRMED', 'PAID'
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (customer_id) REFERENCES customers(id)
 );
 
 -- =============================================
@@ -315,27 +365,31 @@ CREATE TABLE IF NOT EXISTS cod_statements (
 
 -- 22. Sự cố / Khiếu nại
 CREATE TABLE IF NOT EXISTS incidents (
-    id SERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     ticket_code VARCHAR(30) UNIQUE,
-    parcel_id BIGINT REFERENCES parcels(id),
+    parcel_id CHAR(36),
     type VARCHAR(50),                -- 'LOST', 'DAMAGED', 'LATE', 'WRONG_ROUTE'
     status VARCHAR(20) DEFAULT 'OPEN',
     priority VARCHAR(10) DEFAULT 'MEDIUM',
     
-    created_by_user_id INTEGER REFERENCES users(id),
-    assigned_to_office_id INTEGER REFERENCES offices(id),
+    created_by_user_id CHAR(36),
+    assigned_to_office_id CHAR(36),
     
     resolution_note TEXT,
     compensation_amount DECIMAL(15, 2) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    
+    FOREIGN KEY (parcel_id) REFERENCES parcels(id),
+    FOREIGN KEY (created_by_user_id) REFERENCES users(id),
+    FOREIGN KEY (assigned_to_office_id) REFERENCES offices(id)
 );
 
 -- 23. Log thông báo (SMS/Email)
 CREATE TABLE IF NOT EXISTS notification_logs (
-    id BIGSERIAL PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     recipient_type VARCHAR(20),      -- 'CUSTOMER', 'USER'
-    recipient_id INTEGER,
+    recipient_id VARCHAR(36),
     channel VARCHAR(20),             -- 'SMS', 'EMAIL', 'PUSH'
     content TEXT,
     status VARCHAR(20),              -- 'SENT', 'FAILED'
