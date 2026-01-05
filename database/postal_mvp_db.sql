@@ -1,666 +1,345 @@
--- =====================================================
--- POSTAL MANAGEMENT SYSTEM - MVP DATABASE SCHEMA
--- Version: 1.0 (MVP)
--- Target: SME (50-500 orders/day)
--- =====================================================
 
--- Drop existing database if exists
-DROP DATABASE IF EXISTS postal_management_mvp;
-CREATE DATABASE postal_management_mvp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE postal_management_mvp;
 
--- =====================================================
--- 1. ORGANIZATION & USER MANAGEMENT
--- =====================================================
+-- =============================================
+-- 0. CLEANUP (Optional - Use with caution)
+-- =============================================
+DROP DATABASE IF EXISTS pms_db;
 
--- Organizations (Multi-tenant support)
-CREATE TABLE organizations (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    code VARCHAR(50) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    type ENUM('HQ', 'BRANCH', 'POST_OFFICE') NOT NULL,
-    parent_id BIGINT UNSIGNED NULL,
-    level TINYINT NOT NULL DEFAULT 1,
-    address TEXT,
-    province VARCHAR(100),
-    district VARCHAR(100),
-    ward VARCHAR(100),
-    phone VARCHAR(20),
-    email VARCHAR(255),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (parent_id) REFERENCES organizations(id),
-    INDEX idx_parent (parent_id),
-    INDEX idx_type (type),
-    INDEX idx_active (is_active)
-) ENGINE=InnoDB;
+CREATE DATABASE IF NOT EXISTS pms_db;
+USE pms_db;
 
--- Users
-CREATE TABLE users (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    organization_id BIGINT UNSIGNED NOT NULL,
-    username VARCHAR(100) UNIQUE NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    full_name VARCHAR(255) NOT NULL,
-    phone VARCHAR(20),
-    role ENUM('ADMIN', 'MANAGER', 'CLERK', 'WAREHOUSE', 'DISPATCHER', 'COURIER', 'ACCOUNTANT') NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    last_login TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (organization_id) REFERENCES organizations(id),
-    INDEX idx_org (organization_id),
-    INDEX idx_role (role),
-    INDEX idx_active (is_active)
-) ENGINE=InnoDB;
+-- =============================================
+-- MODULE 1: CORE & INFRASTRUCTURE
+-- =============================================
 
--- =====================================================
--- 2. CUSTOMER MANAGEMENT
--- =====================================================
+-- 1. Đơn vị hành chính (Tỉnh/Huyện/Xã)
+CREATE TABLE IF NOT EXISTS administrative_units (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(20),                -- Mã hành chính (VD: 79 - TP.HCM)
+    name VARCHAR(100) NOT NULL,      -- Tên (VD: Quận 1)
+    level VARCHAR(20) NOT NULL,      -- 'PROVINCE', 'DISTRICT', 'WARD'
+    parent_id INTEGER REFERENCES administrative_units(id)
+);
 
--- Customers
-CREATE TABLE customers (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    code VARCHAR(50) UNIQUE NOT NULL,
-    type ENUM('INDIVIDUAL', 'SME', 'ENTERPRISE') NOT NULL,
-    full_name VARCHAR(255) NOT NULL,
-    company_name VARCHAR(255) NULL,
-    phone VARCHAR(20) NOT NULL,
-    email VARCHAR(255),
-    address TEXT,
-    province VARCHAR(100),
-    district VARCHAR(100),
-    ward VARCHAR(100),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_by BIGINT UNSIGNED,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES users(id),
-    INDEX idx_phone (phone),
-    INDEX idx_type (type),
-    INDEX idx_active (is_active)
-) ENGINE=InnoDB;
-
--- =====================================================
--- 3. PRICING & SERVICE MANAGEMENT
--- =====================================================
-
--- Service Types
-CREATE TABLE service_types (
-    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    code VARCHAR(50) UNIQUE NOT NULL,
+-- 2. Bưu cục / Hub / Kho
+CREATE TABLE IF NOT EXISTS offices (
+    id SERIAL PRIMARY KEY,
+    office_code VARCHAR(20) UNIQUE NOT NULL, -- Mã định danh (VD: BC-HCM-01)
     name VARCHAR(100) NOT NULL,
-    description TEXT,
-    estimated_delivery_days INT NOT NULL,
-    priority TINYINT NOT NULL DEFAULT 1,
+    type VARCHAR(20) NOT NULL,       -- 'HQ', 'HUB', 'POST_OFFICE'
+    phone VARCHAR(20),
+    address TEXT,
+    location_id INTEGER REFERENCES administrative_units(id), -- Liên kết địa lý
+    parent_id INTEGER REFERENCES offices(id), -- Bưu cục cha (Quản lý phân cấp)
+    status VARCHAR(20) DEFAULT 'ACTIVE'
+);
+
+-- 3. Người dùng (Nhân viên)
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone VARCHAR(20),
+    role VARCHAR(30) NOT NULL,       -- 'ADMIN', 'MANAGER', 'TELLER', 'SHIPPER', 'DRIVER', 'WAREHOUSE'
+    office_id INTEGER REFERENCES offices(id),
     is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. Khách hàng (Người gửi)
+CREATE TABLE IF NOT EXISTS customers (
+    id SERIAL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) UNIQUE NOT NULL, -- Định danh chính bằng SĐT
+    email VARCHAR(100),
+    address TEXT,
+    ward_id INTEGER REFERENCES administrative_units(id),
+    customer_type VARCHAR(20) DEFAULT 'INDIVIDUAL', -- 'INDIVIDUAL', 'ENTERPRISE'
+    contract_number VARCHAR(50),     -- Mã hợp đồng (nếu có)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+);
 
--- Insert default service types
-INSERT INTO service_types (code, name, estimated_delivery_days, priority) VALUES
-('EXPRESS', 'Hỏa tốc', 1, 3),
-('FAST', 'Chuyển phát nhanh', 3, 2),
-('STANDARD', 'Tiết kiệm', 5, 1);
+-- =============================================
+-- MODULE 2: PRICING ENGINE
+-- =============================================
 
--- Pricing Matrix
-CREATE TABLE pricing (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    version VARCHAR(50) NOT NULL,
-    service_type_id INT UNSIGNED NOT NULL,
-    weight_from DECIMAL(10,2) NOT NULL,
-    weight_to DECIMAL(10,2) NOT NULL,
-    base_price DECIMAL(10,2) NOT NULL,
-    per_kg_price DECIMAL(10,2) NOT NULL,
-    effective_from DATE NOT NULL,
-    effective_to DATE NULL,
-    is_active BOOLEAN DEFAULT TRUE,
+-- 5. Loại dịch vụ
+CREATE TABLE IF NOT EXISTS service_types (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(20) UNIQUE NOT NULL, -- 'STANDARD', 'EXPRESS', 'SAVING'
+    name VARCHAR(100),
+    description TEXT
+);
+
+-- 6. Vùng tính giá (Zone)
+CREATE TABLE IF NOT EXISTS pricing_zones (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(20) UNIQUE NOT NULL, -- 'NOI_THANH', 'NGOAI_THANH', 'LIEN_MIEN'
+    name VARCHAR(100)
+);
+
+-- 7. Mapping Hành chính vào Vùng (Huyện X thuộc Vùng Y)
+CREATE TABLE IF NOT EXISTS zone_mappings (
+    id SERIAL PRIMARY KEY,
+    zone_id INTEGER REFERENCES pricing_zones(id),
+    administrative_unit_id INTEGER REFERENCES administrative_units(id),
+    UNIQUE(administrative_unit_id)
+);
+
+-- 8. Quản lý phiên bản Bảng giá
+CREATE TABLE IF NOT EXISTS price_books (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,      -- VD: 'Bảng giá Q1-2025'
+    valid_from TIMESTAMP NOT NULL,
+    valid_to TIMESTAMP,              -- NULL = Vô thời hạn
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 9. Công thức tính giá (Matrix giá)
+CREATE TABLE IF NOT EXISTS price_formulas (
+    id SERIAL PRIMARY KEY,
+    price_book_id INTEGER REFERENCES price_books(id),
+    service_type_id INTEGER REFERENCES service_types(id),
+    from_zone_id INTEGER REFERENCES pricing_zones(id),
+    to_zone_id INTEGER REFERENCES pricing_zones(id),
+    
+    -- Logic tính toán
+    min_weight FLOAT DEFAULT 0,
+    max_weight FLOAT,
+    base_price DECIMAL(15, 2) NOT NULL,
+    
+    -- Phụ phí vượt cân
+    extra_weight_step FLOAT DEFAULT 0,
+    extra_price_per_step DECIMAL(15, 2) DEFAULT 0
+);
+
+-- =============================================
+-- MODULE 3: ORDER MANAGEMENT
+-- =============================================
+
+-- 10. Vận đơn (Parcels) - Bảng quan trọng nhất
+CREATE TABLE IF NOT EXISTS parcels (
+    id BIGSERIAL PRIMARY KEY,
+    tracking_number VARCHAR(30) UNIQUE NOT NULL,
+    
+    -- Người gửi
+    sender_id INTEGER REFERENCES customers(id),
+    sender_name VARCHAR(100),        -- Lưu cứng text để không bị đổi khi customer update
+    sender_phone VARCHAR(20),
+    sender_address TEXT,
+    sender_ward_id INTEGER REFERENCES administrative_units(id),
+    
+    -- Người nhận
+    receiver_name VARCHAR(100),
+    receiver_phone VARCHAR(20),
+    receiver_address TEXT,
+    receiver_ward_id INTEGER REFERENCES administrative_units(id),
+    
+    -- Hàng hóa
+    weight_actual FLOAT NOT NULL,    -- kg
+    weight_converted FLOAT,          -- kg (Dài*Rộng*Cao/cnst)
+    dimensions VARCHAR(50),          -- "L x W x H"
+    goods_value DECIMAL(15, 2),      -- Giá trị khai báo
+    goods_content TEXT,
+    
+    -- Dịch vụ & Phí
+    service_type_id INTEGER REFERENCES service_types(id),
+    is_cod BOOLEAN DEFAULT FALSE,
+    cod_amount DECIMAL(15, 2) DEFAULT 0,
+    shipping_fee DECIMAL(15, 2) NOT NULL,
+    insurance_fee DECIMAL(15, 2) DEFAULT 0,
+    total_amount DECIMAL(15, 2) NOT NULL,
+    payment_method VARCHAR(20) DEFAULT 'CASH', -- 'CASH', 'WALLET', 'SENDER_PAY', 'RECEIVER_PAY'
+    
+    -- Trạng thái & Vị trí
+    status VARCHAR(30) DEFAULT 'ACCEPTED', 
+    -- Enum: ACCEPTED, SORTING, TRANSPORTING, DELIVERING, DELIVERED, CANCELLED, RETURNING, RETURNED
+    
+    current_office_id INTEGER REFERENCES offices(id),
+    
+    created_by INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (service_type_id) REFERENCES service_types(id),
-    INDEX idx_service (service_type_id),
-    INDEX idx_dates (effective_from, effective_to),
-    INDEX idx_active (is_active)
-) ENGINE=InnoDB;
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expected_delivery_time TIMESTAMP
+);
 
--- =====================================================
--- 4. ORDER MANAGEMENT (Core)
--- =====================================================
+-- =============================================
+-- MODULE 4: WAREHOUSE & LOGISTICS
+-- =============================================
 
--- Orders (Shipments)
-CREATE TABLE orders (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    tracking_number VARCHAR(50) UNIQUE NOT NULL,
-    customer_id BIGINT UNSIGNED NOT NULL,
-    service_type_id INT UNSIGNED NOT NULL,
-    origin_office_id BIGINT UNSIGNED NOT NULL,
-    destination_office_id BIGINT UNSIGNED NULL,
-    
-    -- Sender Information
-    sender_name VARCHAR(255) NOT NULL,
-    sender_phone VARCHAR(20) NOT NULL,
-    sender_address TEXT NOT NULL,
-    sender_province VARCHAR(100),
-    sender_district VARCHAR(100),
-    sender_ward VARCHAR(100),
-    
-    -- Receiver Information
-    receiver_name VARCHAR(255) NOT NULL,
-    receiver_phone VARCHAR(20) NOT NULL,
-    receiver_address TEXT NOT NULL,
-    receiver_province VARCHAR(100) NOT NULL,
-    receiver_district VARCHAR(100) NOT NULL,
-    receiver_ward VARCHAR(100),
-    
-    -- Package Information
-    package_type VARCHAR(100),
-    actual_weight DECIMAL(10,2) NOT NULL,
-    volumetric_weight DECIMAL(10,2) DEFAULT 0,
-    chargeable_weight DECIMAL(10,2) NOT NULL,
-    declared_value DECIMAL(15,2) DEFAULT 0,
-    notes TEXT,
-    
-    -- Pricing
-    base_fee DECIMAL(10,2) NOT NULL,
-    insurance_fee DECIMAL(10,2) DEFAULT 0,
-    cod_fee DECIMAL(10,2) DEFAULT 0,
-    total_fee DECIMAL(10,2) NOT NULL,
-    
-    -- COD Information
-    cod_amount DECIMAL(15,2) DEFAULT 0,
-    
-    -- Status
-    status ENUM('PENDING', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED', 'RETURNED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
-    
-    -- Timestamps
-    estimated_delivery TIMESTAMP NULL,
-    actual_delivery TIMESTAMP NULL,
-    created_by BIGINT UNSIGNED NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (customer_id) REFERENCES customers(id),
-    FOREIGN KEY (service_type_id) REFERENCES service_types(id),
-    FOREIGN KEY (origin_office_id) REFERENCES organizations(id),
-    FOREIGN KEY (destination_office_id) REFERENCES organizations(id),
-    FOREIGN KEY (created_by) REFERENCES users(id),
-    
-    INDEX idx_tracking (tracking_number),
-    INDEX idx_customer (customer_id),
-    INDEX idx_status (status),
-    INDEX idx_created (created_at),
-    INDEX idx_receiver_phone (receiver_phone),
-    INDEX idx_destination (receiver_province, receiver_district)
-) ENGINE=InnoDB;
+-- 11. Phương tiện vận tải
+CREATE TABLE IF NOT EXISTS vehicles (
+    id SERIAL PRIMARY KEY,
+    license_plate VARCHAR(20) UNIQUE NOT NULL,
+    type VARCHAR(20),                -- 'TRUCK_500KG', 'TRUCK_5TON', 'MOTORBIKE'
+    load_capacity_kg FLOAT,
+    office_id INTEGER REFERENCES offices(id),
+    status VARCHAR(20) DEFAULT 'AVAILABLE'
+);
 
--- Order Status History (Tracking)
-CREATE TABLE order_status_history (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    order_id BIGINT UNSIGNED NOT NULL,
-    status ENUM('PENDING', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED', 'RETURNED', 'CANCELLED') NOT NULL,
-    location VARCHAR(255),
-    organization_id BIGINT UNSIGNED,
-    notes TEXT,
-    latitude DECIMAL(10,8),
-    longitude DECIMAL(11,8),
-    created_by BIGINT UNSIGNED,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+-- 12. Bao hàng / Sọt hàng (Container)
+CREATE TABLE IF NOT EXISTS containers (
+    id BIGSERIAL PRIMARY KEY,
+    container_code VARCHAR(30) UNIQUE NOT NULL,
+    type VARCHAR(20) DEFAULT 'BAG',  -- 'BAG', 'CAGE', 'BOX'
     
-    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-    FOREIGN KEY (organization_id) REFERENCES organizations(id),
-    FOREIGN KEY (created_by) REFERENCES users(id),
+    origin_office_id INTEGER REFERENCES offices(id),
+    destination_office_id INTEGER REFERENCES offices(id),
+    current_office_id INTEGER REFERENCES offices(id),
     
-    INDEX idx_order (order_id),
-    INDEX idx_status (status),
-    INDEX idx_created (created_at)
-) ENGINE=InnoDB;
+    status VARCHAR(20) DEFAULT 'OPEN', -- 'OPEN', 'CLOSED', 'RECEIVED'
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- =====================================================
--- 5. ROUTING & DELIVERY MANAGEMENT
--- =====================================================
-
--- Delivery Routes
-CREATE TABLE delivery_routes (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    code VARCHAR(50) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    organization_id BIGINT UNSIGNED NOT NULL,
-    courier_id BIGINT UNSIGNED NULL,
-    route_date DATE NOT NULL,
-    status ENUM('PLANNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED') DEFAULT 'PLANNED',
-    total_orders INT DEFAULT 0,
-    delivered_orders INT DEFAULT 0,
-    failed_orders INT DEFAULT 0,
-    total_distance_km DECIMAL(10,2),
-    estimated_duration_minutes INT,
-    started_at TIMESTAMP NULL,
-    completed_at TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (organization_id) REFERENCES organizations(id),
-    FOREIGN KEY (courier_id) REFERENCES users(id),
-    
-    INDEX idx_date (route_date),
-    INDEX idx_courier (courier_id),
-    INDEX idx_status (status)
-) ENGINE=InnoDB;
-
--- Route Orders (Junction Table)
-CREATE TABLE route_orders (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    route_id BIGINT UNSIGNED NOT NULL,
-    order_id BIGINT UNSIGNED NOT NULL,
-    sequence_number INT NOT NULL,
-    status ENUM('PENDING', 'DELIVERED', 'FAILED') DEFAULT 'PENDING',
-    attempt_count INT DEFAULT 0,
-    delivery_notes TEXT,
-    delivered_at TIMESTAMP NULL,
-    
-    FOREIGN KEY (route_id) REFERENCES delivery_routes(id) ON DELETE CASCADE,
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    
-    UNIQUE KEY unique_route_order (route_id, order_id),
-    INDEX idx_route (route_id),
-    INDEX idx_order (order_id)
-) ENGINE=InnoDB;
-
--- =====================================================
--- 6. PROOF OF DELIVERY (POD)
--- =====================================================
-
--- Proof of Delivery
-CREATE TABLE proof_of_delivery (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    order_id BIGINT UNSIGNED NOT NULL,
-    courier_id BIGINT UNSIGNED NOT NULL,
-    receiver_name VARCHAR(255),
-    receiver_signature TEXT, -- Base64 encoded signature
-    photo_url VARCHAR(500),
-    latitude DECIMAL(10,8),
-    longitude DECIMAL(11,8),
-    delivery_notes TEXT,
-    delivered_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (courier_id) REFERENCES users(id),
-    
-    INDEX idx_order (order_id),
-    INDEX idx_courier (courier_id),
-    INDEX idx_delivered (delivered_at)
-) ENGINE=InnoDB;
-
--- Failed Delivery Attempts
-CREATE TABLE failed_delivery_attempts (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    order_id BIGINT UNSIGNED NOT NULL,
-    courier_id BIGINT UNSIGNED NOT NULL,
-    reason ENUM('CUSTOMER_UNAVAILABLE', 'WRONG_ADDRESS', 'REFUSED', 'RESCHEDULED', 'OTHER') NOT NULL,
-    reason_details TEXT,
-    photo_url VARCHAR(500),
-    reschedule_date DATE NULL,
-    latitude DECIMAL(10,8),
-    longitude DECIMAL(11,8),
-    attempted_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (courier_id) REFERENCES users(id),
-    
-    INDEX idx_order (order_id),
-    INDEX idx_courier (courier_id),
-    INDEX idx_reason (reason)
-) ENGINE=InnoDB;
-
--- =====================================================
--- 7. COD & FINANCIAL MANAGEMENT
--- =====================================================
-
--- COD Collections
-CREATE TABLE cod_collections (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    order_id BIGINT UNSIGNED NOT NULL,
-    courier_id BIGINT UNSIGNED NOT NULL,
-    amount DECIMAL(15,2) NOT NULL,
-    collection_method ENUM('CASH', 'QR', 'BANK_TRANSFER') NOT NULL,
-    collected_at TIMESTAMP NOT NULL,
-    reconciled BOOLEAN DEFAULT FALSE,
-    reconciliation_id BIGINT UNSIGNED NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (courier_id) REFERENCES users(id),
-    
-    INDEX idx_order (order_id),
-    INDEX idx_courier (courier_id),
-    INDEX idx_reconciled (reconciled),
-    INDEX idx_collected (collected_at)
-) ENGINE=InnoDB;
-
--- COD Reconciliation
-CREATE TABLE cod_reconciliations (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    code VARCHAR(50) UNIQUE NOT NULL,
-    courier_id BIGINT UNSIGNED NOT NULL,
-    organization_id BIGINT UNSIGNED NOT NULL,
-    reconciliation_date DATE NOT NULL,
-    total_orders INT NOT NULL,
-    total_amount DECIMAL(15,2) NOT NULL,
-    cash_amount DECIMAL(15,2) DEFAULT 0,
-    transfer_amount DECIMAL(15,2) DEFAULT 0,
-    status ENUM('DRAFT', 'SUBMITTED', 'APPROVED', 'PAID') DEFAULT 'DRAFT',
-    notes TEXT,
-    approved_by BIGINT UNSIGNED NULL,
-    approved_at TIMESTAMP NULL,
-    created_by BIGINT UNSIGNED NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (courier_id) REFERENCES users(id),
-    FOREIGN KEY (organization_id) REFERENCES organizations(id),
-    FOREIGN KEY (approved_by) REFERENCES users(id),
-    FOREIGN KEY (created_by) REFERENCES users(id),
-    
-    INDEX idx_courier (courier_id),
-    INDEX idx_date (reconciliation_date),
-    INDEX idx_status (status)
-) ENGINE=InnoDB;
-
--- =====================================================
--- 8. MANIFEST & TRANSFER MANAGEMENT
--- =====================================================
-
--- Manifests (Bảng kê)
-CREATE TABLE manifests (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    code VARCHAR(50) UNIQUE NOT NULL,
-    type ENUM('PICKUP', 'TRANSFER', 'DELIVERY') NOT NULL,
-    origin_office_id BIGINT UNSIGNED NOT NULL,
-    destination_office_id BIGINT UNSIGNED NOT NULL,
-    total_orders INT DEFAULT 0,
-    total_weight DECIMAL(10,2) DEFAULT 0,
-    status ENUM('DRAFT', 'SEALED', 'IN_TRANSIT', 'RECEIVED') DEFAULT 'DRAFT',
-    sealed_by BIGINT UNSIGNED NULL,
-    sealed_at TIMESTAMP NULL,
-    received_by BIGINT UNSIGNED NULL,
-    received_at TIMESTAMP NULL,
-    created_by BIGINT UNSIGNED NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (origin_office_id) REFERENCES organizations(id),
-    FOREIGN KEY (destination_office_id) REFERENCES organizations(id),
-    FOREIGN KEY (sealed_by) REFERENCES users(id),
-    FOREIGN KEY (received_by) REFERENCES users(id),
-    FOREIGN KEY (created_by) REFERENCES users(id),
-    
-    INDEX idx_code (code),
-    INDEX idx_origin (origin_office_id),
-    INDEX idx_destination (destination_office_id),
-    INDEX idx_status (status),
-    INDEX idx_created (created_at)
-) ENGINE=InnoDB;
-
--- Manifest Items
-CREATE TABLE manifest_items (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    manifest_id BIGINT UNSIGNED NOT NULL,
-    order_id BIGINT UNSIGNED NOT NULL,
+-- 13. Chi tiết Bao hàng (Mapping 1 Bao chứa nhiều Đơn)
+CREATE TABLE IF NOT EXISTS container_details (
+    container_id BIGINT REFERENCES containers(id),
+    parcel_id BIGINT REFERENCES parcels(id),
     added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (manifest_id) REFERENCES manifests(id) ON DELETE CASCADE,
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    
-    UNIQUE KEY unique_manifest_order (manifest_id, order_id),
-    INDEX idx_manifest (manifest_id),
-    INDEX idx_order (order_id)
-) ENGINE=InnoDB;
+    PRIMARY KEY (container_id, parcel_id)
+);
 
--- =====================================================
--- 9. COMPLAINT MANAGEMENT
--- =====================================================
-
--- Complaints
-CREATE TABLE complaints (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    code VARCHAR(50) UNIQUE NOT NULL,
-    order_id BIGINT UNSIGNED NOT NULL,
-    customer_id BIGINT UNSIGNED NOT NULL,
-    type ENUM('LATE_DELIVERY', 'LOST', 'DAMAGED', 'WRONG_COD', 'STAFF_ATTITUDE', 'WRONG_ROUTE', 'OTHER') NOT NULL,
-    priority ENUM('LOW', 'MEDIUM', 'HIGH', 'URGENT') DEFAULT 'MEDIUM',
-    description TEXT NOT NULL,
-    photo_urls TEXT, -- JSON array of URLs
-    status ENUM('OPEN', 'INVESTIGATING', 'RESOLVED', 'REJECTED', 'CLOSED') DEFAULT 'OPEN',
-    resolution TEXT,
-    compensation_amount DECIMAL(15,2) DEFAULT 0,
-    assigned_to BIGINT UNSIGNED NULL,
-    resolved_by BIGINT UNSIGNED NULL,
-    resolved_at TIMESTAMP NULL,
+-- 14. Bảng kê / Chuyến xe (Manifest)
+CREATE TABLE IF NOT EXISTS manifests (
+    id BIGSERIAL PRIMARY KEY,
+    manifest_code VARCHAR(30) UNIQUE NOT NULL,
+    type VARCHAR(20) NOT NULL,       -- 'TRANSFER' (Giữa các Hub), 'DELIVERY' (Đi giao), 'PICKUP' (Đi lấy)
+    
+    source_office_id INTEGER REFERENCES offices(id),
+    destination_office_id INTEGER REFERENCES offices(id),
+    
+    vehicle_id INTEGER REFERENCES vehicles(id),
+    driver_id INTEGER REFERENCES users(id),
+    
+    status VARCHAR(20) DEFAULT 'CREATED', -- 'CREATED', 'IN_TRANSIT', 'COMPLETED'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (customer_id) REFERENCES customers(id),
-    FOREIGN KEY (assigned_to) REFERENCES users(id),
-    FOREIGN KEY (resolved_by) REFERENCES users(id),
-    
-    INDEX idx_code (code),
-    INDEX idx_order (order_id),
-    INDEX idx_customer (customer_id),
-    INDEX idx_type (type),
-    INDEX idx_status (status),
-    INDEX idx_priority (priority)
-) ENGINE=InnoDB;
+    departed_at TIMESTAMP,
+    arrived_at TIMESTAMP
+);
 
--- =====================================================
--- 10. SYSTEM LOGS & AUDIT TRAIL
--- =====================================================
+-- 15. Chi tiết Bảng kê - Chứa Bao (Dành cho xe tải luân chuyển)
+CREATE TABLE IF NOT EXISTS manifest_containers (
+    manifest_id BIGINT REFERENCES manifests(id),
+    container_id BIGINT REFERENCES containers(id),
+    PRIMARY KEY (manifest_id, container_id)
+);
 
--- Audit Logs
-CREATE TABLE audit_logs (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT UNSIGNED NULL,
-    action VARCHAR(100) NOT NULL,
-    entity_type VARCHAR(100) NOT NULL,
-    entity_id BIGINT UNSIGNED NOT NULL,
-    old_values TEXT, -- JSON
-    new_values TEXT, -- JSON
-    ip_address VARCHAR(45),
-    user_agent TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+-- 16. Chi tiết Bảng kê - Chứa Đơn lẻ (Dành cho Shipper đi giao/lấy)
+CREATE TABLE IF NOT EXISTS manifest_parcels (
+    manifest_id BIGINT REFERENCES manifests(id),
+    parcel_id BIGINT REFERENCES parcels(id),
+    PRIMARY KEY (manifest_id, parcel_id)
+);
+
+-- =============================================
+-- MODULE 5: LAST-MILE & TRACKING
+-- =============================================
+
+-- 17. Lịch sử hành trình (Tracking History)
+CREATE TABLE IF NOT EXISTS tracking_events (
+    id BIGSERIAL PRIMARY KEY,
+    parcel_id BIGINT REFERENCES parcels(id),
+    office_id INTEGER REFERENCES offices(id),
+    status VARCHAR(30) NOT NULL,
+    description TEXT,                -- Nội dung hiển thị cho khách
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 18. Lượt giao hàng (Delivery Attempt)
+CREATE TABLE IF NOT EXISTS delivery_attempts (
+    id BIGSERIAL PRIMARY KEY,
+    parcel_id BIGINT REFERENCES parcels(id),
+    shipper_id INTEGER REFERENCES users(id),
+    attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    FOREIGN KEY (user_id) REFERENCES users(id),
+    status VARCHAR(20),              -- 'SUCCESS', 'FAILED'
+    failure_reason VARCHAR(100),     -- 'KHACH_KHONG_NGHE', 'SAI_DIA_CHI'
+    receiver_real_name VARCHAR(100), -- Người thực nhận
     
-    INDEX idx_user (user_id),
-    INDEX idx_entity (entity_type, entity_id),
-    INDEX idx_action (action),
-    INDEX idx_created (created_at)
-) ENGINE=InnoDB;
+    pod_image_url TEXT,              -- Ảnh chụp bằng chứng (Proof of Delivery)
+    signature_url TEXT,              -- Chữ ký
+    gps_lat FLOAT,                   -- Tọa độ
+    gps_long FLOAT
+);
 
--- =====================================================
--- 11. CONFIGURATION & SETTINGS
--- =====================================================
+-- =============================================
+-- MODULE 6: FINANCE & COD
+-- =============================================
 
--- System Settings
-CREATE TABLE system_settings (
-    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    setting_key VARCHAR(100) UNIQUE NOT NULL,
-    setting_value TEXT,
-    setting_type ENUM('STRING', 'NUMBER', 'BOOLEAN', 'JSON') DEFAULT 'STRING',
+-- 19. Ví điện tử (Công nợ)
+CREATE TABLE IF NOT EXISTS wallets (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),       -- Ví Shipper
+    customer_id INTEGER REFERENCES customers(id), -- Ví Shop
+    balance DECIMAL(15, 2) DEFAULT 0,
+    blocked_balance DECIMAL(15, 2) DEFAULT 0,   -- Tiền chờ đối soát
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (user_id IS NOT NULL OR customer_id IS NOT NULL)
+);
+
+-- 20. Giao dịch ví
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+    id BIGSERIAL PRIMARY KEY,
+    wallet_id INTEGER REFERENCES wallets(id),
+    amount DECIMAL(15, 2) NOT NULL,
+    type VARCHAR(30),                -- 'COD_COLLECT', 'SHIPPING_FEE', 'WITHDRAW'
+    reference_code VARCHAR(50),      -- Mã đơn hoặc mã đối soát
     description TEXT,
-    updated_by BIGINT UNSIGNED NULL,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 21. Phiên đối soát COD (Cho khách hàng)
+CREATE TABLE IF NOT EXISTS cod_statements (
+    id BIGSERIAL PRIMARY KEY,
+    statement_code VARCHAR(30) UNIQUE,
+    customer_id INTEGER REFERENCES customers(id),
     
-    FOREIGN KEY (updated_by) REFERENCES users(id),
-    INDEX idx_key (setting_key)
-) ENGINE=InnoDB;
-
--- =====================================================
--- VIEWS FOR REPORTING
--- =====================================================
-
--- Daily Orders Summary View
-CREATE VIEW v_daily_orders_summary AS
-SELECT 
-    DATE(created_at) as order_date,
-    origin_office_id,
-    status,
-    service_type_id,
-    COUNT(*) as total_orders,
-    SUM(total_fee) as total_revenue,
-    SUM(cod_amount) as total_cod,
-    AVG(chargeable_weight) as avg_weight
-FROM orders
-GROUP BY DATE(created_at), origin_office_id, status, service_type_id;
-
--- Courier Performance View
-CREATE VIEW v_courier_performance AS
-SELECT 
-    u.id as courier_id,
-    u.full_name as courier_name,
-    DATE(dr.route_date) as route_date,
-    COUNT(DISTINCT dr.id) as total_routes,
-    SUM(dr.total_orders) as total_orders,
-    SUM(dr.delivered_orders) as delivered_orders,
-    SUM(dr.failed_orders) as failed_orders,
-    ROUND(SUM(dr.delivered_orders) * 100.0 / NULLIF(SUM(dr.total_orders), 0), 2) as success_rate
-FROM users u
-LEFT JOIN delivery_routes dr ON u.id = dr.courier_id
-WHERE u.role = 'COURIER'
-GROUP BY u.id, u.full_name, DATE(dr.route_date);
-
--- Pending COD Reconciliation View
-CREATE VIEW v_pending_cod AS
-SELECT 
-    u.id as courier_id,
-    u.full_name as courier_name,
-    COUNT(*) as pending_orders,
-    SUM(cc.amount) as pending_amount
-FROM users u
-INNER JOIN cod_collections cc ON u.id = cc.courier_id
-WHERE cc.reconciled = FALSE
-GROUP BY u.id, u.full_name;
-
--- =====================================================
--- SAMPLE DATA FOR TESTING
--- =====================================================
-
--- Insert sample organization
-INSERT INTO organizations (code, name, type, level, province, district, phone, email) VALUES
-('HQ001', 'Trụ sở Chính', 'HQ', 1, 'TP. Hồ Chí Minh', 'Quận 1', '0281234567', 'contact@postal.vn'),
-('BR001', 'Chi nhánh Miền Nam', 'BRANCH', 2, 'TP. Hồ Chí Minh', 'Quận 3', '0281234568', 'south@postal.vn'),
-('PO001', 'Bưu cục Quận 1', 'POST_OFFICE', 3, 'TP. Hồ Chí Minh', 'Quận 1', '0281234569', 'q1@postal.vn');
-
--- Insert sample users
-INSERT INTO users (organization_id, username, email, password_hash, full_name, phone, role) VALUES
-(1, 'admin', 'admin@postal.vn', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System Admin', '0901234567', 'ADMIN'),
-(3, 'clerk01', 'clerk01@postal.vn', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Nguyễn Văn A', '0901234568', 'CLERK'),
-(3, 'courier01', 'courier01@postal.vn', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Trần Văn B', '0901234569', 'COURIER');
-
--- Insert sample pricing
-INSERT INTO pricing (version, service_type_id, weight_from, weight_to, base_price, per_kg_price, effective_from) VALUES
-('v1.0', 1, 0, 0.5, 35000, 0, '2025-01-01'),
-('v1.0', 1, 0.5, 1.0, 40000, 15000, '2025-01-01'),
-('v1.0', 1, 1.0, 5.0, 55000, 12000, '2025-01-01'),
-('v1.0', 2, 0, 0.5, 20000, 0, '2025-01-01'),
-('v1.0', 2, 0.5, 1.0, 25000, 10000, '2025-01-01'),
-('v1.0', 2, 1.0, 5.0, 35000, 8000, '2025-01-01'),
-('v1.0', 3, 0, 0.5, 15000, 0, '2025-01-01'),
-('v1.0', 3, 0.5, 1.0, 18000, 7000, '2025-01-01'),
-('v1.0', 3, 1.0, 5.0, 25000, 5000, '2025-01-01');
-
--- =====================================================
--- STORED PROCEDURES FOR COMMON OPERATIONS
--- =====================================================
-
-DELIMITER //
-
--- Generate Tracking Number
-CREATE PROCEDURE sp_generate_tracking_number(
-    OUT p_tracking_number VARCHAR(50)
-)
-BEGIN
-    DECLARE v_date VARCHAR(8);
-    DECLARE v_sequence INT;
+    start_date TIMESTAMP,
+    end_date TIMESTAMP,
     
-    SET v_date = DATE_FORMAT(NOW(), '%Y%m%d');
+    total_cod DECIMAL(15, 2) DEFAULT 0,
+    total_fee DECIMAL(15, 2) DEFAULT 0,
+    net_amount DECIMAL(15, 2) DEFAULT 0, -- = COD - Fee
     
-    SELECT COALESCE(MAX(CAST(SUBSTRING(tracking_number, 11, 6) AS UNSIGNED)), 0) + 1
-    INTO v_sequence
-    FROM orders
-    WHERE DATE(created_at) = CURDATE();
-    
-    SET p_tracking_number = CONCAT('VN', v_date, LPAD(v_sequence, 6, '0'), 'VN');
-END//
+    status VARCHAR(20) DEFAULT 'DRAFT',  -- 'DRAFT', 'CONFIRMED', 'PAID'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- Create Order with Tracking
-CREATE PROCEDURE sp_create_order(
-    IN p_customer_id BIGINT,
-    IN p_service_type_id INT,
-    IN p_origin_office_id BIGINT,
-    IN p_sender_name VARCHAR(255),
-    IN p_sender_phone VARCHAR(20),
-    IN p_sender_address TEXT,
-    IN p_receiver_name VARCHAR(255),
-    IN p_receiver_phone VARCHAR(20),
-    IN p_receiver_address TEXT,
-    IN p_receiver_province VARCHAR(100),
-    IN p_receiver_district VARCHAR(100),
-    IN p_actual_weight DECIMAL(10,2),
-    IN p_declared_value DECIMAL(15,2),
-    IN p_cod_amount DECIMAL(15,2),
-    IN p_created_by BIGINT,
-    OUT p_order_id BIGINT,
-    OUT p_tracking_number VARCHAR(50)
-)
-BEGIN
-    DECLARE v_base_fee DECIMAL(10,2);
-    DECLARE v_chargeable_weight DECIMAL(10,2);
-    
-    -- Generate tracking number
-    CALL sp_generate_tracking_number(p_tracking_number);
-    
-    -- Calculate chargeable weight (simplified)
-    SET v_chargeable_weight = p_actual_weight;
-    
-    -- Calculate base fee (simplified - should use pricing table)
-    SET v_base_fee = 35000 + (v_chargeable_weight * 8000);
-    
-    -- Insert order
-    INSERT INTO orders (
-        tracking_number, customer_id, service_type_id, origin_office_id,
-        sender_name, sender_phone, sender_address,
-        receiver_name, receiver_phone, receiver_address, 
-        receiver_province, receiver_district,
-        actual_weight, chargeable_weight, declared_value,
-        base_fee, total_fee, cod_amount, created_by
-    ) VALUES (
-        p_tracking_number, p_customer_id, p_service_type_id, p_origin_office_id,
-        p_sender_name, p_sender_phone, p_sender_address,
-        p_receiver_name, p_receiver_phone, p_receiver_address,
-        p_receiver_province, p_receiver_district,
-        p_actual_weight, v_chargeable_weight, p_declared_value,
-        v_base_fee, v_base_fee, p_cod_amount, p_created_by
-    );
-    
-    SET p_order_id = LAST_INSERT_ID();
-    
-    -- Add initial status
-    INSERT INTO order_status_history (order_id, status, organization_id, created_by)
-    VALUES (p_order_id, 'PENDING', p_origin_office_id, p_created_by);
-END//
+-- =============================================
+-- MODULE 7: SUPPORT & SYSTEM
+-- =============================================
 
-DELIMITER ;
+-- 22. Sự cố / Khiếu nại
+CREATE TABLE IF NOT EXISTS incidents (
+    id SERIAL PRIMARY KEY,
+    ticket_code VARCHAR(30) UNIQUE,
+    parcel_id BIGINT REFERENCES parcels(id),
+    type VARCHAR(50),                -- 'LOST', 'DAMAGED', 'LATE', 'WRONG_ROUTE'
+    status VARCHAR(20) DEFAULT 'OPEN',
+    priority VARCHAR(10) DEFAULT 'MEDIUM',
+    
+    created_by_user_id INTEGER REFERENCES users(id),
+    assigned_to_office_id INTEGER REFERENCES offices(id),
+    
+    resolution_note TEXT,
+    compensation_amount DECIMAL(15, 2) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP
+);
 
--- =====================================================
--- END OF SCHEMA
--- =====================================================
-
--- Display summary
-SELECT 'Database schema created successfully!' as Status;
-SELECT COUNT(*) as Total_Tables FROM information_schema.tables 
-WHERE table_schema = 'postal_management_mvp';
-SELECT COUNT(*) as Total_Views FROM information_schema.views 
-WHERE table_schema = 'postal_management_mvp';
+-- 23. Log thông báo (SMS/Email)
+CREATE TABLE IF NOT EXISTS notification_logs (
+    id BIGSERIAL PRIMARY KEY,
+    recipient_type VARCHAR(20),      -- 'CUSTOMER', 'USER'
+    recipient_id INTEGER,
+    channel VARCHAR(20),             -- 'SMS', 'EMAIL', 'PUSH'
+    content TEXT,
+    status VARCHAR(20),              -- 'SENT', 'FAILED'
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
