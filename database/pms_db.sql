@@ -35,35 +35,56 @@ CREATE TABLE IF NOT EXISTS offices (
     FOREIGN KEY (parent_id) REFERENCES offices(id)
 );
 
--- 3. Người dùng (Nhân viên)
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS accounts (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    username VARCHAR(50) UNIQUE NOT NULL,
+    username VARCHAR(50) UNIQUE NOT NULL, -- Với khách hàng, đây là SĐT
     password_hash VARCHAR(255) NOT NULL,
-    full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE,
-    phone VARCHAR(20),
-    role VARCHAR(30) NOT NULL,       -- 'ADMIN', 'MANAGER', 'TELLER', 'SHIPPER', 'DRIVER', 'WAREHOUSE'
-    office_id CHAR(36),
+    role VARCHAR(30) NOT NULL,            -- 'ADMIN', 'TELLER', 'SHIPPER', 'CUSTOMER'
     is_active BOOLEAN DEFAULT TRUE,
+    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS employees (
+    user_id CHAR(36) PRIMARY KEY, -- Khóa chính cũng là FK trỏ về accounts.id
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) UNIQUE NOT NULL, -- SĐT liên hệ công việc
+    office_id CHAR(36),                -- Làm việc tại bưu cục nào
+    
+    -- Các trường đặc thù của nhân viên
+    employee_code VARCHAR(20) UNIQUE,  -- Mã nhân viên (VD: NV001)
+    job_title VARCHAR(50),             -- Chức danh cụ thể
+    
+    FOREIGN KEY (user_id) REFERENCES accounts(id) ON DELETE CASCADE,
     FOREIGN KEY (office_id) REFERENCES offices(id)
 );
 
--- 4. Khách hàng (Người gửi)
 CREATE TABLE IF NOT EXISTS customers (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    
+    -- Nếu khách có đăng ký tài khoản thì link vào đây, khách vãng lai thì NULL
+    account_id CHAR(36) UNIQUE, 
+    
     full_name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20) UNIQUE NOT NULL, -- Định danh chính bằng SĐT
-    email VARCHAR(100),
+    phone VARCHAR(20) NOT NULL, -- Không unique tuyệt đối vì 1 SĐT có thể gửi nhiều lần vãng lai (tùy logic)
+    
+    -- Địa chỉ lấy hàng mặc định
     address TEXT,
     ward_id CHAR(36),
+    
     customer_type VARCHAR(20) DEFAULT 'INDIVIDUAL', -- 'INDIVIDUAL', 'ENTERPRISE'
-    contract_number VARCHAR(50),     -- Mã hợp đồng (nếu có)
+    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL,
     FOREIGN KEY (ward_id) REFERENCES administrative_units(id)
 );
+
+-- Index cho số điện thoại để tìm khách hàng nhanh khi tạo đơn
+CREATE INDEX idx_customer_phone ON customers(phone);
 
 -- =============================================
 -- MODULE 2: PRICING ENGINE

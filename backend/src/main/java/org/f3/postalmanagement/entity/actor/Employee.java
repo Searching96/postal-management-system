@@ -1,8 +1,9 @@
-package org.f3.postalmanagement.entity;
+package org.f3.postalmanagement.entity.actor;
 
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.f3.postalmanagement.entity.BaseEntity;
 
 @Entity
 @Table(name = "employees")

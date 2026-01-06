@@ -1,6 +1,6 @@
 CREATE TABLE accounts
 (
-    id         BINARY(16)   NOT NULL,
+    id BINARY (16) NOT NULL,
     created_at datetime     NOT NULL,
     updated_at datetime     NULL,
     deleted_at datetime     NULL,
@@ -28,7 +28,7 @@ CREATE TABLE administrative_units
 
 CREATE TABLE employees
 (
-    id           BINARY(16)   NOT NULL,
+    id BINARY (16) NOT NULL,
     created_at   datetime     NOT NULL,
     updated_at   datetime     NULL,
     deleted_at   datetime     NULL,

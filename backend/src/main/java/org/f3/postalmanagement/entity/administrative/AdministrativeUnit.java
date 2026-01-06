@@ -1,4 +1,4 @@
-package org.f3.postalmanagement.entity;
+package org.f3.postalmanagement.entity.administrative;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -8,11 +8,12 @@ import lombok.Setter;
 @Table(name = "administrative_units")
 @Getter
 @Setter
-public class AdministrativeUnit extends BaseEntity {
+public class AdministrativeUnit {
 
-    @Column(name="code", nullable = false, length = 20)
-    private String code;
+    @Id
+    @Column(name = "id", nullable = false)
+    private Integer id;
 
-    @Column(name="name", nullable = false)
+    @Column(name = "full_name", length = 255)
     private String name;
 }
