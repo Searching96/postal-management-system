@@ -14,10 +14,10 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    outDir: "dist/spa",
+    outDir: "dist",
   },
   plugins: [react(), expressPlugin()],
-  base: process.env.BASE_URL || "/postal-management-system",
+  base: process.env.BASE_URL || "/",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./client"),
