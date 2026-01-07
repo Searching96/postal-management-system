@@ -1,10 +1,13 @@
 import CustomerShell from "@/components/CustomerShell";
-import { fetchOrderTracking, formatDateTime, TrackingEvent } from "@/services/mockApi";
+import {
+  fetchOrderTracking,
+  formatDateTime,
+  TrackingEvent,
+} from "@/services/mockApi";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Truck, Package, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
 
 interface TrackingData {
   orderNumber: string;
@@ -14,11 +17,9 @@ interface TrackingData {
   error?: string;
 }
 
-
 export default function Tracking() {
   const location = useLocation();
   const order = location.state?.order;
-
 
   const [data, setData] = useState<TrackingData>({
     orderNumber: order?.orderNumber || "",
@@ -26,7 +27,6 @@ export default function Tracking() {
     currentMilestoneIndex: -1,
     loading: true,
   });
-
 
   useEffect(() => {
     const loadTracking = async () => {
@@ -38,7 +38,6 @@ export default function Tracking() {
         }));
         return;
       }
-
 
       try {
         setData((prev) => ({ ...prev, loading: true }));
@@ -59,10 +58,8 @@ export default function Tracking() {
       }
     };
 
-
     loadTracking();
   }, [order]);
-
 
   if (data.loading) {
     return (
@@ -77,7 +74,6 @@ export default function Tracking() {
       </CustomerShell>
     );
   }
-
 
   if (data.error) {
     return (
@@ -96,14 +92,12 @@ export default function Tracking() {
     );
   }
 
-
   const milestones = [
     { key: "picked-up", label: "Đã lấy", icon: Package },
     { key: "transferring", label: "Đang chuyển", icon: Truck },
     { key: "delivering", label: "Đang giao", icon: MapPin },
     { key: "delivered", label: "Đã giao", icon: CheckCircle2 },
   ];
-
 
   return (
     <CustomerShell
@@ -126,13 +120,15 @@ export default function Tracking() {
                 <span className="text-right">{order.address}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Nội dung:</span>
+                <span className="text-muted-foreground">Ghi chú:</span>
                 <span>{order.items}</span>
               </div>
               {order.codAmount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">COD:</span>
-                  <span className="font-medium">{formatCurrency(order.codAmount)}</span>
+                  <span className="font-medium">
+                    {formatCurrency(order.codAmount)}
+                  </span>
                 </div>
               )}
             </div>
@@ -142,52 +138,60 @@ export default function Tracking() {
         {/* Horizontal Progress Bar */}
         <div className="bg-card rounded-lg p-6 space-y-4">
           <h3 className="font-semibold text-lg">Tiến trình vận chuyển</h3>
-          
+
           {/* Horizontal Milestone Timeline */}
           <div className="relative flex items-center justify-between">
             {/* Background Track */}
             <div className="absolute inset-0 h-1 bg-secondary/30 rounded-full" />
-            
+
             <div className="flex items-center w-full z-10">
               {milestones.map((milestone, index) => {
                 const Icon = milestone.icon;
                 const isCompleted = index < data.currentMilestoneIndex;
                 const isCurrent = index === data.currentMilestoneIndex;
-                
+
                 const getStatusColor = () => {
                   // First 3 milestones: blue when activated (completed or current)
                   if (index < 3 && (isCompleted || isCurrent)) {
-                    return 'bg-blue-500 border-blue-500 text-white shadow-blue-200/50';
+                    return "bg-blue-500 border-blue-500 text-white shadow-blue-200/50";
                   }
-                  
+
                   // 4th milestone (index 3): yellow for returned, green for delivered
                   if (index === 3) {
-                    if (order?.status === 'delivered') {
-                      return 'bg-green-500 border-green-500 text-white shadow-green-200/50';
+                    if (order?.status === "delivered") {
+                      return "bg-green-500 border-green-500 text-white shadow-green-200/50";
                     }
-                    if (order?.status === 'returned') {
-                      return 'bg-yellow-500 border-yellow-500 text-white shadow-yellow-200/50';
+                    if (order?.status === "returned") {
+                      return "bg-yellow-500 border-yellow-500 text-white shadow-yellow-200/50";
                     }
                     // Default for 4th milestone when current but not final status
                     if (isCurrent) {
-                      return 'bg-blue-500 border-blue-500 text-white shadow-blue-200/50';
+                      return "bg-blue-500 border-blue-500 text-white shadow-blue-200/50";
                     }
                   }
-                  
+
                   // Future milestones (including 4th when not reached)
-                  return 'bg-secondary/20 border-secondary/50 text-muted-foreground shadow-sm';
+                  return "bg-secondary/20 border-secondary/50 text-muted-foreground shadow-sm";
                 };
 
                 // Progress fill up to current milestone (first 3 always blue when reached)
-                const progressWidth = ((Math.min(data.currentMilestoneIndex, 3) + 1) / milestones.length) * 100;
+                const progressWidth =
+                  ((Math.min(data.currentMilestoneIndex, 3) + 1) /
+                    milestones.length) *
+                  100;
 
                 return (
-                  <div key={milestone.key} className="flex flex-col items-center gap-2 flex-1">
+                  <div
+                    key={milestone.key}
+                    className="flex flex-col items-center gap-2 flex-1"
+                  >
                     {/* Milestone Circle */}
-                    <div className={`h-12 w-12 rounded-full flex items-center justify-center border-3 shadow-lg ${getStatusColor()}`}>
+                    <div
+                      className={`h-12 w-12 rounded-full flex items-center justify-center border-3 shadow-lg ${getStatusColor()}`}
+                    >
                       <Icon className="h-6 w-6" />
                     </div>
-                    
+
                     {/* Label */}
                     <p className="text-xs font-medium text-center text-muted-foreground px-1 whitespace-nowrap">
                       {milestone.label}
@@ -196,23 +200,19 @@ export default function Tracking() {
                 );
               })}
             </div>
-            
+
             {/* Progress Fill - Blue for first 3, stops before 4th unless delivered */}
-            <div 
+            <div
               className={`absolute top-0 left-0 h-1 rounded-full transition-all duration-300 ${
-                order?.status === 'delivered' 
-                  ? 'bg-green-500' 
-                  : 'bg-blue-500'
+                order?.status === "delivered" ? "bg-green-500" : "bg-blue-500"
               }`}
             />
           </div>
         </div>
 
-
         {/* Tracking History */}
         <div className="space-y-2">
           <h3 className="font-semibold text-sm">Lịch sử vận chuyển</h3>
-
 
           {data.trackingHistory.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground text-sm">
@@ -222,7 +222,6 @@ export default function Tracking() {
             <div className="space-y-3">
               {data.trackingHistory.map((event, index) => {
                 const isLatest = index === data.trackingHistory.length - 1;
-
 
                 return (
                   <TrackingEventCard
@@ -235,7 +234,6 @@ export default function Tracking() {
             </div>
           )}
         </div>
-
 
         {/* Back Button */}
         <Button
@@ -251,7 +249,6 @@ export default function Tracking() {
   );
 }
 
-
 function TrackingEventCard({
   event,
   isLatest,
@@ -261,25 +258,23 @@ function TrackingEventCard({
 }) {
   return (
     <div
-      className={`rounded-lg p-4 border-l-4 space-y-2 ${isLatest
+      className={`rounded-lg p-4 border-l-4 space-y-2 ${
+        isLatest
           ? "bg-primary/5 border-l-primary"
           : "bg-secondary/5 border-l-secondary"
-        }`}
+      }`}
     >
       {/* Timestamp */}
       <div
-        className={`text-xs font-semibold ${isLatest ? "text-foreground/70" : "text-foreground/50"
-          }`}
+        className={`text-xs font-semibold ${
+          isLatest ? "text-foreground/70" : "text-foreground/50"
+        }`}
       >
         {formatDateTime(event.timestamp)}
       </div>
 
-
       {/* Message */}
-      <div className="text-sm font-medium text-foreground">
-        {event.message}
-      </div>
-
+      <div className="text-sm font-medium text-foreground">{event.message}</div>
 
       {/* Location */}
       {event.location && (
@@ -291,7 +286,6 @@ function TrackingEventCard({
     </div>
   );
 }
-
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("vi-VN", {
