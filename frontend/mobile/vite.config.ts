@@ -17,9 +17,7 @@ export default defineConfig(({ mode }) => ({
     outDir: "dist/spa",
   },
   plugins: [react(), expressPlugin()],
-  base:
-    process.env.BASE_URL ||
-    "/postal-management-system/tree/master/frontend/mobile",
+  base: process.env.BASE_URL || "/postal-management-system",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./client"),
