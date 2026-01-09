@@ -7,7 +7,9 @@ import org.f3.postalmanagement.dto.response.auth.AuthResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.entity.actor.Customer;
 import org.f3.postalmanagement.entity.actor.CustomUserDetails;
+import org.f3.postalmanagement.enums.CustomerType;
 import org.f3.postalmanagement.enums.Role;
+import org.f3.postalmanagement.enums.SubscriptionPlan;
 import org.f3.postalmanagement.jwt.JwtUtil;
 import org.f3.postalmanagement.repository.AccountRepository;
 import org.f3.postalmanagement.repository.CustomerRepository;
@@ -60,12 +62,17 @@ public class IAuthServiceImpl implements IAuthService {
     @Override
     @Transactional
     public void register(CustomerRegisterRequest request) {
-        log.info("Register new customer with username: {}", request.getUsername());
+        log.info("Register new {} customer with username: {}", request.getCustomerType(), request.getUsername());
 
         // Check if username already exists
         if (accountRepository.findByUsername(request.getUsername()).isPresent()) {
             log.error("Username already exists with phone number: {}", request.getUsername());
             throw new IllegalArgumentException("Username already exists as phone number already exists");
+        }
+
+        if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
+            log.error("Username already exists with email: {}", request.getEmail());
+            throw new IllegalArgumentException("Username already exists as email already exists");
         }
 
         // Create account
@@ -77,14 +84,20 @@ public class IAuthServiceImpl implements IAuthService {
         account.setActive(true);
         account = accountRepository.save(account);
 
-        // Create customer
+        createCustomer(request, account, request.getCustomerType());
+
+        log.info("{} customer registered successfully: {}", request.getCustomerType(), request.getUsername());
+    }
+
+    private void createCustomer(CustomerRegisterRequest request, Account account, CustomerType customerType) {
         Customer customer = new Customer();
         customer.setAccount(account);
         customer.setFullName(request.getFullName());
-        customer.setPhoneNumber(request.getUsername()); // Phone number is the username
+        customer.setPhoneNumber(request.getUsername());
         customer.setAddress(request.getAddress());
+        customer.setCustomerType(customerType);
+        customer.setSubscriptionPlan(SubscriptionPlan.BASIC);
         customerRepository.save(customer);
-
-        log.info("Customer registered successfully: {}", request.getUsername());
+        log.debug("Customer created with account ID: {}", account.getId());
     }
 }
