@@ -7,7 +7,6 @@ import org.f3.postalmanagement.dto.response.auth.AuthResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.entity.actor.Customer;
 import org.f3.postalmanagement.entity.actor.CustomUserDetails;
-import org.f3.postalmanagement.enums.CustomerType;
 import org.f3.postalmanagement.enums.Role;
 import org.f3.postalmanagement.enums.SubscriptionPlan;
 import org.f3.postalmanagement.jwt.JwtUtil;
@@ -62,7 +61,7 @@ public class IAuthServiceImpl implements IAuthService {
     @Override
     @Transactional
     public void register(CustomerRegisterRequest request) {
-        log.info("Register new {} customer with username: {}", request.getCustomerType(), request.getUsername());
+        log.info("Register new customer with username: {}", request.getUsername());
 
         // Check if username already exists
         if (accountRepository.findByUsername(request.getUsername()).isPresent()) {
@@ -84,18 +83,17 @@ public class IAuthServiceImpl implements IAuthService {
         account.setActive(true);
         account = accountRepository.save(account);
 
-        createCustomer(request, account, request.getCustomerType());
+        createCustomer(request, account);
 
-        log.info("{} customer registered successfully: {}", request.getCustomerType(), request.getUsername());
+        log.info("Customer registered successfully: {}", request.getUsername());
     }
 
-    private void createCustomer(CustomerRegisterRequest request, Account account, CustomerType customerType) {
+    private void createCustomer(CustomerRegisterRequest request, Account account) {
         Customer customer = new Customer();
         customer.setAccount(account);
         customer.setFullName(request.getFullName());
         customer.setPhoneNumber(request.getUsername());
         customer.setAddress(request.getAddress());
-        customer.setCustomerType(customerType);
         customer.setSubscriptionPlan(SubscriptionPlan.BASIC);
         customerRepository.save(customer);
         log.debug("Customer created with account ID: {}", account.getId());
