@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.f3.postalmanagement.entity.BaseEntity;
+import org.f3.postalmanagement.enums.SubscriptionPlan;
 
 @Entity
 @Table(name = "customers")
@@ -18,9 +19,13 @@ public class Customer extends BaseEntity {
     @Column(name="full_name", nullable = false)
     private String fullName;
 
-    @Column(name="phoneNumber", nullable = false)
+    @Column(name="phone_number", nullable = false)
     private String phoneNumber;
 
     @Column(name="address", nullable = false)
     private String address;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "subscription_plan", nullable = false)
+    private SubscriptionPlan subscriptionPlan;
 }

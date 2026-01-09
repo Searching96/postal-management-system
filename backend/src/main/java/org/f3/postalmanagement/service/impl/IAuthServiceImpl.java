@@ -8,6 +8,7 @@ import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.entity.actor.Customer;
 import org.f3.postalmanagement.entity.actor.CustomUserDetails;
 import org.f3.postalmanagement.enums.Role;
+import org.f3.postalmanagement.enums.SubscriptionPlan;
 import org.f3.postalmanagement.jwt.JwtUtil;
 import org.f3.postalmanagement.repository.AccountRepository;
 import org.f3.postalmanagement.repository.CustomerRepository;
@@ -68,6 +69,11 @@ public class IAuthServiceImpl implements IAuthService {
             throw new IllegalArgumentException("Username already exists as phone number already exists");
         }
 
+        if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
+            log.error("Username already exists with email: {}", request.getEmail());
+            throw new IllegalArgumentException("Username already exists as email already exists");
+        }
+
         // Create account
         Account account = new Account();
         account.setUsername(request.getUsername());
@@ -77,14 +83,19 @@ public class IAuthServiceImpl implements IAuthService {
         account.setActive(true);
         account = accountRepository.save(account);
 
-        // Create customer
+        createCustomer(request, account);
+
+        log.info("Customer registered successfully: {}", request.getUsername());
+    }
+
+    private void createCustomer(CustomerRegisterRequest request, Account account) {
         Customer customer = new Customer();
         customer.setAccount(account);
         customer.setFullName(request.getFullName());
-        customer.setPhoneNumber(request.getUsername()); // Phone number is the username
+        customer.setPhoneNumber(request.getUsername());
         customer.setAddress(request.getAddress());
+        customer.setSubscriptionPlan(SubscriptionPlan.BASIC);
         customerRepository.save(customer);
-
-        log.info("Customer registered successfully: {}", request.getUsername());
+        log.debug("Customer created with account ID: {}", account.getId());
     }
 }

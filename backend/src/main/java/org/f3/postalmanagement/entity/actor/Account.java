@@ -18,7 +18,7 @@ public class Account extends BaseEntity {
     @Column(name="password", nullable = false)
     private String password;
 
-    @Column(name="email", unique = true)
+    @Column(name="email", nullable = false, unique = true)
     private String email;
 
     @Enumerated(EnumType.STRING)
