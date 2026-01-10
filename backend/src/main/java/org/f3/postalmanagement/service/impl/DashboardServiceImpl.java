@@ -2,7 +2,7 @@ package org.f3.postalmanagement.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.f3.postalmanagement.dto.request.auth.RegisterSystemAdminRequest;
+import org.f3.postalmanagement.dto.request.user.RegisterSystemAdminRequest;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.enums.Role;
 import org.f3.postalmanagement.repository.AccountRepository;

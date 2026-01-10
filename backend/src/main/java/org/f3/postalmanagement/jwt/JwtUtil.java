@@ -19,7 +19,7 @@ import java.util.UUID;
 @Component
 public class JwtUtil {
 
-    @Value("b6f07f3c4eac82bfa9ce2ef94881c71ad3a4d2fa0c6f9a7e2b1c14c6dcf89e73")
+    @Value("ZUZsJvraCKD/K8VtSbkJuw/4jGPIPHPRuBzNkkI97xN2uw2cJrZCT5pGPABywv0Mp9QtzzRz0wm0AebGxUwtUw==")
     private String secretKey;
 
     @Value("86400000")

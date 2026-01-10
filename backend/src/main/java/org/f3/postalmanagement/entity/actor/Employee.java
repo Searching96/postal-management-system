@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.f3.postalmanagement.entity.BaseEntity;
+import org.f3.postalmanagement.entity.unit.Office;
 
 @Entity
 @Table(name = "employees")
@@ -22,5 +23,7 @@ public class Employee extends BaseEntity {
     @Column(name="phone_number", nullable = false, unique = true)
     private String phoneNumber;
 
-
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="office_id", nullable = false)
+    private Office office;
 }

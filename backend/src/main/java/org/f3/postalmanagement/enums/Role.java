@@ -4,20 +4,20 @@ public enum Role {
     // -- System
     SYSTEM_ADMIN,
 
-    // -- Hub
-    HUB_MANAGER,
+    // Hub
+    HUB_ADMIN,
 
-    // Warehouse
-    BRANCH_MANAGER, // Province
-    WAREHOUSE_MANAGER, // Ware
-    WAREHOUSE_STAFF, // Staff of the warehouse
+    // Warehouse (WH)
+    WH_PROVINCE_ADMIN,  // (Quản lý kho cấp tỉnh)
+    WH_MANAGER,         // (Quản lý từng kho)
+    WH_STAFF,           // (Nhân viên kho)
 
-    // Post office
-    PROVINCE_POST_MANAGER, // Province
-    POST_OFFICE_MANAGER, // Post office
-    POST_OFFICE_STAFF, // Staff of the post office
+    // Post Office (PO)
+    PO_PROVINCE_ADMIN,  // (Quản lý bưu cục cấp tỉnh)
+    PO_MANAGER,         // (Quản lý từng bưu cục)
+    PO_STAFF,           // (Nhân viên bưu cục)
 
-    //
+    // Others
     SHIPPER,
     CUSTOMER
 }
