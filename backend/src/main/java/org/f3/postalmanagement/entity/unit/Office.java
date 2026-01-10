@@ -1,4 +1,4 @@
-package org.f3.postalmanagement.entity.office;
+package org.f3.postalmanagement.entity.unit;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
