@@ -28,4 +28,17 @@ public class UserResponse {
     private String subscriptionPlan;
 
     private boolean isActive;
+
+    // Employee-specific fields
+    @Schema(description = "Office ID (for employees only)")
+    private UUID officeId;
+
+    @Schema(description = "Office name (for employees only)")
+    private String officeName;
+
+    @Schema(description = "Office type (for employees only)")
+    private String officeType;
+
+    @Schema(description = "Region name (for employees only)")
+    private String regionName;
 }
