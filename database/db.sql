@@ -1,5 +1,61 @@
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
 
+CREATE DATABASE IF NOT EXISTS pms_db
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
 
+USE pms_db;
+
+-- Administrative regions
+create table if not exists administrative_regions
+(
+    id   int          not null primary key,
+    name varchar(255) not null
+);
+
+-- Administrative units
+create table if not exists administrative_units
+(
+    id   int          not null primary key,
+    full_name varchar(255) not null
+);
+
+-- Provinces
+create table if not exists provinces
+(
+    code      varchar(20)  not null primary key,
+    name      varchar(255) not null,
+
+    administrative_region_id int          null,
+    administrative_unit_id   int          null,
+
+    constraint fk_province_region
+        foreign key (administrative_region_id)
+        references administrative_regions (id),
+
+    constraint fk_province_unit
+        foreign key (administrative_unit_id)
+        references administrative_units (id)
+);
+
+-- Wards
+create table if not exists wards
+(
+    code          varchar(20)  not null primary key,
+    name          varchar(255) not null,
+
+    administrative_unit_id       int          null,
+    province_code varchar(20)  null,
+
+    constraint fk_ward_unit
+        foreign key (administrative_unit_id)
+        references administrative_units (id),
+
+    constraint fk_ward_province
+        foreign key (province_code)
+        references provinces (code)
+);
 
 -- DATA for administrative_regions
 INSERT INTO administrative_regions(id, name) VALUES(1, 'Vùng trung du và miền núi phía Bắc');
