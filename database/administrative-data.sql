@@ -1,3 +1,6 @@
+
+
+
 -- DATA for administrative_regions
 INSERT INTO administrative_regions(id, name) VALUES(1, 'Vùng trung du và miền núi phía Bắc');
 INSERT INTO administrative_regions(id, name) VALUES(2, 'Vùng đồng bằng sông Hồng');

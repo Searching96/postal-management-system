@@ -4,11 +4,16 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.f3.postalmanagement.entity.BaseEntity;
+import org.f3.postalmanagement.entity.unit.Office;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "employees")
 @Getter
 @Setter
+@SQLDelete(sql = "UPDATE employees SET deleted_at = NOW() WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
 public class Employee extends BaseEntity {
 
     @MapsId
@@ -22,5 +27,7 @@ public class Employee extends BaseEntity {
     @Column(name="phone_number", nullable = false, unique = true)
     private String phoneNumber;
 
-
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="office_id", nullable = false)
+    private Office office;
 }

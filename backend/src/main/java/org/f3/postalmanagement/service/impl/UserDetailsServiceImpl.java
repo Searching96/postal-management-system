@@ -1,5 +1,6 @@
 package org.f3.postalmanagement.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.entity.actor.CustomUserDetails;
@@ -13,13 +14,10 @@ import java.util.UUID;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
 
     private final AccountRepository accountRepository;
-
-    public UserDetailsServiceImpl(AccountRepository accountRepository) {
-        this.accountRepository = accountRepository;
-    }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws AccountNotFoundException {

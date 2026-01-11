@@ -5,11 +5,15 @@ import lombok.Getter;
 import lombok.Setter;
 import org.f3.postalmanagement.entity.BaseEntity;
 import org.f3.postalmanagement.enums.Role;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "accounts")
 @Getter
 @Setter
+@SQLDelete(sql = "UPDATE accounts SET deleted_at = NOW() WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
 public class Account extends BaseEntity {
 
     @Column(name="username", nullable = false, unique = true) // For customer, this field is phone number

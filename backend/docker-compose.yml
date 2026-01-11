@@ -5,6 +5,11 @@ services:
   mysql:
     image: mysql:8.0
     container_name: postal-mysql
+    command:
+      [
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci"
+      ]
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: admin
@@ -15,7 +20,7 @@ services:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-#      - ../database/pms_db.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../database/db.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - postal-network
     healthcheck:
@@ -49,7 +54,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pms_db
       SPRING_DATASOURCE_USERNAME: postal_user
       SPRING_DATASOURCE_PASSWORD: postal_pass
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "false"
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQLDialect
     ports:
