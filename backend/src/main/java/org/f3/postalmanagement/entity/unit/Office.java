@@ -43,10 +43,6 @@ public class Office extends BaseEntity {
     @JoinColumn(name="province_code")
     private Province province;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="ward_code")
-    private Ward ward;
-
     @Enumerated(EnumType.STRING)
     @Column(name="office_type", nullable = false)
     private OfficeType officeType;
