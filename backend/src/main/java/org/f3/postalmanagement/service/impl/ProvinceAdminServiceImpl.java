@@ -3,7 +3,6 @@ package org.f3.postalmanagement.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.f3.postalmanagement.dto.request.employee.CreateProvinceAdminRequest;
-import org.f3.postalmanagement.dto.request.employee.CreateProvinceEmployeeRequest;
 import org.f3.postalmanagement.dto.request.employee.CreateStaffRequest;
 import org.f3.postalmanagement.dto.request.employee.CreateWardManagerRequest;
 import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
@@ -32,7 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -69,16 +67,14 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         // Validate office type matches role
         validateOfficeTypeForProvinceAdmin(targetRole, targetOffice.getOfficeType());
 
-        // For non-SYSTEM_ADMIN, validate province access
-        if (currentRole != Role.SYSTEM_ADMIN) {
-            Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
-                    .orElseThrow(() -> {
-                        log.error("Employee record not found for current user: {}", currentAccount.getUsername());
-                        return new IllegalArgumentException("Employee record not found for current user");
-                    });
-            Office currentOffice = currentEmployee.getOffice();
-            validateProvinceAccess(currentOffice, targetOffice);
-        }
+        // Validate province access
+        Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
+                .orElseThrow(() -> {
+                    log.error("Employee record not found for current user: {}", currentAccount.getUsername());
+                    return new IllegalArgumentException("Employee record not found for current user");
+                });
+        Office currentOffice = currentEmployee.getOffice();
+        validateProvinceAccess(currentOffice, targetOffice);
 
         return createEmployeeInternal(request.getFullName(), request.getPhoneNumber(), request.getPassword(),
                 request.getEmail(), targetRole, targetOffice, currentAccount);
@@ -102,16 +98,14 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         // Validate office type matches role
         validateOfficeTypeForWardManager(targetRole, targetOffice.getOfficeType());
 
-        // For non-SYSTEM_ADMIN, validate province access
-        if (currentRole != Role.SYSTEM_ADMIN) {
-            Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
-                    .orElseThrow(() -> {
-                        log.error("Employee record not found for current user: {}", currentAccount.getUsername());
-                        return new IllegalArgumentException("Employee record not found for current user");
-                    });
-            Office currentOffice = currentEmployee.getOffice();
-            validateProvinceAccess(currentOffice, targetOffice);
-        }
+        // Validate province access
+        Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
+                .orElseThrow(() -> {
+                    log.error("Employee record not found for current user: {}", currentAccount.getUsername());
+                    return new IllegalArgumentException("Employee record not found for current user");
+                });
+        Office currentOffice = currentEmployee.getOffice();
+        validateProvinceAccess(currentOffice, targetOffice);
 
         return createEmployeeInternal(request.getFullName(), request.getPhoneNumber(), request.getPassword(),
                 request.getEmail(), targetRole, targetOffice, currentAccount);
@@ -135,16 +129,14 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         // Validate office type matches role
         validateOfficeTypeForStaff(targetRole, targetOffice.getOfficeType());
 
-        // For non-SYSTEM_ADMIN, validate province access
-        if (currentRole != Role.SYSTEM_ADMIN) {
-            Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
-                    .orElseThrow(() -> {
-                        log.error("Employee record not found for current user: {}", currentAccount.getUsername());
-                        return new IllegalArgumentException("Employee record not found for current user");
-                    });
-            Office currentOffice = currentEmployee.getOffice();
-            validateProvinceAccess(currentOffice, targetOffice);
-        }
+        // Validate province access
+        Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
+                .orElseThrow(() -> {
+                    log.error("Employee record not found for current user: {}", currentAccount.getUsername());
+                    return new IllegalArgumentException("Employee record not found for current user");
+                });
+        Office currentOffice = currentEmployee.getOffice();
+        validateProvinceAccess(currentOffice, targetOffice);
 
         return createEmployeeInternal(request.getFullName(), request.getPhoneNumber(), request.getPassword(),
                 request.getEmail(), targetRole, targetOffice, currentAccount);
@@ -205,8 +197,6 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         return switch (currentRole) {
             case PO_PROVINCE_ADMIN -> Role.PO_PROVINCE_ADMIN;
             case WH_PROVINCE_ADMIN -> Role.WH_PROVINCE_ADMIN;
-            case SYSTEM_ADMIN -> throw new IllegalArgumentException(
-                    "SYSTEM_ADMIN must specify which type of province admin to create via the generic createEmployee method");
             default -> {
                 log.error("User with role {} is not authorized to create province admins", currentRole);
                 throw new AccessDeniedException("You are not authorized to create province admins");
@@ -221,8 +211,6 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         return switch (currentRole) {
             case PO_PROVINCE_ADMIN -> Role.PO_WARD_MANAGER;
             case WH_PROVINCE_ADMIN -> Role.WH_WARD_MANAGER;
-            case SYSTEM_ADMIN -> throw new IllegalArgumentException(
-                    "SYSTEM_ADMIN must specify which type of ward manager to create via the generic createEmployee method");
             default -> {
                 log.error("User with role {} is not authorized to create ward managers", currentRole);
                 throw new AccessDeniedException("You are not authorized to create ward managers");
@@ -237,8 +225,6 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         return switch (currentRole) {
             case PO_PROVINCE_ADMIN -> Role.PO_STAFF;
             case WH_PROVINCE_ADMIN -> Role.WH_STAFF;
-            case SYSTEM_ADMIN -> throw new IllegalArgumentException(
-                    "SYSTEM_ADMIN must specify which type of staff to create via the generic createEmployee method");
             default -> {
                 log.error("User with role {} is not authorized to create staff", currentRole);
                 throw new AccessDeniedException("You are not authorized to create staff");
@@ -300,190 +286,33 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         }
     }
 
-    /**
-     * @deprecated Use {@link #createProvinceAdmin}, {@link #createWardManager}, or {@link #createStaff} instead.
-     */
-    @Deprecated
-    @Override
-    @Transactional
-    public EmployeeResponse createEmployee(CreateProvinceEmployeeRequest request, Account currentAccount) {
-        Role currentRole = currentAccount.getRole();
-        Role targetRole = request.getRole();
-
-        // Validate role permissions
-        validateRolePermission(currentRole, targetRole);
-
-        // Get target office
-        Office targetOffice = officeRepository.findById(request.getOfficeId())
-                .orElseThrow(() -> {
-                    log.error("Office not found with ID: {}", request.getOfficeId());
-                    return new IllegalArgumentException("Office not found with ID: " + request.getOfficeId());
-                });
-
-        // Validate office type matches role
-        validateOfficeTypeForRole(targetRole, targetOffice.getOfficeType());
-
-        // For non-SYSTEM_ADMIN, validate province access
-        if (currentRole != Role.SYSTEM_ADMIN) {
-            Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
-                    .orElseThrow(() -> {
-                        log.error("Employee record not found for current user: {}", currentAccount.getUsername());
-                        return new IllegalArgumentException("Employee record not found for current user");
-                    });
-            Office currentOffice = currentEmployee.getOffice();
-            validateProvinceAccess(currentOffice, targetOffice);
-        }
-
-        // Check if username (phone number) already exists
-        if (accountRepository.existsByUsername(request.getPhoneNumber())) {
-            log.error("Phone number already registered: {}", request.getPhoneNumber());
-            throw new IllegalArgumentException("Phone number already registered: " + request.getPhoneNumber());
-        }
-
-        // Check if email already exists
-        if (accountRepository.existsByEmail(request.getEmail())) {
-            log.error("Email already registered: {}", request.getEmail());
-            throw new IllegalArgumentException("Email already registered: " + request.getEmail());
-        }
-
-        // Create account
-        Account newAccount = new Account();
-        newAccount.setUsername(request.getPhoneNumber());
-        newAccount.setPassword(passwordEncoder.encode(request.getPassword()));
-        newAccount.setEmail(request.getEmail());
-        newAccount.setRole(targetRole);
-        newAccount.setActive(true);
-        Account savedAccount = accountRepository.save(newAccount);
-
-        // Create employee
-        Employee employee = new Employee();
-        employee.setAccount(savedAccount);
-        employee.setFullName(request.getFullName());
-        employee.setPhoneNumber(request.getPhoneNumber());
-        employee.setOffice(targetOffice);
-        Employee savedEmployee = employeeRepository.save(employee);
-
-        log.info("Created new employee {} with role {} for office {} by {}",
-                request.getPhoneNumber(), targetRole, targetOffice.getOfficeName(), currentAccount.getUsername());
-
-        return EmployeeResponse.builder()
-                .employeeId(savedEmployee.getId())
-                .fullName(savedEmployee.getFullName())
-                .phoneNumber(savedEmployee.getPhoneNumber())
-                .email(savedAccount.getEmail())
-                .role(savedAccount.getRole().name())
-                .officeName(targetOffice.getOfficeName())
-                .build();
-    }
-
-    /**
-     * Validate that the current role can create the target role.
-     * 
-     * PO_PROVINCE_ADMIN can create: PO_PROVINCE_ADMIN, PO_WARD_MANAGER, PO_STAFF
-     * WH_PROVINCE_ADMIN can create: WH_PROVINCE_ADMIN, WH_WARD_MANAGER, WH_STAFF
-     * SYSTEM_ADMIN can create any role
-     */
-    private void validateRolePermission(Role currentRole, Role targetRole) {
-        Set<Role> allowedRolesForPOProvinceAdmin = Set.of(Role.PO_PROVINCE_ADMIN, Role.PO_WARD_MANAGER, Role.PO_STAFF);
-        Set<Role> allowedRolesForWHProvinceAdmin = Set.of(Role.WH_PROVINCE_ADMIN, Role.WH_WARD_MANAGER, Role.WH_STAFF);
-
-        if (currentRole == Role.PO_PROVINCE_ADMIN) {
-            if (!allowedRolesForPOProvinceAdmin.contains(targetRole)) {
-                log.error("PO_PROVINCE_ADMIN cannot create role: {}", targetRole);
-                throw new AccessDeniedException("PO_PROVINCE_ADMIN can only create PO_PROVINCE_ADMIN, PO_WARD_MANAGER, or PO_STAFF");
-            }
-        } else if (currentRole == Role.WH_PROVINCE_ADMIN) {
-            if (!allowedRolesForWHProvinceAdmin.contains(targetRole)) {
-                log.error("WH_PROVINCE_ADMIN cannot create role: {}", targetRole);
-                throw new AccessDeniedException("WH_PROVINCE_ADMIN can only create WH_PROVINCE_ADMIN, WH_WARD_MANAGER, or WH_STAFF");
-            }
-        } else if (currentRole == Role.SYSTEM_ADMIN) {
-            // SYSTEM_ADMIN can create any role
-            log.debug("SYSTEM_ADMIN authorized to create any role");
-        } else {
-            log.error("User with role {} is not authorized to create employees", currentRole);
-            throw new AccessDeniedException("You are not authorized to create employees");
-        }
-    }
-
-    /**
-     * Validate that the office type matches the role being assigned.
-     * 
-     * PO_PROVINCE_ADMIN -> PROVINCE_POST
-     * PO_WARD_MANAGER -> WARD_POST
-     * PO_STAFF -> PROVINCE_POST or WARD_POST
-     * WH_PROVINCE_ADMIN -> PROVINCE_WAREHOUSE
-     * WH_WARD_MANAGER -> WARD_WAREHOUSE
-     * WH_STAFF -> PROVINCE_WAREHOUSE or WARD_WAREHOUSE
-     */
-    private void validateOfficeTypeForRole(Role role, OfficeType officeType) {
-        boolean isValid = switch (role) {
-            case PO_PROVINCE_ADMIN -> officeType == OfficeType.PROVINCE_POST;
-            case PO_WARD_MANAGER -> officeType == OfficeType.WARD_POST;
-            case PO_STAFF -> officeType == OfficeType.PROVINCE_POST || officeType == OfficeType.WARD_POST;
-            case WH_PROVINCE_ADMIN -> officeType == OfficeType.PROVINCE_WAREHOUSE;
-            case WH_WARD_MANAGER -> officeType == OfficeType.WARD_WAREHOUSE;
-            case WH_STAFF -> officeType == OfficeType.PROVINCE_WAREHOUSE || officeType == OfficeType.WARD_WAREHOUSE;
-            default -> false;
-        };
-
-        if (!isValid) {
-            log.error("Role {} cannot be assigned to office type {}", role, officeType);
-            throw new IllegalArgumentException(
-                    String.format("Role %s cannot be assigned to office of type %s", role, officeType)
-            );
-        }
-    }
-
     @Override
     @Transactional
     public WardOfficePairResponse createWardOfficePair(CreateWardOfficeRequest request, Account currentAccount) {
-        String provinceCode;
+        // Province admin - get province from their office
+        Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
+                .orElseThrow(() -> {
+                    log.error("Employee record not found for current user");
+                    return new IllegalArgumentException("Employee record not found for current user");
+                });
+        Office currentOffice = currentEmployee.getOffice();
 
-        // Determine province code based on user role
-        if (currentAccount.getRole() == Role.SYSTEM_ADMIN) {
-            // SYSTEM_ADMIN must provide province code
-            if (request.getProvinceCode() == null || request.getProvinceCode().isBlank()) {
-                log.error("Province code is required for SYSTEM_ADMIN");
-                throw new IllegalArgumentException("Province code is required for SYSTEM_ADMIN");
+        if (currentOffice.getProvince() == null) {
+            log.error("Current user's office is not associated with a province");
+            throw new IllegalArgumentException("Current user's office is not associated with a province");
+        }
+
+        String provinceCode;
+        if (request.getProvinceCode() != null && !request.getProvinceCode().isBlank()) {
+            // Validate that the provided province matches their office's province
+            if (!currentOffice.getProvince().getCode().equals(request.getProvinceCode())) {
+                log.error("Provided province code does not match current user's office province");
+                throw new AccessDeniedException("You can only create offices within your province");
             }
             provinceCode = request.getProvinceCode();
         } else {
-            // Province admin - get province from their office, or use provided provinceCode if given
-            if (request.getProvinceCode() != null && !request.getProvinceCode().isBlank()) {
-                // Validate that the provided province matches their office's province
-                Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
-                        .orElseThrow(() -> {
-                            log.error("Employee record not found for current user");
-                            return new IllegalArgumentException("Employee record not found for current user");
-                        });
-                Office currentOffice = currentEmployee.getOffice();
-
-                if (currentOffice.getProvince() == null) {
-                    log.error("Current user's office is not associated with a province");
-                    throw new IllegalArgumentException("Current user's office is not associated with a province");
-                }
-
-                if (!currentOffice.getProvince().getCode().equals(request.getProvinceCode())) {
-                    log.error("Provided province code does not match current user's office province");
-                    throw new AccessDeniedException("You can only create offices within your province");
-                }
-                provinceCode = request.getProvinceCode();
-            } else {
-                // Use their office's province
-                Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
-                        .orElseThrow(() -> {
-                            log.error("Employee record not found for current user");
-                            return new IllegalArgumentException("Employee record not found for current user");
-                        });
-                Office currentOffice = currentEmployee.getOffice();
-
-                if (currentOffice.getProvince() == null) {
-                    log.error("Current user's office is not associated with a province");
-                    throw new IllegalArgumentException("Current user's office is not associated with a province");
-                }
-                provinceCode = currentOffice.getProvince().getCode();
-            }
+            // Use their office's province
+            provinceCode = currentOffice.getProvince().getCode();
         }
 
         // Find the parent PROVINCE_WAREHOUSE in the province
@@ -575,16 +404,14 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
             throw new IllegalArgumentException("Post office is not a WARD_POST");
         }
 
-        // For non-SYSTEM_ADMIN, validate province access
-        if (currentAccount.getRole() != Role.SYSTEM_ADMIN) {
-            Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
-                    .orElseThrow(() -> {
-                        log.error("Employee record not found for current user");
-                        return new IllegalArgumentException("Employee record not found for current user");
-                    });
-            Office currentOffice = currentEmployee.getOffice();
-            validateProvinceAccess(currentOffice, wardWarehouse);
-        }
+        // Validate province access
+        Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
+                .orElseThrow(() -> {
+                    log.error("Employee record not found for current user");
+                    return new IllegalArgumentException("Employee record not found for current user");
+                });
+        Office currentOffice = currentEmployee.getOffice();
+        validateProvinceAccess(currentOffice, wardWarehouse);
 
         // Validate and collect wards to assign
         List<Ward> wardsToAssign = new ArrayList<>();
@@ -646,27 +473,20 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
     @Override
     @Transactional(readOnly = true)
     public List<WardOfficePairResponse> getWardOfficePairs(Account currentAccount) {
-        List<OfficePair> officePairs;
+        Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
+                .orElseThrow(() -> {
+                    log.error("Employee record not found for current user");
+                    return new IllegalArgumentException("Employee record not found for current user");
+                });
+        Office currentOffice = currentEmployee.getOffice();
 
-        // SYSTEM_ADMIN can see all, others see only their province
-        if (currentAccount.getRole() == Role.SYSTEM_ADMIN) {
-            officePairs = officePairRepository.findAllWardOfficePairs();
-        } else {
-            Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
-                    .orElseThrow(() -> {
-                        log.error("Employee record not found for current user");
-                        return new IllegalArgumentException("Employee record not found for current user");
-                    });
-            Office currentOffice = currentEmployee.getOffice();
-
-            if (currentOffice.getProvince() == null) {
-                log.error("Current user's office is not associated with a province");
-                throw new IllegalArgumentException("Current user's office is not associated with a province");
-            }
-
-            String provinceCode = currentOffice.getProvince().getCode();
-            officePairs = officePairRepository.findAllWardOfficePairsByProvinceCode(provinceCode);
+        if (currentOffice.getProvince() == null) {
+            log.error("Current user's office is not associated with a province");
+            throw new IllegalArgumentException("Current user's office is not associated with a province");
         }
+
+        String provinceCode = currentOffice.getProvince().getCode();
+        List<OfficePair> officePairs = officePairRepository.findAllWardOfficePairsByProvinceCode(provinceCode);
 
         return officePairs.stream()
                 .map(officePair -> {
@@ -695,16 +515,14 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
             throw new IllegalArgumentException("Office pair does not contain a WARD_WAREHOUSE");
         }
 
-        // For non-SYSTEM_ADMIN, validate province access
-        if (currentAccount.getRole() != Role.SYSTEM_ADMIN) {
-            Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
-                    .orElseThrow(() -> {
-                        log.error("Employee record not found for current user");
-                        return new IllegalArgumentException("Employee record not found for current user");
-                    });
-            Office currentOffice = currentEmployee.getOffice();
-            validateProvinceAccess(currentOffice, warehouse);
-        }
+        // Validate province access
+        Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
+                .orElseThrow(() -> {
+                    log.error("Employee record not found for current user");
+                    return new IllegalArgumentException("Employee record not found for current user");
+                });
+        Office currentOffice = currentEmployee.getOffice();
+        validateProvinceAccess(currentOffice, warehouse);
 
         List<WardOfficeAssignment> assignments = wardOfficeAssignmentRepository.findByOfficePairId(officePair.getId());
         List<Ward> assignedWards = assignments.stream()
@@ -717,28 +535,24 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
     @Override
     @Transactional(readOnly = true)
     public List<WardAssignmentInfo> getAvailableWardsForAssignment(Account currentAccount, String provinceCode) {
-        String targetProvinceCode;
+        Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
+                .orElseThrow(() -> {
+                    log.error("Employee record not found for current user");
+                    return new IllegalArgumentException("Employee record not found for current user");
+                });
+        Office currentOffice = currentEmployee.getOffice();
 
-        // SYSTEM_ADMIN must provide provinceCode, others use their office's province
-        if (currentAccount.getRole() == Role.SYSTEM_ADMIN) {
-            if (provinceCode == null || provinceCode.isBlank()) {
-                log.error("Province code is required for SYSTEM_ADMIN");
-                throw new IllegalArgumentException("Province code is required for SYSTEM_ADMIN");
-            }
-            targetProvinceCode = provinceCode;
-        } else {
-            Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
-                    .orElseThrow(() -> {
-                        log.error("Employee record not found for current user");
-                        return new IllegalArgumentException("Employee record not found for current user");
-                    });
-            Office currentOffice = currentEmployee.getOffice();
+        if (currentOffice.getProvince() == null) {
+            log.error("Current user's office is not associated with a province");
+            throw new IllegalArgumentException("Current user's office is not associated with a province");
+        }
 
-            if (currentOffice.getProvince() == null) {
-                log.error("Current user's office is not associated with a province");
-                throw new IllegalArgumentException("Current user's office is not associated with a province");
-            }
-            targetProvinceCode = currentOffice.getProvince().getCode();
+        String targetProvinceCode = currentOffice.getProvince().getCode();
+
+        // Optional: validate provinceCode parameter matches user's province if provided
+        if (provinceCode != null && !provinceCode.isBlank() && !provinceCode.equals(targetProvinceCode)) {
+            log.error("Province code mismatch: provided {} but user belongs to {}", provinceCode, targetProvinceCode);
+            throw new IllegalArgumentException("You can only view wards in your province");
         }
 
         // Get all wards in the province

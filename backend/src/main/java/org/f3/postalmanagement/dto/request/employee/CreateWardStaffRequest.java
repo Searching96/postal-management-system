@@ -3,18 +3,16 @@ package org.f3.postalmanagement.dto.request.employee;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
-import org.f3.postalmanagement.enums.Role;
 
 @Data
-@Schema(description = "Request to create a new employee by Ward Manager")
-public class CreateWardEmployeeRequest {
+@Schema(description = "Request to create a new Staff by Ward Manager in their office")
+public class CreateWardStaffRequest {
 
     @NotBlank(message = "Full name is required")
     @Schema(
-            description = "Full name of the employee",
+            description = "Full name of the staff",
             example = "Nguyen Van A",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
@@ -44,18 +42,8 @@ public class CreateWardEmployeeRequest {
     @Email(message = "Invalid email format")
     @Schema(
             description = "Email address",
-            example = "employee@f3postal.com",
+            example = "staff@f3postal.com",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String email;
-
-    @NotNull(message = "Role is required")
-    @Schema(
-            description = "Role of the employee. " +
-                    "PO_WARD_MANAGER can create: PO_WARD_MANAGER or PO_STAFF (same office only). " +
-                    "WH_WARD_MANAGER can create: WH_WARD_MANAGER or WH_STAFF (same office only).",
-            example = "PO_STAFF",
-            requiredMode = Schema.RequiredMode.REQUIRED
-    )
-    private Role role;
 }

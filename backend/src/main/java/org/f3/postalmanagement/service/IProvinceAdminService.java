@@ -1,7 +1,6 @@
 package org.f3.postalmanagement.service;
 
 import org.f3.postalmanagement.dto.request.employee.CreateProvinceAdminRequest;
-import org.f3.postalmanagement.dto.request.employee.CreateProvinceEmployeeRequest;
 import org.f3.postalmanagement.dto.request.employee.CreateStaffRequest;
 import org.f3.postalmanagement.dto.request.employee.CreateWardManagerRequest;
 import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
@@ -16,11 +15,10 @@ import java.util.UUID;
 public interface IProvinceAdminService {
 
     /**
-     * Create a new Province Admin by another Province Admin or System Admin.
+     * Create a new Province Admin by another Province Admin.
      * 
      * PO_PROVINCE_ADMIN can create PO_PROVINCE_ADMIN (to manage PROVINCE_POST)
      * WH_PROVINCE_ADMIN can create WH_PROVINCE_ADMIN (to manage PROVINCE_WAREHOUSE)
-     * SYSTEM_ADMIN can create any province admin role.
      *
      * @param request the province admin creation request
      * @param currentAccount the account of the user making the request
@@ -29,11 +27,10 @@ public interface IProvinceAdminService {
     EmployeeResponse createProvinceAdmin(CreateProvinceAdminRequest request, Account currentAccount);
 
     /**
-     * Create a new Ward Manager by Province Admin or System Admin.
+     * Create a new Ward Manager by Province Admin.
      * 
      * PO_PROVINCE_ADMIN can create PO_WARD_MANAGER (to manage WARD_POST)
      * WH_PROVINCE_ADMIN can create WH_WARD_MANAGER (to manage WARD_WAREHOUSE)
-     * SYSTEM_ADMIN can create any ward manager role.
      *
      * @param request the ward manager creation request
      * @param currentAccount the account of the user making the request
@@ -42,41 +39,16 @@ public interface IProvinceAdminService {
     EmployeeResponse createWardManager(CreateWardManagerRequest request, Account currentAccount);
 
     /**
-     * Create a new Staff by Province Admin or System Admin.
+     * Create a new Staff by Province Admin.
      * 
      * PO_PROVINCE_ADMIN can create PO_STAFF (to work in PROVINCE_POST or WARD_POST)
      * WH_PROVINCE_ADMIN can create WH_STAFF (to work in PROVINCE_WAREHOUSE or WARD_WAREHOUSE)
-     * SYSTEM_ADMIN can create any staff role.
      *
      * @param request the staff creation request
      * @param currentAccount the account of the user making the request
      * @return the created employee response
      */
     EmployeeResponse createStaff(CreateStaffRequest request, Account currentAccount);
-
-    /**
-     * @deprecated Use {@link #createProvinceAdmin}, {@link #createWardManager}, or {@link #createStaff} instead.
-     * 
-     * Create a new employee by Province Admin or System Admin.
-     * 
-     * PO_PROVINCE_ADMIN can create:
-     * - PO_PROVINCE_ADMIN (to manage PROVINCE_POST)
-     * - PO_WARD_MANAGER (to manage WARD_POST)
-     * - PO_STAFF (to work in WARD_POST)
-     * 
-     * WH_PROVINCE_ADMIN can create:
-     * - WH_PROVINCE_ADMIN (to manage PROVINCE_WAREHOUSE)
-     * - WH_WARD_MANAGER (to manage WARD_WAREHOUSE)
-     * - WH_STAFF (to work in WARD_WAREHOUSE)
-     * 
-     * SYSTEM_ADMIN can create any role.
-     *
-     * @param request the employee creation request
-     * @param currentAccount the account of the user making the request
-     * @return the created employee response
-     */
-    @Deprecated
-    EmployeeResponse createEmployee(CreateProvinceEmployeeRequest request, Account currentAccount);
 
     /**
      * Create a new ward office pair (WARD_WAREHOUSE + WARD_POST together).
@@ -122,7 +94,7 @@ public interface IProvinceAdminService {
      * Get all wards available for assignment within the province.
      *
      * @param currentAccount the account of the user making the request
-     * @param provinceCode the province code (required for SYSTEM_ADMIN, optional for others)
+     * @param provinceCode the province code (optional, uses current user's province if not provided)
      * @return list of wards with their assignment status
      */
     List<WardAssignmentInfo> getAvailableWardsForAssignment(Account currentAccount, String provinceCode);

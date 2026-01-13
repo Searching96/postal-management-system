@@ -5,7 +5,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.f3.postalmanagement.dto.request.employee.CreateWardEmployeeRequest;
+import org.f3.postalmanagement.dto.request.employee.CreateWardManagerEmployeeRequest;
+import org.f3.postalmanagement.dto.request.employee.CreateWardStaffRequest;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
 import org.f3.postalmanagement.entity.ApiResponse;
 import org.f3.postalmanagement.entity.actor.CustomUserDetails;
@@ -25,25 +26,47 @@ public class WardManagerController {
 
     private final IWardManagerService wardManagerService;
 
-    @PostMapping("/employees")
+    @PostMapping("/employees/staff")
     @PreAuthorize("hasAnyRole('PO_WARD_MANAGER', 'WH_WARD_MANAGER')")
     @Operation(
-            summary = "Create a new employee in the same office",
-            description = "Create a new employee with specific role in the Ward Manager's office. " +
-                    "PO_WARD_MANAGER can create: PO_WARD_MANAGER or PO_STAFF (in the same WARD_POST). " +
-                    "WH_WARD_MANAGER can create: WH_WARD_MANAGER or WH_STAFF (in the same WARD_WAREHOUSE). " +
-                    "The employee will be assigned to the same office as the Ward Manager."
+            summary = "Create a new staff in the same office",
+            description = "Create a new staff member in the Ward Manager's office. " +
+                    "PO_WARD_MANAGER creates PO_STAFF in the same WARD_POST. " +
+                    "WH_WARD_MANAGER creates WH_STAFF in the same WARD_WAREHOUSE."
     )
-    public ResponseEntity<ApiResponse<EmployeeResponse>> createEmployee(
-            @Valid @RequestBody CreateWardEmployeeRequest request,
+    public ResponseEntity<ApiResponse<EmployeeResponse>> createStaff(
+            @Valid @RequestBody CreateWardStaffRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        EmployeeResponse response = wardManagerService.createEmployee(request, userDetails.getAccount());
+        EmployeeResponse response = wardManagerService.createStaff(request, userDetails.getAccount());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 ApiResponse.<EmployeeResponse>builder()
                         .success(true)
-                        .message("Employee created successfully")
+                        .message("Staff created successfully")
+                        .data(response)
+                        .build()
+        );
+    }
+
+    @PostMapping("/employees/ward-manager")
+    @PreAuthorize("hasAnyRole('PO_WARD_MANAGER', 'WH_WARD_MANAGER')")
+    @Operation(
+            summary = "Create a new ward manager in the same office",
+            description = "Create a new ward manager in the same office. " +
+                    "PO_WARD_MANAGER creates PO_WARD_MANAGER in the same WARD_POST. " +
+                    "WH_WARD_MANAGER creates WH_WARD_MANAGER in the same WARD_WAREHOUSE."
+    )
+    public ResponseEntity<ApiResponse<EmployeeResponse>> createWardManager(
+            @Valid @RequestBody CreateWardManagerEmployeeRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        EmployeeResponse response = wardManagerService.createWardManager(request, userDetails.getAccount());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.<EmployeeResponse>builder()
+                        .success(true)
+                        .message("Ward Manager created successfully")
                         .data(response)
                         .build()
         );

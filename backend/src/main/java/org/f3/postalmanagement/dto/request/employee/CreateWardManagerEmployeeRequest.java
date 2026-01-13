@@ -3,21 +3,17 @@ package org.f3.postalmanagement.dto.request.employee;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
-import org.f3.postalmanagement.enums.Role;
-
-import java.util.UUID;
 
 @Data
-@Schema(description = "Request to create a new employee by Province Admin")
-public class CreateProvinceEmployeeRequest {
+@Schema(description = "Request to create a new Ward Manager by existing Ward Manager in their office")
+public class CreateWardManagerEmployeeRequest {
 
     @NotBlank(message = "Full name is required")
     @Schema(
-            description = "Full name of the employee",
-            example = "Nguyen Van A",
+            description = "Full name of the ward manager",
+            example = "Nguyen Van B",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String fullName;
@@ -29,7 +25,7 @@ public class CreateProvinceEmployeeRequest {
     )
     @Schema(
             description = "Phone number (used as username)",
-            example = "0901234567",
+            example = "0901234568",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String phoneNumber;
@@ -46,26 +42,8 @@ public class CreateProvinceEmployeeRequest {
     @Email(message = "Invalid email format")
     @Schema(
             description = "Email address",
-            example = "employee@f3postal.com",
+            example = "wardmanager@f3postal.com",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String email;
-
-    @NotNull(message = "Role is required")
-    @Schema(
-            description = "Role of the employee. " +
-                    "PO_PROVINCE_ADMIN can create: PO_PROVINCE_ADMIN (for PROVINCE_POST) or PO_WARD_MANAGER (for WARD_POST). " +
-                    "WH_PROVINCE_ADMIN can create: WH_PROVINCE_ADMIN (for PROVINCE_WAREHOUSE) or WH_WARD_MANAGER (for WARD_WAREHOUSE).",
-            example = "PO_WARD_MANAGER",
-            requiredMode = Schema.RequiredMode.REQUIRED
-    )
-    private Role role;
-
-    @NotNull(message = "Office ID is required")
-    @Schema(
-            description = "ID of the office where the employee will work",
-            example = "550e8400-e29b-41d4-a716-446655440000",
-            requiredMode = Schema.RequiredMode.REQUIRED
-    )
-    private UUID officeId;
 }
