@@ -51,14 +51,6 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
     @Override
     @Transactional
     public EmployeeResponse createEmployee(CreateProvinceEmployeeRequest request, Account currentAccount) {
-        // Get current employee to determine their office/province
-        Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
-                .orElseThrow(() -> {
-                    log.error("Employee record not found for current user: {}", currentAccount.getUsername());
-                    return new IllegalArgumentException("Employee record not found for current user");
-                });
-
-        Office currentOffice = currentEmployee.getOffice();
         Role currentRole = currentAccount.getRole();
         Role targetRole = request.getRole();
 
@@ -75,8 +67,16 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         // Validate office type matches role
         validateOfficeTypeForRole(targetRole, targetOffice.getOfficeType());
 
-        // Validate province access (must be in same province)
-        validateProvinceAccess(currentOffice, targetOffice);
+        // For non-SYSTEM_ADMIN, validate province access (must be in same province)
+        if (currentRole != Role.SYSTEM_ADMIN) {
+            Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
+                    .orElseThrow(() -> {
+                        log.error("Employee record not found for current user: {}", currentAccount.getUsername());
+                        return new IllegalArgumentException("Employee record not found for current user");
+                    });
+            Office currentOffice = currentEmployee.getOffice();
+            validateProvinceAccess(currentOffice, targetOffice);
+        }
 
         // Check if username (phone number) already exists
         if (accountRepository.existsByUsername(request.getPhoneNumber())) {
