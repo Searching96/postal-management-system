@@ -85,4 +85,12 @@ public class CreateWardOfficeRequest {
             requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String postOfficeAddress;
+
+    // --- Province code (required for SYSTEM_ADMIN) ---
+    @Schema(
+            description = "Province code. Required for SYSTEM_ADMIN, optional for province admins (uses their office's province if not provided)",
+            example = "79",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
+    private String provinceCode;
 }

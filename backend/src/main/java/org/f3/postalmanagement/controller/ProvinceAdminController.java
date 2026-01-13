@@ -5,8 +5,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.f3.postalmanagement.dto.request.employee.province.CreateProvinceAdminRequest;
+import org.f3.postalmanagement.dto.request.employee.province.CreateStaffRequest;
+import org.f3.postalmanagement.dto.request.employee.province.CreateWardManagerRequest;
 import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
 import org.f3.postalmanagement.dto.request.office.CreateWardOfficeRequest;
+import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
 import org.f3.postalmanagement.dto.response.office.WardOfficePairResponse;
 import org.f3.postalmanagement.entity.ApiResponse;
 import org.f3.postalmanagement.entity.actor.CustomUserDetails;
@@ -23,14 +27,86 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/province-admin")
 @RequiredArgsConstructor
-@Tag(name = "Province Admin Management", description = "API for PO_PROVINCE_ADMIN to manage ward office pairs (WARD_WAREHOUSE + WARD_POST). WH_PROVINCE_ADMIN cannot create ward offices.")
+@Tag(name = "Province Admin Management", description = "API for Province Admins (PO_PROVINCE_ADMIN, WH_PROVINCE_ADMIN) to manage employees and ward office pairs.")
 @SecurityRequirement(name = "bearerAuth")
 public class ProvinceAdminController {
 
     private final IProvinceAdminService provinceAdminService;
 
+    @PostMapping("/employees/province-admin")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Create a new Province Admin",
+            description = "Create a new Province Admin with the same role as the current user. " +
+                    "PO_PROVINCE_ADMIN creates PO_PROVINCE_ADMIN (for PROVINCE_POST). " +
+                    "WH_PROVINCE_ADMIN creates WH_PROVINCE_ADMIN (for PROVINCE_WAREHOUSE). " +
+                    "The office must be within the admin's province."
+    )
+    public ResponseEntity<ApiResponse<EmployeeResponse>> createProvinceAdmin(
+            @Valid @RequestBody CreateProvinceAdminRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        EmployeeResponse response = provinceAdminService.createProvinceAdmin(request, userDetails.getAccount());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.<EmployeeResponse>builder()
+                        .success(true)
+                        .message("Province Admin created successfully")
+                        .data(response)
+                        .build()
+        );
+    }
+
+    @PostMapping("/employees/ward-manager")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Create a new Ward Manager",
+            description = "Create a new Ward Manager. " +
+                    "PO_PROVINCE_ADMIN creates PO_WARD_MANAGER (for WARD_POST). " +
+                    "WH_PROVINCE_ADMIN creates WH_WARD_MANAGER (for WARD_WAREHOUSE). " +
+                    "The office must be within the admin's province."
+    )
+    public ResponseEntity<ApiResponse<EmployeeResponse>> createWardManager(
+            @Valid @RequestBody CreateWardManagerRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        EmployeeResponse response = provinceAdminService.createWardManager(request, userDetails.getAccount());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.<EmployeeResponse>builder()
+                        .success(true)
+                        .message("Ward Manager created successfully")
+                        .data(response)
+                        .build()
+        );
+    }
+
+    @PostMapping("/employees/staff")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Create a new Staff",
+            description = "Create a new Staff. " +
+                    "PO_PROVINCE_ADMIN creates PO_STAFF (for PROVINCE_POST or WARD_POST). " +
+                    "WH_PROVINCE_ADMIN creates WH_STAFF (for PROVINCE_WAREHOUSE or WARD_WAREHOUSE). " +
+                    "The office must be within the admin's province."
+    )
+    public ResponseEntity<ApiResponse<EmployeeResponse>> createStaff(
+            @Valid @RequestBody CreateStaffRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        EmployeeResponse response = provinceAdminService.createStaff(request, userDetails.getAccount());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.<EmployeeResponse>builder()
+                        .success(true)
+                        .message("Staff created successfully")
+                        .data(response)
+                        .build()
+        );
+    }
+
     @PostMapping("/ward-offices")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'PO_PROVINCE_ADMIN')")
+    @PreAuthorize("hasRole('PO_PROVINCE_ADMIN')")
     @Operation(
             summary = "Create a new ward office pair",
             description = "Create a new WARD_WAREHOUSE and WARD_POST together as a pair. " +
@@ -54,7 +130,7 @@ public class ProvinceAdminController {
     }
 
     @PostMapping("/ward-offices/assign-wards")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'PO_PROVINCE_ADMIN')")
+    @PreAuthorize("hasRole('PO_PROVINCE_ADMIN')")
     @Operation(
             summary = "Assign wards to a ward office pair",
             description = "Assign wards to a WARD_WAREHOUSE and WARD_POST pair. " +
@@ -77,11 +153,11 @@ public class ProvinceAdminController {
     }
 
     @GetMapping("/ward-offices")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Get all ward office pairs",
             description = "Get all ward office pairs (WARD_WAREHOUSE + WARD_POST) under the admin's jurisdiction. " +
-                    "Province admins see only offices in their province. SYSTEM_ADMIN sees all."
+                    "Province admins see only offices in their province."
     )
     public ResponseEntity<ApiResponse<List<WardOfficePairResponse>>> getWardOfficePairs(
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -98,7 +174,7 @@ public class ProvinceAdminController {
     }
 
     @GetMapping("/ward-offices/{officePairId}")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Get ward office pair by office pair ID",
             description = "Get a specific ward office pair by the office pair ID"
@@ -119,12 +195,11 @@ public class ProvinceAdminController {
     }
 
     @GetMapping("/wards/assignment-status")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Get ward assignment status",
             description = "Get all wards in the province with their office assignment status. " +
-                    "Shows which wards are already assigned to ward office pairs. " +
-                    "SYSTEM_ADMIN must provide provinceCode parameter."
+                    "Shows which wards are already assigned to ward office pairs."
     )
     public ResponseEntity<ApiResponse<List<IProvinceAdminService.WardAssignmentInfo>>> getWardAssignmentStatus(
             @RequestParam(required = false) String provinceCode,
