@@ -13,15 +13,19 @@ import java.util.UUID;
 public interface IProvinceAdminService {
 
     /**
-     * Create a new employee by Province Admin.
+     * Create a new employee by Province Admin or System Admin.
      * 
      * PO_PROVINCE_ADMIN can create:
      * - PO_PROVINCE_ADMIN (to manage PROVINCE_POST)
      * - PO_WARD_MANAGER (to manage WARD_POST)
+     * - PO_STAFF (to work in WARD_POST)
      * 
      * WH_PROVINCE_ADMIN can create:
      * - WH_PROVINCE_ADMIN (to manage PROVINCE_WAREHOUSE)
      * - WH_WARD_MANAGER (to manage WARD_WAREHOUSE)
+     * - WH_STAFF (to work in WARD_WAREHOUSE)
+     * 
+     * SYSTEM_ADMIN can create any role.
      *
      * @param request the employee creation request
      * @param currentAccount the account of the user making the request

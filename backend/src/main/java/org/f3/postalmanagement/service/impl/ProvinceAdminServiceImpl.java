@@ -67,7 +67,7 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         // Validate office type matches role
         validateOfficeTypeForRole(targetRole, targetOffice.getOfficeType());
 
-        // For non-SYSTEM_ADMIN, validate province access (must be in same province)
+        // For non-SYSTEM_ADMIN, validate province access
         if (currentRole != Role.SYSTEM_ADMIN) {
             Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
                     .orElseThrow(() -> {
@@ -123,22 +123,23 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
     /**
      * Validate that the current role can create the target role.
      * 
-     * PO_PROVINCE_ADMIN can create: PO_PROVINCE_ADMIN, PO_WARD_MANAGER
-     * WH_PROVINCE_ADMIN can create: WH_PROVINCE_ADMIN, WH_WARD_MANAGER
+     * PO_PROVINCE_ADMIN can create: PO_PROVINCE_ADMIN, PO_WARD_MANAGER, PO_STAFF
+     * WH_PROVINCE_ADMIN can create: WH_PROVINCE_ADMIN, WH_WARD_MANAGER, WH_STAFF
+     * SYSTEM_ADMIN can create any role
      */
     private void validateRolePermission(Role currentRole, Role targetRole) {
-        Set<Role> allowedRolesForPO = Set.of(Role.PO_PROVINCE_ADMIN, Role.PO_WARD_MANAGER);
-        Set<Role> allowedRolesForWH = Set.of(Role.WH_PROVINCE_ADMIN, Role.WH_WARD_MANAGER);
+        Set<Role> allowedRolesForPOProvinceAdmin = Set.of(Role.PO_PROVINCE_ADMIN, Role.PO_WARD_MANAGER, Role.PO_STAFF);
+        Set<Role> allowedRolesForWHProvinceAdmin = Set.of(Role.WH_PROVINCE_ADMIN, Role.WH_WARD_MANAGER, Role.WH_STAFF);
 
         if (currentRole == Role.PO_PROVINCE_ADMIN) {
-            if (!allowedRolesForPO.contains(targetRole)) {
+            if (!allowedRolesForPOProvinceAdmin.contains(targetRole)) {
                 log.error("PO_PROVINCE_ADMIN cannot create role: {}", targetRole);
-                throw new AccessDeniedException("PO_PROVINCE_ADMIN can only create PO_PROVINCE_ADMIN or PO_WARD_MANAGER");
+                throw new AccessDeniedException("PO_PROVINCE_ADMIN can only create PO_PROVINCE_ADMIN, PO_WARD_MANAGER, or PO_STAFF");
             }
         } else if (currentRole == Role.WH_PROVINCE_ADMIN) {
-            if (!allowedRolesForWH.contains(targetRole)) {
+            if (!allowedRolesForWHProvinceAdmin.contains(targetRole)) {
                 log.error("WH_PROVINCE_ADMIN cannot create role: {}", targetRole);
-                throw new AccessDeniedException("WH_PROVINCE_ADMIN can only create WH_PROVINCE_ADMIN or WH_WARD_MANAGER");
+                throw new AccessDeniedException("WH_PROVINCE_ADMIN can only create WH_PROVINCE_ADMIN, WH_WARD_MANAGER, or WH_STAFF");
             }
         } else if (currentRole == Role.SYSTEM_ADMIN) {
             // SYSTEM_ADMIN can create any role
@@ -153,16 +154,16 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
      * Validate that the office type matches the role being assigned.
      * 
      * PO_PROVINCE_ADMIN -> PROVINCE_POST
-     * PO_WARD_MANAGER -> WARD_POST
+     * PO_WARD_MANAGER, PO_STAFF -> WARD_POST
      * WH_PROVINCE_ADMIN -> PROVINCE_WAREHOUSE
-     * WH_WARD_MANAGER -> WARD_WAREHOUSE
+     * WH_WARD_MANAGER, WH_STAFF -> WARD_WAREHOUSE
      */
     private void validateOfficeTypeForRole(Role role, OfficeType officeType) {
         boolean isValid = switch (role) {
             case PO_PROVINCE_ADMIN -> officeType == OfficeType.PROVINCE_POST;
-            case PO_WARD_MANAGER -> officeType == OfficeType.WARD_POST;
+            case PO_WARD_MANAGER, PO_STAFF -> officeType == OfficeType.WARD_POST;
             case WH_PROVINCE_ADMIN -> officeType == OfficeType.PROVINCE_WAREHOUSE;
-            case WH_WARD_MANAGER -> officeType == OfficeType.WARD_WAREHOUSE;
+            case WH_WARD_MANAGER, WH_STAFF -> officeType == OfficeType.WARD_WAREHOUSE;
             default -> false;
         };
 
