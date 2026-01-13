@@ -2,9 +2,9 @@ package org.f3.postalmanagement.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.f3.postalmanagement.dto.request.employee.CreateProvinceAdminRequest;
-import org.f3.postalmanagement.dto.request.employee.CreateStaffRequest;
-import org.f3.postalmanagement.dto.request.employee.CreateWardManagerRequest;
+import org.f3.postalmanagement.dto.request.employee.province.CreateProvinceAdminRequest;
+import org.f3.postalmanagement.dto.request.employee.province.CreateStaffRequest;
+import org.f3.postalmanagement.dto.request.employee.province.CreateWardManagerRequest;
 import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
 import org.f3.postalmanagement.dto.request.office.CreateWardOfficeRequest;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
@@ -32,7 +32,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 
@@ -57,24 +56,21 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         // Determine the target role based on current user's role
         Role targetRole = determineProvinceAdminRole(currentRole);
 
-        // Get target office
-        Office targetOffice = officeRepository.findById(request.getOfficeId())
-                .orElseThrow(() -> {
-                    log.error("Office not found with ID: {}", request.getOfficeId());
-                    return new IllegalArgumentException("Office not found with ID: " + request.getOfficeId());
-                });
-
-        // Validate office type matches role
-        validateOfficeTypeForProvinceAdmin(targetRole, targetOffice.getOfficeType());
-
-        // Validate province access
+        // Get current employee's office - new province admin will be created in the same office
         Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
                 .orElseThrow(() -> {
                     log.error("Employee record not found for current user: {}", currentAccount.getUsername());
                     return new IllegalArgumentException("Employee record not found for current user");
                 });
-        Office currentOffice = currentEmployee.getOffice();
-        validateProvinceAccess(currentOffice, targetOffice);
+        Office targetOffice = currentEmployee.getOffice();
+
+        if (targetOffice == null) {
+            log.error("Current user has no assigned office: {}", currentAccount.getUsername());
+            throw new IllegalArgumentException("Current user has no assigned office");
+        }
+
+        // Validate office type matches role
+        validateOfficeTypeForProvinceAdmin(targetRole, targetOffice.getOfficeType());
 
         return createEmployeeInternal(request.getFullName(), request.getPhoneNumber(), request.getPassword(),
                 request.getEmail(), targetRole, targetOffice, currentAccount);

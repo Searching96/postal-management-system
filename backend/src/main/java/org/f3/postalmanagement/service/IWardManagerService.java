@@ -1,7 +1,7 @@
 package org.f3.postalmanagement.service;
 
-import org.f3.postalmanagement.dto.request.employee.CreateWardManagerEmployeeRequest;
-import org.f3.postalmanagement.dto.request.employee.CreateWardStaffRequest;
+import org.f3.postalmanagement.dto.request.employee.ward.CreateWardManagerEmployeeRequest;
+import org.f3.postalmanagement.dto.request.employee.ward.CreateWardStaffRequest;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 

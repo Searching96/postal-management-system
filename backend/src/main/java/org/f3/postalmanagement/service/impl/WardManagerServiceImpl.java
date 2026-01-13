@@ -2,8 +2,8 @@ package org.f3.postalmanagement.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.f3.postalmanagement.dto.request.employee.CreateWardManagerEmployeeRequest;
-import org.f3.postalmanagement.dto.request.employee.CreateWardStaffRequest;
+import org.f3.postalmanagement.dto.request.employee.ward.CreateWardManagerEmployeeRequest;
+import org.f3.postalmanagement.dto.request.employee.ward.CreateWardStaffRequest;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.entity.actor.Employee;
@@ -31,12 +31,6 @@ public class WardManagerServiceImpl implements IWardManagerService {
     @Transactional
     public EmployeeResponse createStaff(CreateWardStaffRequest request, Account currentAccount) {
         Role currentRole = currentAccount.getRole();
-
-        // Validate that only WARD_MANAGERs can use this method
-        if (currentRole != Role.WH_WARD_MANAGER && currentRole != Role.PO_WARD_MANAGER) {
-            log.error("Only WARD_MANAGERs can create staff. Current role: {}", currentRole);
-            throw new AccessDeniedException("Only Ward Managers can create staff");
-        }
 
         // Determine target role based on current role
         Role targetRole = determineStaffRole(currentRole);

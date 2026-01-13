@@ -1,8 +1,8 @@
 package org.f3.postalmanagement.service;
 
-import org.f3.postalmanagement.dto.request.employee.CreateProvinceAdminRequest;
-import org.f3.postalmanagement.dto.request.employee.CreateStaffRequest;
-import org.f3.postalmanagement.dto.request.employee.CreateWardManagerRequest;
+import org.f3.postalmanagement.dto.request.employee.province.CreateProvinceAdminRequest;
+import org.f3.postalmanagement.dto.request.employee.province.CreateStaffRequest;
+import org.f3.postalmanagement.dto.request.employee.province.CreateWardManagerRequest;
 import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
 import org.f3.postalmanagement.dto.request.office.CreateWardOfficeRequest;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;

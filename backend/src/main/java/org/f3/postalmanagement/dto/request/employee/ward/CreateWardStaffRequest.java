@@ -1,4 +1,4 @@
-package org.f3.postalmanagement.dto.request.employee;
+package org.f3.postalmanagement.dto.request.employee.ward;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;

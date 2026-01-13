@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.f3.postalmanagement.dto.request.employee.RegisterHubAdminRequest;
+import org.f3.postalmanagement.dto.request.employee.hub.RegisterHubAdminRequest;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
 import org.f3.postalmanagement.entity.ApiResponse;
 import org.f3.postalmanagement.entity.actor.CustomUserDetails;

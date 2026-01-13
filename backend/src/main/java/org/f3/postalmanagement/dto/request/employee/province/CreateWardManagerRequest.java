@@ -1,4 +1,4 @@
-package org.f3.postalmanagement.dto.request.employee;
+package org.f3.postalmanagement.dto.request.employee.province;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -10,8 +10,8 @@ import lombok.Data;
 import java.util.UUID;
 
 @Data
-@Schema(description = "Request to create a new Staff by Province Admin")
-public class CreateStaffRequest {
+@Schema(description = "Request to create a new Ward Manager by Province Admin")
+public class CreateWardManagerRequest {
 
     @NotBlank(message = "Full name is required")
     @Schema(
@@ -45,15 +45,15 @@ public class CreateStaffRequest {
     @Email(message = "Invalid email format")
     @Schema(
             description = "Email address",
-            example = "staff@f3postal.com",
+            example = "manager@f3postal.com",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String email;
 
     @NotNull(message = "Office ID is required")
     @Schema(
-            description = "ID of the office where the new staff will work. " +
-                    "Can be PROVINCE_POST/WARD_POST for PO_STAFF or PROVINCE_WAREHOUSE/WARD_WAREHOUSE for WH_STAFF.",
+            description = "ID of the ward office where the new manager will work. " +
+                    "Must be a WARD_POST for PO_WARD_MANAGER or WARD_WAREHOUSE for WH_WARD_MANAGER.",
             example = "550e8400-e29b-41d4-a716-446655440000",
             requiredMode = Schema.RequiredMode.REQUIRED
     )

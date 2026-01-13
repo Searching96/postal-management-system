@@ -1,8 +1,7 @@
-package org.f3.postalmanagement.dto.request.employee;
+package org.f3.postalmanagement.dto.request.employee.hub;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
@@ -10,18 +9,18 @@ import lombok.Data;
 import java.util.UUID;
 
 @Data
-@Schema(description = "Request to create a new Ward Manager by Province Admin")
-public class CreateWardManagerRequest {
+@Schema(description = "Request to register a new HUB admin")
+public class RegisterHubAdminRequest {
 
-    @NotBlank(message = "Full name is required")
+    @NotNull(message = "Full name is required")
     @Schema(
-            description = "Full name of the employee",
+            description = "Full name of the HUB admin",
             example = "Nguyen Van A",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String fullName;
 
-    @NotBlank(message = "Phone number is required")
+    @NotNull(message = "Phone number is required")
     @Pattern(
             regexp = "^[0-9]{10}$",
             message = "Invalid phone number format (must be 10 digits)"
@@ -33,7 +32,7 @@ public class CreateWardManagerRequest {
     )
     private String phoneNumber;
 
-    @NotBlank(message = "Password is required")
+    @NotNull(message = "Password is required")
     @Schema(
             description = "Password (at least 6 characters)",
             example = "123456",
@@ -41,19 +40,18 @@ public class CreateWardManagerRequest {
     )
     private String password;
 
-    @NotBlank(message = "Email is required")
+    @NotNull(message = "Email is required")
     @Email(message = "Invalid email format")
     @Schema(
             description = "Email address",
-            example = "manager@f3postal.com",
+            example = "hubadmin@f3postal.com",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String email;
 
     @NotNull(message = "Office ID is required")
     @Schema(
-            description = "ID of the ward office where the new manager will work. " +
-                    "Must be a WARD_POST for PO_WARD_MANAGER or WARD_WAREHOUSE for WH_WARD_MANAGER.",
+            description = "ID of the HUB office where the admin will work",
             example = "550e8400-e29b-41d4-a716-446655440000",
             requiredMode = Schema.RequiredMode.REQUIRED
     )

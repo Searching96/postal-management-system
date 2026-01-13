@@ -1,6 +1,6 @@
 package org.f3.postalmanagement.service;
 
-import org.f3.postalmanagement.dto.request.employee.RegisterHubAdminRequest;
+import org.f3.postalmanagement.dto.request.employee.hub.RegisterHubAdminRequest;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 
