@@ -5,7 +5,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.f3.postalmanagement.dto.request.employee.CreateProvinceAdminRequest;
 import org.f3.postalmanagement.dto.request.employee.CreateProvinceEmployeeRequest;
+import org.f3.postalmanagement.dto.request.employee.CreateStaffRequest;
+import org.f3.postalmanagement.dto.request.employee.CreateWardManagerRequest;
 import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
 import org.f3.postalmanagement.dto.request.office.CreateWardOfficeRequest;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
@@ -31,11 +34,88 @@ public class ProvinceAdminController {
 
     private final IProvinceAdminService provinceAdminService;
 
+    @PostMapping("/employees/province-admin")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Create a new Province Admin",
+            description = "Create a new Province Admin with the same role as the current user. " +
+                    "PO_PROVINCE_ADMIN creates PO_PROVINCE_ADMIN (for PROVINCE_POST). " +
+                    "WH_PROVINCE_ADMIN creates WH_PROVINCE_ADMIN (for PROVINCE_WAREHOUSE). " +
+                    "The office must be within the admin's province."
+    )
+    public ResponseEntity<ApiResponse<EmployeeResponse>> createProvinceAdmin(
+            @Valid @RequestBody CreateProvinceAdminRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        EmployeeResponse response = provinceAdminService.createProvinceAdmin(request, userDetails.getAccount());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.<EmployeeResponse>builder()
+                        .success(true)
+                        .message("Province Admin created successfully")
+                        .data(response)
+                        .build()
+        );
+    }
+
+    @PostMapping("/employees/ward-manager")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Create a new Ward Manager",
+            description = "Create a new Ward Manager. " +
+                    "PO_PROVINCE_ADMIN creates PO_WARD_MANAGER (for WARD_POST). " +
+                    "WH_PROVINCE_ADMIN creates WH_WARD_MANAGER (for WARD_WAREHOUSE). " +
+                    "The office must be within the admin's province."
+    )
+    public ResponseEntity<ApiResponse<EmployeeResponse>> createWardManager(
+            @Valid @RequestBody CreateWardManagerRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        EmployeeResponse response = provinceAdminService.createWardManager(request, userDetails.getAccount());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.<EmployeeResponse>builder()
+                        .success(true)
+                        .message("Ward Manager created successfully")
+                        .data(response)
+                        .build()
+        );
+    }
+
+    @PostMapping("/employees/staff")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Create a new Staff",
+            description = "Create a new Staff. " +
+                    "PO_PROVINCE_ADMIN creates PO_STAFF (for PROVINCE_POST or WARD_POST). " +
+                    "WH_PROVINCE_ADMIN creates WH_STAFF (for PROVINCE_WAREHOUSE or WARD_WAREHOUSE). " +
+                    "The office must be within the admin's province."
+    )
+    public ResponseEntity<ApiResponse<EmployeeResponse>> createStaff(
+            @Valid @RequestBody CreateStaffRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        EmployeeResponse response = provinceAdminService.createStaff(request, userDetails.getAccount());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.<EmployeeResponse>builder()
+                        .success(true)
+                        .message("Staff created successfully")
+                        .data(response)
+                        .build()
+        );
+    }
+
+    /**
+     * @deprecated Use /employees/province-admin, /employees/ward-manager, or /employees/staff instead.
+     */
+    @Deprecated
     @PostMapping("/employees")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
     @Operation(
-            summary = "Create a new employee",
-            description = "Create a new employee with specific role. " +
+            summary = "[Deprecated] Create a new employee",
+            description = "**Deprecated**: Use /employees/province-admin, /employees/ward-manager, or /employees/staff instead. " +
+                    "Create a new employee with specific role. " +
                     "PO_PROVINCE_ADMIN can create: PO_PROVINCE_ADMIN (for PROVINCE_POST) or PO_WARD_MANAGER (for WARD_POST). " +
                     "WH_PROVINCE_ADMIN can create: WH_PROVINCE_ADMIN (for PROVINCE_WAREHOUSE) or WH_WARD_MANAGER (for WARD_WAREHOUSE). " +
                     "The office must be within the admin's province."
