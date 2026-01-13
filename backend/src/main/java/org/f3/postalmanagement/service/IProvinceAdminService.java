@@ -1,7 +1,9 @@
 package org.f3.postalmanagement.service;
 
+import org.f3.postalmanagement.dto.request.employee.CreateProvinceEmployeeRequest;
 import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
 import org.f3.postalmanagement.dto.request.office.CreateWardOfficeRequest;
+import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
 import org.f3.postalmanagement.dto.response.office.WardOfficePairResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 
@@ -9,6 +11,23 @@ import java.util.List;
 import java.util.UUID;
 
 public interface IProvinceAdminService {
+
+    /**
+     * Create a new employee by Province Admin.
+     * 
+     * PO_PROVINCE_ADMIN can create:
+     * - PO_PROVINCE_ADMIN (to manage PROVINCE_POST)
+     * - PO_WARD_MANAGER (to manage WARD_POST)
+     * 
+     * WH_PROVINCE_ADMIN can create:
+     * - WH_PROVINCE_ADMIN (to manage PROVINCE_WAREHOUSE)
+     * - WH_WARD_MANAGER (to manage WARD_WAREHOUSE)
+     *
+     * @param request the employee creation request
+     * @param currentAccount the account of the user making the request
+     * @return the created employee response
+     */
+    EmployeeResponse createEmployee(CreateProvinceEmployeeRequest request, Account currentAccount);
 
     /**
      * Create a new ward office pair (WARD_WAREHOUSE + WARD_POST together).

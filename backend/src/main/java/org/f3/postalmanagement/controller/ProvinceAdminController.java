@@ -5,8 +5,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.f3.postalmanagement.dto.request.employee.CreateProvinceEmployeeRequest;
 import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
 import org.f3.postalmanagement.dto.request.office.CreateWardOfficeRequest;
+import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
 import org.f3.postalmanagement.dto.response.office.WardOfficePairResponse;
 import org.f3.postalmanagement.entity.ApiResponse;
 import org.f3.postalmanagement.entity.actor.CustomUserDetails;
@@ -23,11 +25,35 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/province-admin")
 @RequiredArgsConstructor
-@Tag(name = "Province Admin Management", description = "API for PO_PROVINCE_ADMIN to manage ward office pairs (WARD_WAREHOUSE + WARD_POST). WH_PROVINCE_ADMIN cannot create ward offices.")
+@Tag(name = "Province Admin Management", description = "API for Province Admins (PO_PROVINCE_ADMIN, WH_PROVINCE_ADMIN) to manage employees and ward office pairs.")
 @SecurityRequirement(name = "bearerAuth")
 public class ProvinceAdminController {
 
     private final IProvinceAdminService provinceAdminService;
+
+    @PostMapping("/employees")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Create a new employee",
+            description = "Create a new employee with specific role. " +
+                    "PO_PROVINCE_ADMIN can create: PO_PROVINCE_ADMIN (for PROVINCE_POST) or PO_WARD_MANAGER (for WARD_POST). " +
+                    "WH_PROVINCE_ADMIN can create: WH_PROVINCE_ADMIN (for PROVINCE_WAREHOUSE) or WH_WARD_MANAGER (for WARD_WAREHOUSE). " +
+                    "The office must be within the admin's province."
+    )
+    public ResponseEntity<ApiResponse<EmployeeResponse>> createEmployee(
+            @Valid @RequestBody CreateProvinceEmployeeRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        EmployeeResponse response = provinceAdminService.createEmployee(request, userDetails.getAccount());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.<EmployeeResponse>builder()
+                        .success(true)
+                        .message("Employee created successfully")
+                        .data(response)
+                        .build()
+        );
+    }
 
     @PostMapping("/ward-offices")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'PO_PROVINCE_ADMIN')")
