@@ -1,73 +1,47 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import NotFound from "./pages/NotFound";
-import CustomerIndex from "./pages/customer/Index";
-import CustomerPickup from "./pages/customer/Pickup";
-import CustomerComplaint from "./pages/customer/Complaint";
-import CustomerOrders from "./pages/customer/Orders";
-import CustomerTracking from "./pages/customer/Tracking";
-import CustomerProfile from "./pages/customer/Profile";
-import DriverIndex from "./pages/delivery-driver/Index";
-import { Scanner } from "./pages/delivery-driver/Scanner";
-import { DeliveriesMap } from "./pages/delivery-driver/DeliveriesMap";
-import PostalWorkerIndex from "./pages/postal-worker/Index";
-import PostalWorkerContainer from "./pages/postal-worker/Container";
-import PackageList from "./pages/postal-worker/PackageList";
-import PostalWorkerPackage from "./pages/postal-worker/Package";
-import PackageIngest from "./pages/postal-worker/PackageIngest";
-import ComplaintResolver from "./pages/postal-worker/ComplaintResolver";
-import TicketManagement from "./pages/postal-worker/TicketManagement";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./lib/AuthContext";
+import { Layout, ProtectedRoute, PublicRoute } from "./components";
+import {
+  LoginPage,
+  RegisterPage,
+  DashboardPage,
+  ProvincesPage,
+  SystemAdminPage,
+  HubAdminPage,
+  ProvinceAdminPage,
+  WardManagerPage,
+} from "./pages";
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
+function App() {
+  return (
+    <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />} />
-          {/* role home routes */}
-          <Route path="/customer/home" element={<CustomerIndex />} />
-          <Route path="/delivery-driver/home" element={<DriverIndex />} />
-          <Route path="/postal-worker/home" element={<PostalWorkerIndex />} />
+          {/* Public routes */}
+          <Route element={<PublicRoute />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
 
-          {/* keep legacy/other routes */}
-          <Route path="/customer/orders" element={<CustomerOrders />} />
-          <Route path="/customer/tracking" element={<CustomerTracking />} />
-          <Route path="/customer/pickup" element={<CustomerPickup />} />
-          <Route path="/customer/complaint" element={<CustomerComplaint />} />
-          <Route path="/customer/profile" element={<CustomerProfile />} />
-          <Route path="/delivery-driver/scanner" element={<Scanner />} />
-          <Route path="/delivery-driver/map" element={<DeliveriesMap />} />
+          {/* Protected routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<Layout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/provinces" element={<ProvincesPage />} />
+              <Route path="/admin/system" element={<SystemAdminPage />} />
+              <Route path="/admin/hub" element={<HubAdminPage />} />
+              <Route path="/admin/province" element={<ProvinceAdminPage />} />
+              <Route path="/admin/ward" element={<WardManagerPage />} />
+            </Route>
+          </Route>
 
-          <Route
-            path="/postal-worker/package"
-            element={<PostalWorkerPackage />}
-          />
-          <Route
-            path="/postal-worker/containers"
-            element={<PostalWorkerContainer />}
-          />
-          <Route path="/postal-worker/packages" element={<PackageList />} />
-          <Route path="/postal-worker/ingest" element={<PackageIngest />} />
-          <Route
-            path="/postal-worker/complaints"
-            element={<ComplaintResolver />}
-          />
-          <Route path="/postal-worker/tickets" element={<TicketManagement />} />
-
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
+          {/* Default redirect */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    </AuthProvider>
+  );
+}
 
 export default App;
