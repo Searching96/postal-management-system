@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { administrativeService } from "../services/administrativeService";
-import type { ProvinceResponse, WardResponse } from "../models";
-import { MapPin, Search, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { administrativeService } from "../../services/administrativeService";
+import type { ProvinceResponse, WardResponse } from "../../models";
+import { MapPin, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { PageHeader, Card, LoadingSpinner, Alert } from "../../components/ui";
 
 export function ProvincesPage() {
   const [provinces, setProvinces] = useState<ProvinceResponse[]>([]);
@@ -65,27 +66,19 @@ export function ProvincesPage() {
   );
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-      </div>
-    );
+    return <LoadingSpinner fullScreen />;
   }
 
   if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600">
-        {error}
-      </div>
-    );
+    return <Alert type="error">{error}</Alert>;
   }
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Provinces & Wards</h1>
-        <p className="mt-1 text-gray-600">Browse administrative units</p>
-      </div>
+      <PageHeader
+        title="Provinces & Wards"
+        description="Browse administrative units"
+      />
 
       {/* Search */}
       <div className="mb-6">
@@ -102,7 +95,7 @@ export function ProvincesPage() {
       </div>
 
       {/* Provinces List */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <Card className="p-0 overflow-hidden">
         <div className="divide-y divide-gray-200">
           {filteredProvinces.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
@@ -138,7 +131,7 @@ export function ProvincesPage() {
                   <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
                     {isLoadingWards ? (
                       <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-5 w-5 animate-spin text-primary-600" />
+                        <LoadingSpinner size="sm" />
                         <span className="ml-2 text-gray-500">
                           Loading wards...
                         </span>
@@ -148,11 +141,11 @@ export function ProvincesPage() {
                         No wards found
                       </p>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                         {wards.map((ward) => (
                           <div
                             key={ward.code}
-                            className="bg-white p-3 rounded-lg border border-gray-200"
+                            className="px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm"
                           >
                             <p className="font-medium text-gray-900">
                               {ward.name}
@@ -168,12 +161,7 @@ export function ProvincesPage() {
             ))
           )}
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="mt-6 text-sm text-gray-500">
-        Showing {filteredProvinces.length} of {provinces.length} provinces
-      </div>
+      </Card>
     </div>
   );
 }

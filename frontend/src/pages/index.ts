@@ -1,8 +1,11 @@
-export { LoginPage } from "./LoginPage";
-export { RegisterPage } from "./RegisterPage";
-export { DashboardPage } from "./DashboardPage";
-export { ProvincesPage } from "./ProvincesPage";
-export { SystemAdminPage } from "./SystemAdminPage";
-export { HubAdminPage } from "./HubAdminPage";
-export { ProvinceAdminPage } from "./ProvinceAdminPage";
-export { WardManagerPage } from "./WardManagerPage";
+// Auth pages
+export { LoginPage, RegisterPage } from "./auth";
+
+// Common pages
+export { DashboardPage, ProvincesPage } from "./common";
+
+// Role-specific pages
+export { SystemAdminPage } from "./system_admin";
+export { HubAdminPage } from "./hub_admin";
+export { ProvinceAdminPage } from "./province_admin";
+export { WardManagerPage } from "./ward_manager";
