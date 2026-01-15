@@ -2,12 +2,19 @@ package org.f3.postalmanagement.service;
 
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.administrative.ProvinceResponse;
+import org.f3.postalmanagement.dto.response.administrative.RegionResponse;
 import org.f3.postalmanagement.dto.response.administrative.WardResponse;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
 public interface IAdministrativeService {
+
+    /**
+     * Get all administrative regions
+     * @return list of all regions
+     */
+    List<RegionResponse> getAllRegions();
 
     /**
      * Get all provinces in a specific region

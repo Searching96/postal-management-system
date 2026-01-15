@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.administrative.ProvinceResponse;
+import org.f3.postalmanagement.dto.response.administrative.RegionResponse;
 import org.f3.postalmanagement.dto.response.administrative.WardResponse;
 import org.f3.postalmanagement.entity.ApiResponse;
 import org.f3.postalmanagement.service.IAdministrativeService;
@@ -23,6 +24,23 @@ import java.util.List;
 public class AdministrativeController {
 
     private final IAdministrativeService administrativeService;
+
+    @GetMapping("/regions")
+    @Operation(
+            summary = "Get all regions",
+            description = "Get all administrative regions in the system. No authentication required."
+    )
+    public ResponseEntity<ApiResponse<List<RegionResponse>>> getAllRegions() {
+        List<RegionResponse> regions = administrativeService.getAllRegions();
+        
+        return ResponseEntity.ok(
+                ApiResponse.<List<RegionResponse>>builder()
+                        .success(true)
+                        .message("All regions fetched successfully")
+                        .data(regions)
+                        .build()
+        );
+    }
 
     @GetMapping("/regions/{regionId}/provinces")
     @Operation(

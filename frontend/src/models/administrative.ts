@@ -1,3 +1,8 @@
+export interface RegionResponse {
+  id: number;
+  name: string;
+}
+
 export interface ProvinceResponse {
   code: string;
   name: string;

@@ -4,7 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.administrative.ProvinceResponse;
+import org.f3.postalmanagement.dto.response.administrative.RegionResponse;
 import org.f3.postalmanagement.dto.response.administrative.WardResponse;
+import org.f3.postalmanagement.entity.administrative.AdministrativeRegion;
 import org.f3.postalmanagement.entity.administrative.Province;
 import org.f3.postalmanagement.entity.administrative.Ward;
 import org.f3.postalmanagement.repository.AdRegionRepository;
@@ -30,6 +32,18 @@ public class AdministrativeServiceImpl implements IAdministrativeService {
     private final ProvinceRepository provinceRepository;
     private final WardRepository wardRepository;
     private final AdRegionRepository adRegionRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RegionResponse> getAllRegions() {
+        List<AdministrativeRegion> regions = adRegionRepository.findAll();
+        log.info("Fetched all {} administrative regions", regions.size());
+        
+        return regions.stream()
+                .sorted((r1, r2) -> r1.getId().compareTo(r2.getId()))
+                .map(this::mapToRegionResponse)
+                .collect(Collectors.toList());
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -140,6 +154,13 @@ public class AdministrativeServiceImpl implements IAdministrativeService {
         log.info("Fetched page {} of wards for province code: {} (total: {})", pageable.getPageNumber(), provinceCode, allWards.size());
         
         return mapToPageResponse(page);
+    }
+
+    private RegionResponse mapToRegionResponse(AdministrativeRegion region) {
+        return RegionResponse.builder()
+                .id(region.getId())
+                .name(region.getName())
+                .build();
     }
 
     private ProvinceResponse mapToProvinceResponse(Province province) {

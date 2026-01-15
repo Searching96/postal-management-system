@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
 import { administrativeService } from "../../services/administrativeService";
-import type { ProvinceResponse, WardResponse } from "../../models";
-import { MapPin, Search, ChevronDown, ChevronUp } from "lucide-react";
+import type {
+  RegionResponse,
+  ProvinceResponse,
+  WardResponse,
+} from "../../models";
+import { MapPin, Search, ChevronDown, ChevronUp, Filter } from "lucide-react";
 import { PageHeader, Card, LoadingSpinner, Alert } from "../../components/ui";
 
 export function ProvincesPage() {
+  const [regions, setRegions] = useState<RegionResponse[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<number | null>(null);
   const [provinces, setProvinces] = useState<ProvinceResponse[]>([]);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [wards, setWards] = useState<WardResponse[]>([]);
@@ -14,8 +20,20 @@ export function ProvincesPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    fetchRegions();
     fetchProvinces();
   }, []);
+
+  const fetchRegions = async () => {
+    try {
+      const response = await administrativeService.getAllRegions();
+      if (response.success) {
+        setRegions(response.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch regions:", err);
+    }
+  };
 
   const fetchProvinces = async () => {
     try {
@@ -31,6 +49,30 @@ export function ProvincesPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchProvincesByRegion = async (regionId: number) => {
+    try {
+      setIsLoading(true);
+      setSelectedRegion(regionId);
+      const response = await administrativeService.getProvincesByRegion(
+        regionId
+      );
+      if (response.success) {
+        setProvinces(response.data);
+      } else {
+        setError(response.message);
+      }
+    } catch (err) {
+      setError("Failed to fetch provinces");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetRegionFilter = async () => {
+    setSelectedRegion(null);
+    await fetchProvinces();
   };
 
   const fetchWards = async (provinceCode: string) => {
@@ -79,6 +121,41 @@ export function ProvincesPage() {
         title="Provinces & Wards"
         description="Browse administrative units"
       />
+
+      {/* Region Filter */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Filter className="h-4 w-4 text-gray-500" />
+          <span className="text-sm font-medium text-gray-700">
+            Filter by Region:
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleResetRegionFilter}
+            className={`px-4 py-2 rounded-lg border transition-colors ${
+              selectedRegion === null
+                ? "bg-primary-500 text-white border-primary-500"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            All Regions
+          </button>
+          {regions.map((region) => (
+            <button
+              key={region.id}
+              onClick={() => fetchProvincesByRegion(region.id)}
+              className={`px-4 py-2 rounded-lg border transition-colors ${
+                selectedRegion === region.id
+                  ? "bg-primary-500 text-white border-primary-500"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              {region.name}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Search */}
       <div className="mb-6">

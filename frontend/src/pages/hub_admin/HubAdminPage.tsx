@@ -1,7 +1,8 @@
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { hubAdminService } from "../../services/hubAdminService";
+import { administrativeService } from "../../services/administrativeService";
 import { User, Mail, Lock, Building2 } from "lucide-react";
-import type { EmployeeResponse } from "../../models";
+import type { EmployeeResponse, RegionResponse } from "../../models";
 import {
   PageHeader,
   Card,
@@ -11,6 +12,7 @@ import {
 } from "../../components/ui";
 
 export function HubAdminPage() {
+  const [regions, setRegions] = useState<RegionResponse[]>([]);
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -21,6 +23,24 @@ export function HubAdminPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<EmployeeResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    fetchRegions();
+  }, []);
+
+  const fetchRegions = async () => {
+    try {
+      const response = await administrativeService.getAllRegions();
+      if (response.success) {
+        setRegions(response.data);
+        if (response.data.length > 0) {
+          setFormData((prev) => ({ ...prev, regionId: response.data[0].id }));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch regions:", err);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -141,9 +161,9 @@ export function HubAdminPage() {
                     onChange={handleChange}
                     className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((id) => (
-                      <option key={id} value={id}>
-                        Region {id}
+                    {regions.map((region) => (
+                      <option key={region.id} value={region.id}>
+                        {region.name}
                       </option>
                     ))}
                   </select>

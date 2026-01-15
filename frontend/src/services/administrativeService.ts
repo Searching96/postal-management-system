@@ -2,11 +2,19 @@ import api from "../lib/axios";
 import type {
   ApiResponse,
   PageResponse,
+  RegionResponse,
   ProvinceResponse,
   WardResponse,
 } from "../models";
 
 export const administrativeService = {
+  getAllRegions: async (): Promise<ApiResponse<RegionResponse[]>> => {
+    const response = await api.get<ApiResponse<RegionResponse[]>>(
+      "/administrative/regions"
+    );
+    return response.data;
+  },
+
   getProvincesByRegion: async (
     regionId: number
   ): Promise<ApiResponse<ProvinceResponse[]>> => {
