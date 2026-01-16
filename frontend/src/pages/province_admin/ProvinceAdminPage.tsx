@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { provinceAdminService } from "../../services/provinceAdminService";
 import { administrativeService } from "../../services/administrativeService";
 import { userService } from "../../services/userService";
@@ -29,11 +29,14 @@ import {
   Card,
   LoadingSpinner,
   Alert,
-  Modal,
+  FormSelect,
+  ConfirmationModal,
+  CardSkeleton,
+  ListSkeleton,
   Button,
+  Modal,
   FormInput,
   AddressSelector,
-  FormSelect,
 } from "../../components/ui";
 import { getRoleLabel } from "../../lib/utils";
 
@@ -47,6 +50,8 @@ export function ProvinceAdminPage() {
   const [provinces, setProvinces] = useState<ProvinceResponse[]>([]);
   const [currentAdminProvince, setCurrentAdminProvince] = useState<{ code: string; name: string } | null>(null);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Modal States
   const [isOfficeModalOpen, setIsOfficeModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -59,8 +64,16 @@ export function ProvinceAdminPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [modalSearchTerm, setModalSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "assigned" | "unassigned">("all");
   const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [statusFilter, setStatusFilter] = useState<"all" | "assigned" | "unassigned">("all");
+
+  // Confirmation State
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    message: string;
+    action: () => Promise<void>;
+  }>({ title: "", message: "", action: async () => { } });
 
   useEffect(() => {
     const updateItemsPerPage = () => {
@@ -178,20 +191,28 @@ export function ProvinceAdminPage() {
   };
 
   const fetchData = async () => {
+    // Abort previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsLoading(true);
     setError("");
     try {
       if (activeTab === "offices") {
-        const response = await provinceAdminService.getWardOfficePairs();
-        if (response.success) setOffices(response.data);
+        const response = await provinceAdminService.getWardOfficePairs(controller.signal);
+        if (response.success && abortControllerRef.current === controller) setOffices(response.data);
       } else if (activeTab === "wards") {
-        const response = await provinceAdminService.getWardAssignmentStatus();
-        if (response.success) setWardStatus(response.data);
+        const response = await provinceAdminService.getWardAssignmentStatus(undefined, controller.signal);
+        if (response.success && abortControllerRef.current === controller) setWardStatus(response.data);
       }
-    } catch (err) {
-      setError("Không thể tải dữ liệu");
+    } catch (err: any) {
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return;
+      if (abortControllerRef.current === controller) setError("Không thể tải dữ liệu");
     } finally {
-      setIsLoading(false);
+      if (abortControllerRef.current === controller) setIsLoading(false);
     }
   };
 
@@ -282,29 +303,37 @@ export function ProvinceAdminPage() {
   // --- ASSIGN WARDS ---
   const [selectedWards, setSelectedWards] = useState<string[]>([]);
 
-  const handleAssignWards = async (e: React.FormEvent) => {
+  const handleAssignWards = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedOfficePair || selectedWards.length === 0) return;
+    if (!selectedOfficePair) return;
 
-    setIsLoading(true);
-    try {
-      const response = await provinceAdminService.assignWardsToOfficePair({
-        officePairId: selectedOfficePair,
-        wardCodes: selectedWards
-      });
-      if (response.success) {
-        setSuccess("Gán phường/xã thành công");
-        setIsAssignModalOpen(false);
-        setSelectedWards([]);
-        fetchData();
-      } else {
-        setError(response.message);
+    setConfirmConfig({
+      title: "Xác nhận phân bổ",
+      message: `Bạn có chắc chắn muốn cập nhật phân bổ cho ${selectedWards.length} phường/xã vào cặp bưu cục này không?`,
+      action: async () => {
+        setIsLoading(true);
+        try {
+          const response = await provinceAdminService.assignWardsToOfficePair({
+            officePairId: selectedOfficePair,
+            wardCodes: selectedWards
+          });
+          if (response.success) {
+            setSuccess("Gán phường/xã thành công");
+            setIsAssignModalOpen(false);
+            setSelectedWards([]);
+            fetchData();
+          } else {
+            setError(response.message);
+          }
+        } catch (err) {
+          setError("Lỗi khi gán phường/xã");
+        } finally {
+          setIsLoading(false);
+          setIsConfirmOpen(false);
+        }
       }
-    } catch (err) {
-      setError("Lỗi khi gán phường/xã");
-    } finally {
-      setIsLoading(false);
-    }
+    });
+    setIsConfirmOpen(true);
   };
 
   // --- CREATE EMPLOYEE ---
@@ -385,19 +414,24 @@ export function ProvinceAdminPage() {
       {error && <Alert type="error" onClose={() => setError("")} className="animate-in fade-in slide-in-from-top-2">{error}</Alert>}
       {success && <Alert type="success" onClose={() => setSuccess("")} className="animate-in fade-in slide-in-from-top-2">{success}</Alert>}
 
-      {isLoading && !isOfficeModalOpen && !isAssignModalOpen && !isEmployeeModalOpen ? (
-        <LoadingSpinner fullScreen />
-      ) : (
-        <div className="animate-in fade-in duration-500">
-          {/* --- WARD OFFICES TAB --- */}
-          {activeTab === "offices" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">Danh sách Cặp Bưu Cục</h2>
-                <Button onClick={() => setIsOfficeModalOpen(true)} className="gap-2">
-                  <Plus className="h-4 w-4" /> Tạo Cặp Mới
-                </Button>
-              </div>
+      {/* --- WARD OFFICES TAB --- */}
+      {activeTab === "offices" && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-gray-900">Danh sách Cặp Bưu Cục</h2>
+            <Button onClick={() => setIsOfficeModalOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" /> Tạo Cặp Mới
+            </Button>
+          </div>
+
+          {isLoading && !isOfficeModalOpen && !isAssignModalOpen ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
+          ) : (
+            <>
 
               {offices.length === 0 ? (
                 <Card className="flex flex-col items-center justify-center p-12 text-gray-500">
@@ -524,170 +558,176 @@ export function ProvinceAdminPage() {
                   </Button>
                 </div>
               )}
-            </div>
+            </>
           )}
+        </div>
+      )}
 
-          {activeTab === "wards" && (
-            <div className="space-y-4">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h2 className="text-xl font-bold text-gray-900">Tình trạng Phân bổ</h2>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-                  <div className="relative flex-1 sm:w-64">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Tìm theo tên hoặc mã..."
-                      className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium"
-                      value={searchTerm}
-                      onChange={e => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
-                    <button
-                      onClick={() => setStatusFilter(statusFilter === "assigned" ? "all" : "assigned")}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${statusFilter === "assigned"
-                        ? "bg-green-50 text-green-700 ring-1 ring-green-200"
-                        : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-                        }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${statusFilter === "assigned" ? "bg-green-500 animate-pulse" : "bg-green-500/40"}`}></span>
-                      Đã gán
-                    </button>
-                    <div className="w-px h-4 bg-gray-100 mx-0.5"></div>
-                    <button
-                      onClick={() => setStatusFilter(statusFilter === "unassigned" ? "all" : "unassigned")}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${statusFilter === "unassigned"
-                        ? "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200"
-                        : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-                        }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${statusFilter === "unassigned" ? "bg-yellow-500 animate-pulse" : "bg-yellow-500/40"}`}></span>
-                      Chưa gán
-                    </button>
-                  </div>
-                </div>
+      {activeTab === "wards" && (
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <h2 className="text-xl font-bold text-gray-900">Tình trạng Phân bổ</h2>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm theo tên hoặc mã..."
+                  className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium"
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                />
               </div>
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
+                <button
+                  onClick={() => setStatusFilter(statusFilter === "assigned" ? "all" : "assigned")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${statusFilter === "assigned"
+                    ? "bg-green-50 text-green-700 ring-1 ring-green-200"
+                    : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                    }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${statusFilter === "assigned" ? "bg-green-500 animate-pulse" : "bg-green-500/40"}`}></span>
+                  Đã gán
+                </button>
+                <div className="w-px h-4 bg-gray-100 mx-0.5"></div>
+                <button
+                  onClick={() => setStatusFilter(statusFilter === "unassigned" ? "all" : "unassigned")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${statusFilter === "unassigned"
+                    ? "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200"
+                    : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                    }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${statusFilter === "unassigned" ? "bg-yellow-500 animate-pulse" : "bg-yellow-500/40"}`}></span>
+                  Chưa gán
+                </button>
+              </div>
+            </div>
+          </div>
 
-              {paginatedWards.length === 0 ? (
-                <Card className="flex flex-col items-center justify-center p-12 text-gray-400 bg-gray-50/50 border-dashed">
-                  <Search className="w-12 h-12 mb-4 opacity-10" />
-                  <p className="font-medium">Không tìm thấy phường xã nào khớp với yêu cầu.</p>
-                </Card>
-              ) : (
-                <>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {paginatedWards.map((ward) => (
-                      <Card
-                        key={ward.wardCode}
-                        className={`group !p-4 border-l-[6px] transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${ward.isAssigned ? 'border-l-green-500 bg-green-50/20' : 'border-l-yellow-500 bg-yellow-50/20'
-                          }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <h3 className="text-xl font-extrabold text-gray-900 leading-tight group-hover:text-primary-700 transition-colors" title={ward.wardName}>
-                              {ward.wardName}
-                            </h3>
-                            <div className="mt-1">
-                              <span className="text-[12px] font-bold py-0.5 px-2 bg-gray-200/50 text-gray-600 rounded-md uppercase tracking-wider font-mono">
-                                {ward.wardCode}
-                              </span>
-                            </div>
-                          </div>
-                          <div className={`p-2.5 rounded-2xl transition-all duration-300 ${ward.isAssigned
-                            ? 'bg-green-100 text-green-600 group-hover:bg-green-600 group-hover:text-white'
-                            : 'bg-yellow-100 text-yellow-600 group-hover:bg-yellow-600 group-hover:text-white'
-                            }`}>
-                            {ward.isAssigned ? <CheckCircle2 className="w-6 h-6" /> : <XCircle className="w-6 h-6" />}
-                          </div>
+          {isLoading && !isOfficeModalOpen && !isAssignModalOpen ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
+          ) : paginatedWards.length === 0 ? (
+            <Card className="flex flex-col items-center justify-center p-12 text-gray-400 bg-gray-50/50 border-dashed">
+              <Search className="w-12 h-12 mb-4 opacity-10" />
+              <p className="font-medium">Không tìm thấy phường xã nào khớp với yêu cầu.</p>
+            </Card>
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {paginatedWards.map((ward) => (
+                  <Card
+                    key={ward.wardCode}
+                    className={`group !p-4 border-l-[6px] transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${ward.isAssigned ? 'border-l-green-500 bg-green-50/20' : 'border-l-yellow-500 bg-yellow-50/20'
+                      }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-xl font-extrabold text-gray-900 leading-tight group-hover:text-primary-700 transition-colors" title={ward.wardName}>
+                          {ward.wardName}
+                        </h3>
+                        <div className="mt-1">
+                          <span className="text-[12px] font-bold py-0.5 px-2 bg-gray-200/50 text-gray-600 rounded-md uppercase tracking-wider font-mono">
+                            {ward.wardCode}
+                          </span>
                         </div>
-
-                        <div className="mt-3 pt-3 border-t border-gray-200/40">
-                          <p className="text-[10px] text-gray-400 uppercase tracking-widest font-extrabold leading-none mb-2">Đơn vị quản lý</p>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-sm transition-colors ${ward.isAssigned ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-400'
-                              }`}>
-                              <Building2 className="w-5 h-5" />
-                            </div>
-                            <p className={`text-[16px] font-bold truncate flex-1 ${ward.isAssigned ? 'text-gray-900' : 'text-gray-400 italic'}`}>
-                              {offices.find(o => o.postOffice.officeId === ward.assignedPostOfficeId)?.postOffice.officeName || "Chưa phân bổ"}
-                            </p>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-
-                  {totalPages > 1 && (
-                    <div className="flex justify-center items-center gap-2 pt-8">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={currentPage === 1}
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        className="h-8 w-8 p-0"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1)
-                          .filter(page => {
-                            return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
-                          })
-                          .map((page, index, array) => (
-                            <div key={page} className="flex items-center gap-1">
-                              {index > 0 && array[index - 1] !== page - 1 && (
-                                <span className="text-gray-300 px-1">...</span>
-                              )}
-                              <Button
-                                variant={currentPage === page ? "primary" : "ghost"}
-                                size="sm"
-                                onClick={() => setCurrentPage(page)}
-                                className={`h-8 w-8 p-0 text-xs font-bold transition-all ${currentPage === page
-                                  ? "shadow-md shadow-primary-200"
-                                  : "text-gray-500 hover:text-primary-600 hover:bg-primary-50"
-                                  }`}
-                              >
-                                {page}
-                              </Button>
-                            </div>
-                          ))}
                       </div>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={currentPage === totalPages}
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        className="h-8 w-8 p-0"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
+                      <div className={`p-2.5 rounded-2xl transition-all duration-300 ${ward.isAssigned
+                        ? 'bg-green-100 text-green-600 group-hover:bg-green-600 group-hover:text-white'
+                        : 'bg-yellow-100 text-yellow-600 group-hover:bg-yellow-600 group-hover:text-white'
+                        }`}>
+                        {ward.isAssigned ? <CheckCircle2 className="w-6 h-6" /> : <XCircle className="w-6 h-6" />}
+                      </div>
                     </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
 
-          {/* --- EMPLOYEES TAB --- */}
-          {activeTab === "employees" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">Quản lý Nhân sự</h2>
-                <Button onClick={() => setIsEmployeeModalOpen(true)} className="gap-2">
-                  <UserIcon className="h-4 w-4" /> Thêm Nhân Viên
-                </Button>
+                    <div className="mt-3 pt-3 border-t border-gray-200/40">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-widest font-extrabold leading-none mb-2">Đơn vị quản lý</p>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-sm transition-colors ${ward.isAssigned ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-400'
+                          }`}>
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <p className={`text-[16px] font-bold truncate flex-1 ${ward.isAssigned ? 'text-gray-900' : 'text-gray-400 italic'}`}>
+                          {offices.find(o => o.postOffice.officeId === ward.assignedPostOfficeId)?.postOffice.officeName || "Chưa phân bổ"}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
               </div>
-              <Card className="p-8 text-center bg-gray-50/50">
-                <div className="max-w-md mx-auto">
-                  <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-600 font-medium">Bạn có thể tạo tài khoản cho Ward Manager, Staff hoặc Province Admin khác.</p>
-                  <p className="text-sm text-gray-400 mt-2">Tính năng liệt kê danh sách nhân viên đang được cập nhật.</p>
+
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 pt-8">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
+                      })
+                      .map((page, index, array) => (
+                        <div key={page} className="flex items-center gap-1">
+                          {index > 0 && array[index - 1] !== page - 1 && (
+                            <span className="text-gray-300 px-1">...</span>
+                          )}
+                          <Button
+                            variant={currentPage === page ? "primary" : "ghost"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            className={`h-8 w-8 p-0 text-xs font-bold transition-all ${currentPage === page
+                              ? "shadow-md shadow-primary-200"
+                              : "text-gray-500 hover:text-primary-600 hover:bg-primary-50"
+                              }`}
+                          >
+                            {page}
+                          </Button>
+                        </div>
+                      ))}
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-              </Card>
-            </div>
+              )}
+            </>
           )}
+        </div>
+      )}
+
+      {/* --- EMPLOYEES TAB --- */}
+      {activeTab === "employees" && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-gray-900">Quản lý Nhân sự</h2>
+            <Button onClick={() => setIsEmployeeModalOpen(true)} className="gap-2">
+              <UserIcon className="h-4 w-4" /> Thêm Nhân Viên
+            </Button>
+          </div>
+          <Card className="p-8 text-center bg-gray-50/50">
+            <div className="max-w-md mx-auto">
+              <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-600 font-medium">Bạn có thể tạo tài khoản cho Ward Manager, Staff hoặc Province Admin khác.</p>
+              <p className="text-sm text-gray-400 mt-2">Tính năng liệt kê danh sách nhân viên đang được cập nhật.</p>
+            </div>
+          </Card>
         </div>
       )}
 
@@ -1026,6 +1066,15 @@ export function ProvinceAdminPage() {
           </div>
         </form>
       </Modal>
-    </div>
+
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={confirmConfig.action}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        isLoading={isLoading}
+      />
+    </div >
   );
 }

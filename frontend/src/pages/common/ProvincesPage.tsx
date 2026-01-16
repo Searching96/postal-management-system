@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { administrativeService } from "../../services/administrativeService";
 import type {
   RegionResponse,
@@ -59,6 +59,10 @@ export function ProvincesPage() {
   const [provincePageSize, setProvincePageSize] = useState(10);
   const [wardPageSize, setWardPageSize] = useState(12);
 
+  // Abort Controllers
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const wardAbortControllerRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     const updateSizes = () => {
       const height = window.innerHeight;
@@ -94,6 +98,13 @@ export function ProvincesPage() {
 
   const loadProvincesData = useCallback(
     async (page: number, search: string) => {
+      // Abort previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setIsLoading(true);
       setError("");
 
@@ -109,10 +120,11 @@ export function ProvincesPage() {
             let response;
             if (selectedRegion !== null) {
               response = await administrativeService.getProvincesByRegion(
-                selectedRegion
+                selectedRegion,
+                controller.signal
               );
             } else {
-              response = await administrativeService.getAllProvinces();
+              response = await administrativeService.getAllProvinces(controller.signal);
             }
 
             if (response.success) {
@@ -120,7 +132,7 @@ export function ProvincesPage() {
               setAllProvincesCache(sourceData);
             } else {
               setError(response.message || "Không thể tải danh sách tỉnh thành");
-              setIsLoading(false);
+              if (abortControllerRef.current === controller) setIsLoading(false);
               return;
             }
           }
@@ -138,28 +150,39 @@ export function ProvincesPage() {
           const start = page * provincePageSize;
           const pagedData = filtered.slice(start, start + provincePageSize);
 
-          setProvinces(pagedData);
-          setProvinceTotalElements(filtered.length);
-          setProvinceTotalPages(Math.ceil(filtered.length / provincePageSize));
+          if (abortControllerRef.current === controller) {
+            setProvinces(pagedData);
+            setProvinceTotalElements(filtered.length);
+            setProvinceTotalPages(Math.ceil(filtered.length / provincePageSize));
+          }
         } else {
           // Server-side mode
           const response = await administrativeService.getAllProvincesPaginated(
             page,
-            provincePageSize
+            provincePageSize,
+            controller.signal
           );
           if (response.success) {
-            setProvinces(response.data.content);
-            setProvinceTotalPages(response.data.totalPages);
-            setProvinceTotalElements(response.data.totalElements);
+            if (abortControllerRef.current === controller) {
+              setProvinces(response.data.content);
+              setProvinceTotalPages(response.data.totalPages);
+              setProvinceTotalElements(response.data.totalElements);
+            }
           } else {
             setError(response.message || "Không thể tải danh sách tỉnh thành");
           }
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
+          console.log("Province request canceled");
+          return;
+        }
         setError("Tải dữ liệu tỉnh thành thất bại");
         console.error(err);
       } finally {
-        setIsLoading(false);
+        if (abortControllerRef.current === controller) {
+          setIsLoading(false);
+        }
       }
     },
     [allProvincesCache, selectedRegion, provincePageSize]
@@ -169,6 +192,13 @@ export function ProvincesPage() {
 
   const loadWardsData = useCallback(
     async (page: number, search: string, provinceCode: string) => {
+      // Abort previous request
+      if (wardAbortControllerRef.current) {
+        wardAbortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      wardAbortControllerRef.current = controller;
+
       setIsLoadingWards(true);
       try {
         const useClientSide = search.trim().length > 0;
@@ -179,14 +209,15 @@ export function ProvincesPage() {
 
           if (sourceData.length === 0) {
             const response = await administrativeService.getWardsByProvince(
-              provinceCode
+              provinceCode,
+              controller.signal
             );
             if (response.success) {
               sourceData = response.data;
               setAllWardsCache(sourceData);
             } else {
               console.error(response.message || "Không thể tải danh sách phường xã");
-              setIsLoadingWards(false);
+              if (wardAbortControllerRef.current === controller) setIsLoadingWards(false);
               return;
             }
           }
@@ -201,29 +232,40 @@ export function ProvincesPage() {
           const start = page * wardPageSize;
           const pagedData = filtered.slice(start, start + wardPageSize);
 
-          setWards(pagedData);
-          setWardTotalElements(filtered.length);
-          setWardTotalPages(Math.ceil(filtered.length / wardPageSize));
+          if (wardAbortControllerRef.current === controller) {
+            setWards(pagedData);
+            setWardTotalElements(filtered.length);
+            setWardTotalPages(Math.ceil(filtered.length / wardPageSize));
+          }
         } else {
           // Server-side mode (Pagination for Wards)
           const response =
             await administrativeService.getWardsByProvincePaginated(
               provinceCode,
               page,
-              wardPageSize
+              wardPageSize,
+              controller.signal
             );
           if (response.success) {
-            setWards(response.data.content);
-            setWardTotalPages(response.data.totalPages);
-            setWardTotalElements(response.data.totalElements);
+            if (wardAbortControllerRef.current === controller) {
+              setWards(response.data.content);
+              setWardTotalPages(response.data.totalPages);
+              setWardTotalElements(response.data.totalElements);
+            }
           } else {
             console.error(response.message || "Không thể tải danh sách phường xã");
           }
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
+          console.log("Ward request canceled");
+          return;
+        }
         console.error("Lỗi khi tải danh sách phường xã", err);
       } finally {
-        setIsLoadingWards(false);
+        if (wardAbortControllerRef.current === controller) {
+          setIsLoadingWards(false);
+        }
       }
     },
     [allWardsCache, wardPageSize]

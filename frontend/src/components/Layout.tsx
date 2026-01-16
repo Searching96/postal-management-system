@@ -9,6 +9,8 @@ import {
   Menu,
   X,
   User,
+  HelpCircle,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 import { getRoleLabel } from "../lib/utils";
@@ -26,36 +28,35 @@ export function Layout() {
   const role = user?.role || "";
 
   // Navigation items based on role
-  const getNavItems = () => {
-    const items = [
-      { to: "/dashboard", icon: Home, label: "Tổng quan" },
-      { to: "/provinces", icon: MapPin, label: "Tỉnh thành" },
-    ];
+  const primaryNav = [
+    { to: "/dashboard", icon: Home, label: "Tổng quan" },
+  ];
 
-    if (role === "SYSTEM_ADMIN") {
-      items.push({ to: "/admin/system", icon: Users, label: "Quản trị hệ thống" });
-    }
+  if (role === "SYSTEM_ADMIN") {
+    primaryNav.push({ to: "/admin/system", icon: Users, label: "Quản trị hệ thống" });
+  }
 
-    if (role === "SYSTEM_ADMIN" || role === "HUB_ADMIN") {
-      items.push({ to: "/admin/hub", icon: Building2, label: "Quản lý bưu cục" });
-    }
+  if (role === "SYSTEM_ADMIN" || role === "HUB_ADMIN") {
+    primaryNav.push({ to: "/admin/hub", icon: Building2, label: "Quản lý bưu cục" });
+  }
 
-    if (role === "PO_PROVINCE_ADMIN" || role === "WH_PROVINCE_ADMIN") {
-      items.push({
-        to: "/admin/province",
-        icon: Building2,
-        label: "Quản lý tỉnh",
-      });
-    }
+  if (role === "PO_PROVINCE_ADMIN" || role === "WH_PROVINCE_ADMIN") {
+    primaryNav.push({
+      to: "/admin/province",
+      icon: Building2,
+      label: "Quản lý tỉnh",
+    });
+  }
 
-    if (role === "PO_WARD_MANAGER" || role === "WH_WARD_MANAGER") {
-      items.push({ to: "/admin/ward", icon: Building2, label: "Quản lý xã" });
-    }
+  if (role === "PO_WARD_MANAGER" || role === "WH_WARD_MANAGER") {
+    primaryNav.push({ to: "/admin/ward", icon: Building2, label: "Quản lý xã" });
+  }
 
-    return items;
-  };
-
-  const navItems = getNavItems();
+  const secondaryNav = [
+    { to: "/provinces", icon: MapPin, label: "Tra cứu hành chính" },
+    { to: "/settings", icon: Settings, label: "Cài đặt" },
+    { to: "/support", icon: HelpCircle, label: "Hỗ trợ & HDSD" },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -82,19 +83,35 @@ export function Layout() {
           </button>
         </div>
 
-        <nav className="mt-6 flex-1 overflow-y-auto">
-          {navItems.map((item) => (
+        <nav className="mt-6 flex-1 overflow-y-auto px-4 space-y-1">
+          {primaryNav.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className="flex items-center px-6 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-600 transition-colors"
+              className="flex items-center px-4 py-2.5 text-gray-700 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-all font-medium group"
               onClick={() => setSidebarOpen(false)}
             >
-              <item.icon size={20} className="mr-3" />
+              <item.icon size={20} className="mr-3 text-gray-400 group-hover:text-primary-600 transition-colors" />
               {item.label}
             </Link>
           ))}
         </nav>
+
+        {/* Bottom utility nav */}
+        <div className="px-4 pb-4 pt-4 space-y-1 border-t border-gray-100">
+          <p className="px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Tiện ích</p>
+          {secondaryNav.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="flex items-center px-4 py-2.5 text-gray-700 rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-all text-sm font-semibold group"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <item.icon size={18} className="mr-3 text-gray-400 group-hover:text-gray-600 transition-colors" />
+              {item.label}
+            </Link>
+          ))}
+        </div>
 
         {/* User Profile at the bottom */}
         <div className="border-t border-gray-100 p-4 shrink-0">

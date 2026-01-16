@@ -62,11 +62,12 @@ export const provinceAdminService = {
     return response.data;
   },
 
-  getWardOfficePairs: async (): Promise<
-    ApiResponse<WardOfficePairResponse[]>
-  > => {
+  getWardOfficePairs: async (
+    signal?: AbortSignal
+  ): Promise<ApiResponse<WardOfficePairResponse[]>> => {
     const response = await api.get<ApiResponse<WardOfficePairResponse[]>>(
-      "/province-admin/ward-offices"
+      "/province-admin/ward-offices",
+      { signal }
     );
     return response.data;
   },
@@ -81,11 +82,13 @@ export const provinceAdminService = {
   },
 
   getWardAssignmentStatus: async (
-    provinceCode?: string
+    provinceCode?: string,
+    signal?: AbortSignal
   ): Promise<ApiResponse<WardAssignmentInfo[]>> => {
     const params = provinceCode ? `?provinceCode=${provinceCode}` : "";
     const response = await api.get<ApiResponse<WardAssignmentInfo[]>>(
-      `/province-admin/wards/assignment-status${params}`
+      `/province-admin/wards/assignment-status${params}`,
+      { signal }
     );
     return response.data;
   },
