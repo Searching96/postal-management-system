@@ -590,7 +590,7 @@ public class OrderServiceImpl implements IOrderService {
                 .map(h -> OrderResponse.StatusHistoryItem.builder()
                         .status(h.getStatus())
                         .description(h.getDescription() != null ? h.getDescription() : getStatusDescription(h.getStatus()))
-                        .location(h.getOffice() != null ? h.getOffice().getOfficeName() : h.getLocationDetails())
+                        .location(h.getOffice() != null ? h.getOffice().getOfficeAddress() : h.getLocationDetails())
                         .timestamp(h.getCreatedAt())
                         .build())
                 .toList();

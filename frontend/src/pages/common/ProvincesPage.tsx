@@ -223,14 +223,13 @@ export function ProvincesPage() {
   // Load Provinces on page/size change
   useEffect(() => {
     loadProvincesData(provincePage, searchTerm);
-  }, [provincePage, provincePageSize]);
+  }, [provincePage, provincePageSize, selectedRegion, allProvincesCache.length]);
 
   // Region change - reset and reload
   useEffect(() => {
     setProvincePage(0);
     setSearchTerm("");
     setAllProvincesCache([]);
-    loadProvincesData(0, "");
   }, [selectedRegion]);
 
   // Debounce PROVINCE Search
@@ -289,7 +288,7 @@ export function ProvincesPage() {
   }
 
   return (
-    <div>
+    <div className="min-h-screen">
       <PageHeader
         title="Tỉnh thành & Phường xã"
         description="Tra cứu đơn vị hành chính"

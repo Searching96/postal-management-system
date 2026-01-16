@@ -8,7 +8,7 @@ export const getRoleLabel = (role: string): string => {
         PO_WARD_MANAGER: "Quản lý Xã (BC)",
         WH_WARD_MANAGER: "Quản lý Xã (Kho)",
         WARD_MANAGER: "Quản lý Xã",
-        WARD_MANAGER: "Quản lý Xã",
+
         PO_STAFF: "Giao dịch viên",
         WH_STAFF: "Nhân viên Kho",
         STAFF: "Nhân viên",
@@ -36,5 +36,23 @@ export const formatCurrency = (amount: number): string => {
 
 export const formatDate = (dateString: string): string => {
     if (!dateString) return "";
-    return new Date(dateString).toLocaleDateString("vi-VN");
+    // Backend sends UTC LocalDateTime without 'Z', so we append it to treat it as UTC
+    const normalized = (dateString.endsWith("Z") || dateString.includes("+"))
+        ? dateString
+        : dateString + "Z";
+    return new Date(normalized).toLocaleDateString("vi-VN");
+};
+
+export const formatDateTime = (dateString: string): string => {
+    if (!dateString) return "";
+    const normalized = (dateString.endsWith("Z") || dateString.includes("+"))
+        ? dateString
+        : dateString + "Z";
+    return new Date(normalized).toLocaleString("vi-VN", {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 };

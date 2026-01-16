@@ -13,8 +13,7 @@ import {
   HelpCircle,
   BarChart3,
   ShieldCheck,
-  UserCheck,
-  Plus
+  UserCheck
 } from "lucide-react";
 import { PageHeader, Card } from "../../components/ui";
 import { getRoleLabel } from "../../lib/utils";
@@ -30,7 +29,6 @@ export function DashboardPage() {
   const isProvinceAdmin = role.includes("PROVINCE_ADMIN");
   const isWardManager = role.includes("WARD_MANAGER");
   const isPOStaff = role === "PO_STAFF";
-  const isWHStaff = role === "WH_STAFF";
 
   // --- STATE FOR STATS ---
   const [statsData, setStatsData] = useState<Record<string, string>>({});
@@ -41,19 +39,20 @@ export function DashboardPage() {
         const newData: Record<string, string> = {};
 
         // 1. Customer Stats
-        if (isCustomer) {
+        // 1. Customer Stats
+        if (isCustomer && user && "id" in user) {
           // Import orderService dynamically if not top-level to avoid circular deps if any, 
           // but better to import top level. 
           // We will assume orderService is imported.
           const [shipping, completed, pending] = await Promise.all([
             // Use real status strings
-            import("../../services/orderService").then(m => m.orderService.getOrders({ status: "SHIPPING", size: 1 })),
-            import("../../services/orderService").then(m => m.orderService.getOrders({ status: "COMPLETED", size: 1 })),
-            import("../../services/orderService").then(m => m.orderService.getOrders({ status: "PENDING", size: 1 }))
+            import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "SHIPPING", size: 1 })),
+            import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "DELIVERED", size: 1 })),
+            import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "CREATED", size: 1 }))
           ]);
-          newData["shipping"] = shipping?.data?.totalElements?.toString() || "0";
-          newData["completed"] = completed?.data?.totalElements?.toString() || "0";
-          newData["pending"] = pending?.data?.totalElements?.toString() || "0";
+          newData["shipping"] = shipping?.totalElements?.toString() || "0";
+          newData["completed"] = completed?.totalElements?.toString() || "0";
+          newData["pending"] = pending?.totalElements?.toString() || "0";
 
           // Estimate total spend? currently no endpoint, leave as placeholder or calculate later
         }
@@ -61,7 +60,7 @@ export function DashboardPage() {
         // 2. Admin Stats
         if (isSystemAdmin || isHubAdmin) {
           const orders = await import("../../services/orderService").then(m => m.orderService.getOrders({ size: 1 }));
-          newData["totalOrders"] = orders.data.totalElements.toString();
+          newData["totalOrders"] = orders.totalElements.toString();
 
           // TODO: Add users count and office count when APIs available
           // const users = await import("../../services/userService").then(m => m.userService.getUsers({ size: 1 })).catch(() => null);
