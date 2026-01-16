@@ -86,18 +86,8 @@ public interface IOrderService {
     // ==================== CUSTOMER ONLINE ORDER ====================
 
     /**
-     * Calculate shipping price for customer's online order.
-     * Uses customer's pickup ward as origin for distance calculation.
-     *
-     * @param request the price calculation request
-     * @param pickupWardCode the ward code where pickup will happen
-     * @return price calculation with all service options
-     */
-    PriceCalculationResponse calculatePriceForCustomer(CalculatePriceRequest request, String pickupWardCode);
-
-    /**
      * Create a pickup order by a registered customer online.
-     * Staff at the nearest office will be notified to assign a shipper.
+     * Customer selects the origin office for pickup.
      *
      * @param request the customer order request
      * @param currentAccount the customer's account

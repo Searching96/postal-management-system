@@ -42,10 +42,12 @@ public class OrderController {
     // ==================== PRICE CALCULATION ====================
 
     @PostMapping("/calculate-price")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'CUSTOMER')")
     @Operation(
             summary = "Calculate shipping price",
-            description = "Preview shipping cost and SLA before creating an order. Shows all available service options.",
+            description = "Preview shipping cost and SLA before creating an order. Shows all available service options. " +
+                    "Staff can omit originOfficeId (uses their office). Customers must provide originOfficeId. " +
+                    "MONTHLY customers get 10% discount, ANNUALLY customers get 20% discount.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses({
@@ -197,32 +199,13 @@ public class OrderController {
 
     // ==================== CUSTOMER ONLINE ORDER ====================
 
-    @PostMapping("/customer/calculate-price")
-    @PreAuthorize("hasRole('CUSTOMER')")
-    @Operation(
-            summary = "Calculate shipping price for customer",
-            description = "Customer can preview shipping cost and SLA before creating a pickup order.",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Price calculated successfully",
-                    content = @Content(schema = @Schema(implementation = PriceCalculationResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid request data")
-    })
-    public ResponseEntity<PriceCalculationResponse> calculatePriceForCustomer(
-            @Valid @RequestBody CalculatePriceRequest request,
-            @Parameter(description = "Ward code of pickup location") @RequestParam String pickupWardCode
-    ) {
-        PriceCalculationResponse response = orderService.calculatePriceForCustomer(request, pickupWardCode);
-        return ResponseEntity.ok(response);
-    }
-
     @PostMapping("/customer/pickup")
     @PreAuthorize("hasRole('CUSTOMER')")
     @Operation(
             summary = "Create pickup order",
-            description = "Registered customer creates a pickup order online. Staff at the nearest office will be " +
-                    "notified to assign a shipper for package pickup.",
+            description = "Registered customer creates a pickup order online. Customer selects the origin office. " +
+                    "Staff at the selected office will be notified to assign a shipper for package pickup. " +
+                    "Subscription discounts are automatically applied (MONTHLY: 10%, ANNUALLY: 20%).",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses({

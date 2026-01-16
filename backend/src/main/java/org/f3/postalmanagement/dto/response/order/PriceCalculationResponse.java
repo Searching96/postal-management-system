@@ -64,6 +64,9 @@ public class PriceCalculationResponse {
     @Schema(description = "Distance surcharge (inter-province, inter-region)", example = "15000")
     private BigDecimal distanceSurcharge;
 
+    @Schema(description = "Subscription discount (for MONTHLY/ANNUALLY customers)", example = "5000")
+    private BigDecimal subscriptionDiscount;
+
     @Schema(description = "Total shipping fee", example = "65000")
     private BigDecimal shippingFee;
 

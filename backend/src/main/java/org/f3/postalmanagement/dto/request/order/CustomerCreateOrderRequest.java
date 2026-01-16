@@ -10,6 +10,7 @@ import org.f3.postalmanagement.enums.PackageType;
 import org.f3.postalmanagement.enums.ServiceType;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * DTO for registered customers to create pickup orders online.
@@ -22,14 +23,17 @@ import java.math.BigDecimal;
 @Schema(description = "Request for creating a pickup order by a registered customer")
 public class CustomerCreateOrderRequest {
 
+    // ==================== ORIGIN OFFICE ====================
+
+    @NotNull(message = "Origin office ID is required")
+    @Schema(description = "ID of the post office that will handle the pickup")
+    private UUID originOfficeId;
+
     // ==================== PICKUP ADDRESS ====================
     
     @NotBlank(message = "Pickup address is required")
     @Schema(description = "Full address where shipper will pickup the package")
     private String pickupAddress;
-
-    @Schema(description = "Ward code where pickup address is located")
-    private String pickupWardCode;
 
     @Schema(description = "Additional pickup instructions for shipper")
     private String pickupInstructions;

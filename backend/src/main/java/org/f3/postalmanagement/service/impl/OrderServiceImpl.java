@@ -22,6 +22,7 @@ import org.f3.postalmanagement.enums.OrderStatus;
 import org.f3.postalmanagement.enums.PackageType;
 import org.f3.postalmanagement.enums.Role;
 import org.f3.postalmanagement.enums.ServiceType;
+import org.f3.postalmanagement.enums.SubscriptionPlan;
 import org.f3.postalmanagement.repository.*;
 import org.f3.postalmanagement.service.INotificationService;
 import org.f3.postalmanagement.service.IOrderService;
@@ -78,12 +79,40 @@ public class OrderServiceImpl implements IOrderService {
     private static final int STANDARD_DAYS = 3;
     private static final int ECONOMY_DAYS = 5;
 
+    // Subscription plan discounts
+    private static final BigDecimal MONTHLY_DISCOUNT = new BigDecimal("0.10"); // 10% discount
+    private static final BigDecimal ANNUALLY_DISCOUNT = new BigDecimal("0.20"); // 20% discount
+
     @Override
     @Transactional(readOnly = true)
     public PriceCalculationResponse calculatePrice(CalculatePriceRequest request, Account currentAccount) {
-        validateStaffRole(currentAccount);
-        Employee currentEmployee = getCurrentEmployee(currentAccount);
-        Office originOffice = currentEmployee.getOffice();
+        Office originOffice;
+        SubscriptionPlan subscriptionPlan = null;
+        
+        // Determine origin office based on caller type
+        if (currentAccount.getRole() == Role.CUSTOMER) {
+            // Customer must provide originOfficeId
+            if (request.getOriginOfficeId() == null) {
+                throw new IllegalArgumentException("Origin office ID is required for customers");
+            }
+            originOffice = officeRepository.findById(request.getOriginOfficeId())
+                    .orElseThrow(() -> new IllegalArgumentException("Office not found: " + request.getOriginOfficeId()));
+            
+            // Get customer's subscription plan for discount
+            Customer customer = customerRepository.findByAccountId(currentAccount.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
+            subscriptionPlan = customer.getSubscriptionPlan();
+        } else {
+            // Staff uses their office or provided originOfficeId
+            if (request.getOriginOfficeId() != null) {
+                originOffice = officeRepository.findById(request.getOriginOfficeId())
+                        .orElseThrow(() -> new IllegalArgumentException("Office not found: " + request.getOriginOfficeId()));
+            } else {
+                validateStaffRole(currentAccount);
+                Employee currentEmployee = getCurrentEmployee(currentAccount);
+                originOffice = currentEmployee.getOffice();
+            }
+        }
         
         // Get destination ward
         Ward destinationWard = wardRepository.findById(request.getDestinationWardCode())
@@ -106,12 +135,17 @@ public class OrderServiceImpl implements IOrderService {
                 ? request.getDeclaredValue().multiply(INSURANCE_RATE).setScale(0, RoundingMode.UP)
                 : BigDecimal.ZERO;
         
+        // Calculate discount based on subscription plan
+        BigDecimal discountRate = getSubscriptionDiscount(subscriptionPlan);
+        
         // Build service options
         List<PriceCalculationResponse.ServiceOption> serviceOptions = new ArrayList<>();
         
         for (ServiceType serviceType : ServiceType.values()) {
             BigDecimal baseRate = getBaseRate(serviceType);
-            BigDecimal shippingFee = baseRate.add(weightSurcharge).add(packageTypeSurcharge).add(distanceSurcharge);
+            BigDecimal shippingFeeBeforeDiscount = baseRate.add(weightSurcharge).add(packageTypeSurcharge).add(distanceSurcharge);
+            BigDecimal discount = shippingFeeBeforeDiscount.multiply(discountRate).setScale(0, RoundingMode.DOWN);
+            BigDecimal shippingFee = shippingFeeBeforeDiscount.subtract(discount);
             BigDecimal totalAmount = shippingFee.add(insuranceFee);
             int deliveryDays = getDeliveryDays(serviceType, sameProvince, sameRegion);
             LocalDateTime estimatedDelivery = calculateEstimatedDeliveryDate(deliveryDays);
@@ -130,7 +164,9 @@ public class OrderServiceImpl implements IOrderService {
         // Get selected service details
         ServiceType selectedService = request.getServiceType();
         BigDecimal baseRate = getBaseRate(selectedService);
-        BigDecimal shippingFee = baseRate.add(weightSurcharge).add(packageTypeSurcharge).add(distanceSurcharge);
+        BigDecimal shippingFeeBeforeDiscount = baseRate.add(weightSurcharge).add(packageTypeSurcharge).add(distanceSurcharge);
+        BigDecimal discount = shippingFeeBeforeDiscount.multiply(discountRate).setScale(0, RoundingMode.DOWN);
+        BigDecimal shippingFee = shippingFeeBeforeDiscount.subtract(discount);
         BigDecimal totalAmount = shippingFee.add(insuranceFee);
         int deliveryDays = getDeliveryDays(selectedService, sameProvince, sameRegion);
         
@@ -147,6 +183,7 @@ public class OrderServiceImpl implements IOrderService {
                 .weightSurcharge(weightSurcharge)
                 .packageTypeSurcharge(packageTypeSurcharge)
                 .distanceSurcharge(distanceSurcharge)
+                .subscriptionDiscount(discount)
                 .shippingFee(shippingFee)
                 .insuranceFee(insuranceFee)
                 .totalAmount(totalAmount)
@@ -175,11 +212,25 @@ public class OrderServiceImpl implements IOrderService {
         Ward destinationWard = wardRepository.findById(request.getDestinationWardCode())
                 .orElseThrow(() -> new IllegalArgumentException("Destination ward not found: " + request.getDestinationWardCode()));
         
-        // Get sender customer if provided
-        Customer senderCustomer = null;
+        // Get or create sender customer
+        Customer senderCustomer;
         if (request.getSenderCustomerId() != null) {
+            // Existing registered customer
             senderCustomer = customerRepository.findById(request.getSenderCustomerId())
                     .orElseThrow(() -> new IllegalArgumentException("Customer not found: " + request.getSenderCustomerId()));
+        } else {
+            // Walk-in customer - check if exists by phone, otherwise create new
+            senderCustomer = customerRepository.findByPhoneNumber(request.getSenderPhone())
+                    .orElseGet(() -> {
+                        Customer newCustomer = new Customer();
+                        newCustomer.setFullName(request.getSenderName());
+                        newCustomer.setPhoneNumber(request.getSenderPhone());
+                        newCustomer.setAddress(request.getSenderAddress());
+                        newCustomer.setSubscriptionPlan(SubscriptionPlan.BASIC);
+                        // No account for walk-in customer
+                        return customerRepository.save(newCustomer);
+                    });
+            log.info("Walk-in customer created/found: {} ({})", senderCustomer.getFullName(), senderCustomer.getPhoneNumber());
         }
         
         // Calculate weights
@@ -562,87 +613,6 @@ public class OrderServiceImpl implements IOrderService {
     // ==================== CUSTOMER ONLINE ORDER METHODS ====================
 
     @Override
-    @Transactional(readOnly = true)
-    public PriceCalculationResponse calculatePriceForCustomer(CalculatePriceRequest request, String pickupWardCode) {
-        // Get pickup ward to determine origin
-        Ward pickupWard = wardRepository.findById(pickupWardCode)
-                .orElseThrow(() -> new IllegalArgumentException("Pickup ward not found: " + pickupWardCode));
-        
-        // Get destination ward
-        Ward destinationWard = wardRepository.findById(request.getDestinationWardCode())
-                .orElseThrow(() -> new IllegalArgumentException("Destination ward not found: " + request.getDestinationWardCode()));
-        
-        // Calculate weights
-        BigDecimal actualWeight = request.getWeightKg();
-        BigDecimal volumetricWeight = calculateVolumetricWeight(request.getLengthCm(), request.getWidthCm(), request.getHeightCm());
-        BigDecimal chargeableWeight = actualWeight.max(volumetricWeight != null ? volumetricWeight : BigDecimal.ZERO);
-        
-        // Determine routing info based on wards
-        boolean sameProvince = pickupWard.getProvince().getCode().equals(destinationWard.getProvince().getCode());
-        boolean sameRegion = pickupWard.getProvince().getAdministrativeRegion().getId()
-                .equals(destinationWard.getProvince().getAdministrativeRegion().getId());
-        
-        // Calculate surcharges
-        BigDecimal weightSurcharge = calculateWeightSurcharge(chargeableWeight);
-        BigDecimal packageTypeSurcharge = calculatePackageTypeSurcharge(request.getPackageType());
-        BigDecimal distanceSurcharge = calculateDistanceSurcharge(sameProvince, sameRegion);
-        BigDecimal insuranceFee = request.isAddInsurance() && request.getDeclaredValue() != null 
-                ? request.getDeclaredValue().multiply(INSURANCE_RATE).setScale(0, RoundingMode.UP)
-                : BigDecimal.ZERO;
-        
-        // Build service options
-        List<PriceCalculationResponse.ServiceOption> serviceOptions = new ArrayList<>();
-        
-        for (ServiceType serviceType : ServiceType.values()) {
-            BigDecimal baseRate = getBaseRate(serviceType);
-            BigDecimal shippingFee = baseRate.add(weightSurcharge).add(packageTypeSurcharge).add(distanceSurcharge);
-            BigDecimal totalAmount = shippingFee.add(insuranceFee);
-            int deliveryDays = getDeliveryDays(serviceType, sameProvince, sameRegion);
-            LocalDateTime estimatedDelivery = calculateEstimatedDeliveryDate(deliveryDays);
-            
-            serviceOptions.add(PriceCalculationResponse.ServiceOption.builder()
-                    .serviceType(serviceType)
-                    .serviceName(getServiceName(serviceType))
-                    .shippingFee(shippingFee)
-                    .totalAmount(totalAmount)
-                    .estimatedDeliveryDays(deliveryDays)
-                    .estimatedDeliveryDate(estimatedDelivery)
-                    .slaDescription(getSlaDescription(serviceType, deliveryDays))
-                    .build());
-        }
-        
-        // Get selected service details
-        ServiceType selectedService = request.getServiceType();
-        BigDecimal baseRate = getBaseRate(selectedService);
-        BigDecimal shippingFee = baseRate.add(weightSurcharge).add(packageTypeSurcharge).add(distanceSurcharge);
-        BigDecimal totalAmount = shippingFee.add(insuranceFee);
-        int deliveryDays = getDeliveryDays(selectedService, sameProvince, sameRegion);
-        
-        return PriceCalculationResponse.builder()
-                .actualWeightKg(actualWeight)
-                .volumetricWeightKg(volumetricWeight)
-                .chargeableWeightKg(chargeableWeight)
-                .originProvinceName(pickupWard.getProvince().getName())
-                .destinationProvinceName(destinationWard.getProvince().getName())
-                .destinationWardName(destinationWard.getName())
-                .sameProvince(sameProvince)
-                .sameRegion(sameRegion)
-                .baseShippingFee(baseRate)
-                .weightSurcharge(weightSurcharge)
-                .packageTypeSurcharge(packageTypeSurcharge)
-                .distanceSurcharge(distanceSurcharge)
-                .shippingFee(shippingFee)
-                .insuranceFee(insuranceFee)
-                .totalAmount(totalAmount)
-                .serviceType(selectedService)
-                .estimatedDeliveryDays(deliveryDays)
-                .estimatedDeliveryDate(calculateEstimatedDeliveryDate(deliveryDays))
-                .slaDescription(getSlaDescription(selectedService, deliveryDays))
-                .availableServices(serviceOptions)
-                .build();
-    }
-
-    @Override
     @Transactional
     public OrderResponse createCustomerPickupOrder(CustomerCreateOrderRequest request, Account currentAccount) {
         // Validate customer role
@@ -654,34 +624,39 @@ public class OrderServiceImpl implements IOrderService {
         Customer customer = customerRepository.findByAccountId(currentAccount.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Customer not found for account"));
         
-        // Get pickup ward
-        Ward pickupWard = wardRepository.findById(request.getPickupWardCode())
-                .orElseThrow(() -> new IllegalArgumentException("Pickup ward not found: " + request.getPickupWardCode()));
+        // Get the selected origin office
+        Office originOffice = officeRepository.findById(request.getOriginOfficeId())
+                .orElseThrow(() -> new IllegalArgumentException("Office not found: " + request.getOriginOfficeId()));
+        
+        // Validate it's a post office (not warehouse)
+        if (originOffice.getOfficeType() != OfficeType.PROVINCE_POST && 
+            originOffice.getOfficeType() != OfficeType.WARD_POST) {
+            throw new IllegalArgumentException("Selected office must be a post office, not a warehouse");
+        }
         
         // Get destination ward
         Ward destinationWard = wardRepository.findById(request.getDestinationWardCode())
                 .orElseThrow(() -> new IllegalArgumentException("Destination ward not found: " + request.getDestinationWardCode()));
-        
-        // Find the nearest post office (ward-level or province-level)
-        Office originOffice = findNearestPostOffice(pickupWard);
-        if (originOffice == null) {
-            throw new IllegalArgumentException("No post office found for pickup location");
-        }
         
         // Calculate weights
         BigDecimal volumetricWeight = calculateVolumetricWeight(request.getLengthCm(), request.getWidthCm(), request.getHeightCm());
         BigDecimal chargeableWeight = request.getWeightKg().max(volumetricWeight != null ? volumetricWeight : BigDecimal.ZERO);
         
         // Calculate pricing
-        boolean sameProvince = pickupWard.getProvince().getCode().equals(destinationWard.getProvince().getCode());
-        boolean sameRegion = pickupWard.getProvince().getAdministrativeRegion().getId()
+        boolean sameProvince = originOffice.getProvince().getCode().equals(destinationWard.getProvince().getCode());
+        boolean sameRegion = originOffice.getRegion().getId()
                 .equals(destinationWard.getProvince().getAdministrativeRegion().getId());
         
         BigDecimal baseRate = getBaseRate(request.getServiceType());
         BigDecimal weightSurcharge = calculateWeightSurcharge(chargeableWeight);
         BigDecimal packageTypeSurcharge = calculatePackageTypeSurcharge(request.getPackageType());
         BigDecimal distanceSurcharge = calculateDistanceSurcharge(sameProvince, sameRegion);
-        BigDecimal shippingFee = baseRate.add(weightSurcharge).add(packageTypeSurcharge).add(distanceSurcharge);
+        BigDecimal shippingFeeBeforeDiscount = baseRate.add(weightSurcharge).add(packageTypeSurcharge).add(distanceSurcharge);
+        
+        // Apply subscription discount
+        BigDecimal discountRate = getSubscriptionDiscount(customer.getSubscriptionPlan());
+        BigDecimal discount = shippingFeeBeforeDiscount.multiply(discountRate).setScale(0, RoundingMode.DOWN);
+        BigDecimal shippingFee = shippingFeeBeforeDiscount.subtract(discount);
         
         BigDecimal insuranceFee = BigDecimal.ZERO;
         if (request.isAddInsurance() && request.getDeclaredValue() != null) {
@@ -925,27 +900,16 @@ public class OrderServiceImpl implements IOrderService {
     // ==================== ADDITIONAL PRIVATE HELPERS ====================
 
     /**
-     * Find the nearest post office for a given ward.
-     * First looks for ward-level post office, then falls back to province-level.
+     * Get discount rate based on subscription plan.
      */
-    private Office findNearestPostOffice(Ward ward) {
-        // First, try to find a ward-level post office
-        List<Office> wardOffices = officeRepository.findByProvinceCodeAndOfficeType(
-                ward.getProvince().getCode(), OfficeType.WARD_POST);
-        
-        if (!wardOffices.isEmpty()) {
-            // Return the first ward post office (in a real system, we'd calculate distance)
-            return wardOffices.get(0);
+    private BigDecimal getSubscriptionDiscount(SubscriptionPlan plan) {
+        if (plan == null) {
+            return BigDecimal.ZERO;
         }
-        
-        // Fall back to province-level post office
-        List<Office> provinceOffices = officeRepository.findByProvinceCodeAndOfficeType(
-                ward.getProvince().getCode(), OfficeType.PROVINCE_POST);
-        
-        if (!provinceOffices.isEmpty()) {
-            return provinceOffices.get(0);
-        }
-        
-        return null;
+        return switch (plan) {
+            case MONTHLY -> MONTHLY_DISCOUNT;
+            case ANNUALLY -> ANNUALLY_DISCOUNT;
+            default -> BigDecimal.ZERO; // BASIC has no discount
+        };
     }
 }

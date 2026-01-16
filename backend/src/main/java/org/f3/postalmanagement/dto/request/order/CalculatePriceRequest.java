@@ -7,14 +7,18 @@ import org.f3.postalmanagement.enums.PackageType;
 import org.f3.postalmanagement.enums.ServiceType;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * Request DTO for calculating price before creating an order.
- * Staff can use this to show customer the price and SLA before confirming.
+ * Used by both staff (at post office) and customers (online).
  */
 @Data
 @Schema(description = "Request to calculate shipping price and SLA")
 public class CalculatePriceRequest {
+
+    @Schema(description = "Origin office ID (required for online customers, optional for staff - defaults to their office)")
+    private UUID originOfficeId;
 
     @NotBlank(message = "Destination ward code is required")
     @Schema(description = "Ward code of destination", example = "00001")
