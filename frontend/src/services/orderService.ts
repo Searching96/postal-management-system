@@ -41,6 +41,11 @@ export const orderService = {
         return response.data;
     },
 
+    calculatePrice: async (data: any): Promise<ApiResponse<any>> => {
+        const response = await api.post<ApiResponse<any>>("/orders/calculate-price", data);
+        return response.data;
+    },
+
     // Additional methods that might be useful
     updateStatus: async (id: string, status: string): Promise<ApiResponse<Order>> => {
         // This endpoint might vary based on implementation (e.g. /orders/{id}/status)

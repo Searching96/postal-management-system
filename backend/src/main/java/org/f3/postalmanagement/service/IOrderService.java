@@ -1,6 +1,7 @@
 package org.f3.postalmanagement.service;
 
 import org.f3.postalmanagement.dto.request.order.AssignShipperRequest;
+import org.f3.postalmanagement.enums.OrderStatus;
 import org.f3.postalmanagement.dto.request.order.CalculatePriceRequest;
 import org.f3.postalmanagement.dto.request.order.CreateOrderRequest;
 import org.f3.postalmanagement.dto.request.order.CustomerCreateOrderRequest;
@@ -62,7 +63,7 @@ public interface IOrderService {
      * @param currentAccount the account of the staff making the request
      * @return paginated order list
      */
-    PageResponse<OrderResponse> getOrdersByOffice(String search, Pageable pageable, Account currentAccount);
+    PageResponse<OrderResponse> getOrdersByOffice(String search, OrderStatus status, Pageable pageable, Account currentAccount);
 
     /**
      * Get orders by sender phone number.

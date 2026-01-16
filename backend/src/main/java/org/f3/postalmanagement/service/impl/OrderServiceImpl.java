@@ -356,12 +356,12 @@ public class OrderServiceImpl implements IOrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<OrderResponse> getOrdersByOffice(String search, Pageable pageable, Account currentAccount) {
+    public PageResponse<OrderResponse> getOrdersByOffice(String search, OrderStatus status, Pageable pageable, Account currentAccount) {
         validateStaffRole(currentAccount);
         Employee currentEmployee = getCurrentEmployee(currentAccount);
         UUID officeId = currentEmployee.getOffice().getId();
         
-        Page<Order> orderPage = orderRepository.findByOriginOfficeIdWithSearch(officeId, search, pageable);
+        Page<Order> orderPage = orderRepository.findByOriginOfficeIdWithSearch(officeId, search, status, pageable);
         Page<OrderResponse> responsePage = orderPage.map(this::mapToOrderResponse);
         
         return mapToPageResponse(responsePage);

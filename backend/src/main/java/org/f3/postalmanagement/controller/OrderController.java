@@ -145,11 +145,13 @@ public class OrderController {
     public ResponseEntity<PageResponse<OrderResponse>> getOrdersByOffice(
             @Parameter(description = "Search by tracking number, sender/receiver name or phone")
             @RequestParam(required = false) String search,
+            @Parameter(description = "Filter by order status")
+            @RequestParam(required = false) org.f3.postalmanagement.enums.OrderStatus status,
             @ParameterObject
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
-        PageResponse<OrderResponse> response = orderService.getOrdersByOffice(search, pageable, currentAccount);
+        PageResponse<OrderResponse> response = orderService.getOrdersByOffice(search, status, pageable, currentAccount);
         return ResponseEntity.ok(response);
     }
 

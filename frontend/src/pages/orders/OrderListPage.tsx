@@ -95,7 +95,7 @@ export function OrderListPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto overflow-x-auto">
+                <div className="flex gap-2 w-full sm:w-auto overflow-x-auto p-1">
                     {["ALL", "PENDING", "SHIPPING", "COMPLETED", "CANCELLED"].map((status) => (
                         <Button
                             key={status}
