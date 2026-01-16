@@ -81,16 +81,18 @@ public class AdministrativeController {
     @GetMapping("/provinces/paginated")
     @Operation(
             summary = "Get all provinces (paginated)",
-            description = "Get all provinces with pagination. No authentication required."
+            description = "Get all provinces with pagination and optional search by name or code. No authentication required."
     )
     public ResponseEntity<ApiResponse<PageResponse<ProvinceResponse>>> getAllProvincesPaginated(
+            @Parameter(description = "Search term for province name or code")
+            @RequestParam(required = false) String search,
             @Parameter(description = "Page number (0-indexed)", example = "0")
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Number of items per page", example = "10")
             @RequestParam(defaultValue = "10") int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        PageResponse<ProvinceResponse> provinces = administrativeService.getAllProvincesPaginated(pageable);
+        PageResponse<ProvinceResponse> provinces = administrativeService.getAllProvincesPaginated(search, pageable);
         
         return ResponseEntity.ok(
                 ApiResponse.<PageResponse<ProvinceResponse>>builder()
@@ -123,17 +125,19 @@ public class AdministrativeController {
     @GetMapping("/provinces/{provinceCode}/wards/paginated")
     @Operation(
             summary = "Get wards by province (paginated)",
-            description = "Get wards in a specific province with pagination. No authentication required."
+            description = "Get wards in a specific province with pagination and optional search by name or code. No authentication required."
     )
     public ResponseEntity<ApiResponse<PageResponse<WardResponse>>> getWardsByProvincePaginated(
             @PathVariable String provinceCode,
+            @Parameter(description = "Search term for ward name or code")
+            @RequestParam(required = false) String search,
             @Parameter(description = "Page number (0-indexed)", example = "0")
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Number of items per page", example = "10")
             @RequestParam(defaultValue = "10") int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        PageResponse<WardResponse> wards = administrativeService.getWardsByProvincePaginated(provinceCode, pageable);
+        PageResponse<WardResponse> wards = administrativeService.getWardsByProvincePaginated(provinceCode, search, pageable);
         
         return ResponseEntity.ok(
                 ApiResponse.<PageResponse<WardResponse>>builder()

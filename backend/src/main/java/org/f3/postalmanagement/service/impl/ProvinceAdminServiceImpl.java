@@ -2,11 +2,13 @@ package org.f3.postalmanagement.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.f3.postalmanagement.dto.request.employee.UpdateStaffRequest;
 import org.f3.postalmanagement.dto.request.employee.province.CreateProvinceAdminRequest;
 import org.f3.postalmanagement.dto.request.employee.province.CreateStaffRequest;
 import org.f3.postalmanagement.dto.request.employee.province.CreateWardManagerRequest;
 import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
 import org.f3.postalmanagement.dto.request.office.CreateWardOfficeRequest;
+import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
 import org.f3.postalmanagement.dto.response.office.WardOfficePairResponse;
 import org.f3.postalmanagement.entity.actor.Account;
@@ -24,6 +26,8 @@ import org.f3.postalmanagement.repository.OfficePairRepository;
 import org.f3.postalmanagement.repository.WardOfficeAssignmentRepository;
 import org.f3.postalmanagement.repository.WardRepository;
 import org.f3.postalmanagement.service.IProvinceAdminService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -639,6 +643,160 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
                 .regionName(warehouse.getRegion() != null ? warehouse.getRegion().getName() : null)
                 .assignedWards(wardInfoList)
                 .createdAt(officePair.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<EmployeeResponse> getStaffByOffice(String search, Pageable pageable, Account currentAccount) {
+        Employee currentEmployee = getCurrentEmployee(currentAccount);
+        Office currentOffice = currentEmployee.getOffice();
+
+        Page<Employee> employeePage = employeeRepository.findByOfficeIdWithSearch(
+                currentOffice.getId(), search, pageable);
+
+        Page<EmployeeResponse> responsePage = employeePage.map(this::mapToEmployeeResponse);
+        log.info("Fetched page {} of staff for office {} with search '{}' (total: {})", 
+                pageable.getPageNumber(), currentOffice.getOfficeName(), search, employeePage.getTotalElements());
+
+        return mapToPageResponse(responsePage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EmployeeResponse getStaffById(UUID staffId, Account currentAccount) {
+        Employee currentEmployee = getCurrentEmployee(currentAccount);
+        Office currentOffice = currentEmployee.getOffice();
+
+        Employee staff = employeeRepository.findById(staffId)
+                .orElseThrow(() -> {
+                    log.error("Staff not found with ID: {}", staffId);
+                    return new IllegalArgumentException("Staff not found with ID: " + staffId);
+                });
+
+        // Verify the staff is in the same office
+        if (!staff.getOffice().getId().equals(currentOffice.getId())) {
+            log.error("Staff {} is not in the same office as the admin", staffId);
+            throw new AccessDeniedException("You can only view staff in your own office");
+        }
+
+        return mapToEmployeeResponse(staff);
+    }
+
+    @Override
+    @Transactional
+    public EmployeeResponse updateStaff(UUID staffId, UpdateStaffRequest request, Account currentAccount) {
+        Employee currentEmployee = getCurrentEmployee(currentAccount);
+        Office currentOffice = currentEmployee.getOffice();
+
+        Employee staff = employeeRepository.findById(staffId)
+                .orElseThrow(() -> {
+                    log.error("Staff not found with ID: {}", staffId);
+                    return new IllegalArgumentException("Staff not found with ID: " + staffId);
+                });
+
+        // Verify the staff is in the same office
+        if (!staff.getOffice().getId().equals(currentOffice.getId())) {
+            log.error("Staff {} is not in the same office as the admin", staffId);
+            throw new AccessDeniedException("You can only update staff in your own office");
+        }
+
+        // Update fields if provided
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            staff.setFullName(request.getFullName());
+        }
+
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
+            // Check if the new phone number is already taken by another account
+            if (!staff.getPhoneNumber().equals(request.getPhoneNumber()) 
+                    && accountRepository.existsByUsername(request.getPhoneNumber())) {
+                throw new IllegalArgumentException("Phone number already registered: " + request.getPhoneNumber());
+            }
+            staff.setPhoneNumber(request.getPhoneNumber());
+            staff.getAccount().setUsername(request.getPhoneNumber());
+        }
+
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            // Check if the new email is already taken by another account
+            if (!staff.getAccount().getEmail().equals(request.getEmail()) 
+                    && accountRepository.existsByEmail(request.getEmail())) {
+                throw new IllegalArgumentException("Email already registered: " + request.getEmail());
+            }
+            staff.getAccount().setEmail(request.getEmail());
+        }
+
+        if (request.getActive() != null) {
+            staff.getAccount().setActive(request.getActive());
+        }
+
+        Employee savedStaff = employeeRepository.save(staff);
+        log.info("Updated staff {} by admin {}", staffId, currentAccount.getUsername());
+
+        return mapToEmployeeResponse(savedStaff);
+    }
+
+    @Override
+    @Transactional
+    public void deleteStaff(UUID staffId, Account currentAccount) {
+        Employee currentEmployee = getCurrentEmployee(currentAccount);
+        Office currentOffice = currentEmployee.getOffice();
+
+        Employee staff = employeeRepository.findById(staffId)
+                .orElseThrow(() -> {
+                    log.error("Staff not found with ID: {}", staffId);
+                    return new IllegalArgumentException("Staff not found with ID: " + staffId);
+                });
+
+        // Verify the staff is in the same office
+        if (!staff.getOffice().getId().equals(currentOffice.getId())) {
+            log.error("Staff {} is not in the same office as the admin", staffId);
+            throw new AccessDeniedException("You can only delete staff in your own office");
+        }
+
+        // Prevent self-deletion
+        if (staff.getId().equals(currentEmployee.getId())) {
+            throw new IllegalArgumentException("You cannot delete your own account");
+        }
+
+        // Soft delete - the @SQLDelete annotation handles this
+        employeeRepository.delete(staff);
+        // Also deactivate the account
+        staff.getAccount().setActive(false);
+        accountRepository.save(staff.getAccount());
+
+        log.info("Deleted staff {} by admin {}", staffId, currentAccount.getUsername());
+    }
+
+    private Employee getCurrentEmployee(Account currentAccount) {
+        return employeeRepository.findById(currentAccount.getId())
+                .orElseThrow(() -> {
+                    log.error("Employee record not found for current user: {}", currentAccount.getUsername());
+                    return new IllegalArgumentException("Employee record not found for current user");
+                });
+    }
+
+    private EmployeeResponse mapToEmployeeResponse(Employee employee) {
+        return EmployeeResponse.builder()
+                .employeeId(employee.getId())
+                .fullName(employee.getFullName())
+                .phoneNumber(employee.getPhoneNumber())
+                .email(employee.getAccount().getEmail())
+                .role(employee.getAccount().getRole().name())
+                .officeName(employee.getOffice().getOfficeName())
+                .build();
+    }
+
+    private <T> PageResponse<T> mapToPageResponse(Page<T> page) {
+        return PageResponse.<T>builder()
+                .content(page.getContent())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .first(page.isFirst())
+                .last(page.isLast())
+                .hasNext(page.hasNext())
+                .hasPrevious(page.hasPrevious())
                 .build();
     }
 }

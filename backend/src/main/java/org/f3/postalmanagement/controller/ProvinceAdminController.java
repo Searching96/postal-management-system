@@ -1,20 +1,25 @@
 package org.f3.postalmanagement.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.f3.postalmanagement.dto.request.employee.UpdateStaffRequest;
 import org.f3.postalmanagement.dto.request.employee.province.CreateProvinceAdminRequest;
 import org.f3.postalmanagement.dto.request.employee.province.CreateStaffRequest;
 import org.f3.postalmanagement.dto.request.employee.province.CreateWardManagerRequest;
 import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
 import org.f3.postalmanagement.dto.request.office.CreateWardOfficeRequest;
+import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
 import org.f3.postalmanagement.dto.response.office.WardOfficePairResponse;
 import org.f3.postalmanagement.entity.ApiResponse;
 import org.f3.postalmanagement.entity.actor.CustomUserDetails;
 import org.f3.postalmanagement.service.IProvinceAdminService;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -213,6 +218,96 @@ public class ProvinceAdminController {
                         .success(true)
                         .message("Ward assignment status retrieved successfully")
                         .data(wardInfo)
+                        .build()
+        );
+    }
+
+    @GetMapping("/employees")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Get all staff in the admin's office",
+            description = "Get all staff members in the same office as the Province Admin with pagination and optional search."
+    )
+    public ResponseEntity<ApiResponse<PageResponse<EmployeeResponse>>> getStaffByOffice(
+            @Parameter(description = "Search term for name, phone, or email")
+            @RequestParam(required = false) String search,
+            @Parameter(description = "Page number (0-indexed)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Number of items per page", example = "10")
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        PageResponse<EmployeeResponse> response = provinceAdminService.getStaffByOffice(search, pageable, userDetails.getAccount());
+
+        return ResponseEntity.ok(
+                ApiResponse.<PageResponse<EmployeeResponse>>builder()
+                        .success(true)
+                        .message("Staff fetched successfully")
+                        .data(response)
+                        .build()
+        );
+    }
+
+    @GetMapping("/employees/{staffId}")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Get a staff member by ID",
+            description = "Get a specific staff member in the same office as the Province Admin."
+    )
+    public ResponseEntity<ApiResponse<EmployeeResponse>> getStaffById(
+            @PathVariable UUID staffId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        EmployeeResponse response = provinceAdminService.getStaffById(staffId, userDetails.getAccount());
+
+        return ResponseEntity.ok(
+                ApiResponse.<EmployeeResponse>builder()
+                        .success(true)
+                        .message("Staff fetched successfully")
+                        .data(response)
+                        .build()
+        );
+    }
+
+    @PutMapping("/employees/{staffId}")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Update a staff member",
+            description = "Update a staff member in the same office as the Province Admin."
+    )
+    public ResponseEntity<ApiResponse<EmployeeResponse>> updateStaff(
+            @PathVariable UUID staffId,
+            @Valid @RequestBody UpdateStaffRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        EmployeeResponse response = provinceAdminService.updateStaff(staffId, request, userDetails.getAccount());
+
+        return ResponseEntity.ok(
+                ApiResponse.<EmployeeResponse>builder()
+                        .success(true)
+                        .message("Staff updated successfully")
+                        .data(response)
+                        .build()
+        );
+    }
+
+    @DeleteMapping("/employees/{staffId}")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Delete a staff member",
+            description = "Soft delete a staff member in the same office as the Province Admin."
+    )
+    public ResponseEntity<ApiResponse<Void>> deleteStaff(
+            @PathVariable UUID staffId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        provinceAdminService.deleteStaff(staffId, userDetails.getAccount());
+
+        return ResponseEntity.ok(
+                ApiResponse.<Void>builder()
+                        .success(true)
+                        .message("Staff deleted successfully")
                         .build()
         );
     }
