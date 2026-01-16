@@ -93,4 +93,21 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     Page<Order> findByOriginOfficeProvinceCodeWithSearch(@Param("provinceCode") String provinceCode,
                                                           @Param("search") String search,
                                                           Pageable pageable);
+
+    /**
+     * Find pending pickup orders (created by customer online, awaiting shipper assignment)
+     */
+    @Query("SELECT o FROM Order o WHERE o.originOffice.id = :officeId AND " +
+           "o.status = org.f3.postalmanagement.enums.OrderStatus.PENDING_PICKUP AND " +
+           "o.assignedShipper IS NULL " +
+           "ORDER BY o.createdAt ASC")
+    Page<Order> findPendingPickupOrdersByOfficeId(@Param("officeId") UUID officeId, Pageable pageable);
+
+    /**
+     * Find orders assigned to shipper for pickup
+     */
+    @Query("SELECT o FROM Order o WHERE o.assignedShipper.id = :shipperId AND " +
+           "o.status = org.f3.postalmanagement.enums.OrderStatus.PENDING_PICKUP " +
+           "ORDER BY o.createdAt DESC")
+    Page<Order> findAssignedPickupOrders(@Param("shipperId") UUID shipperId, Pageable pageable);
 }

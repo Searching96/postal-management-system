@@ -1,7 +1,9 @@
 package org.f3.postalmanagement.service;
 
+import org.f3.postalmanagement.dto.request.order.AssignShipperRequest;
 import org.f3.postalmanagement.dto.request.order.CalculatePriceRequest;
 import org.f3.postalmanagement.dto.request.order.CreateOrderRequest;
+import org.f3.postalmanagement.dto.request.order.CustomerCreateOrderRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.order.OrderResponse;
 import org.f3.postalmanagement.dto.response.order.PriceCalculationResponse;
@@ -80,4 +82,65 @@ public interface IOrderService {
      * @return paginated order list
      */
     PageResponse<OrderResponse> getOrdersByCustomerId(UUID customerId, Pageable pageable, Account currentAccount);
+
+    // ==================== CUSTOMER ONLINE ORDER ====================
+
+    /**
+     * Calculate shipping price for customer's online order.
+     * Uses customer's pickup ward as origin for distance calculation.
+     *
+     * @param request the price calculation request
+     * @param pickupWardCode the ward code where pickup will happen
+     * @return price calculation with all service options
+     */
+    PriceCalculationResponse calculatePriceForCustomer(CalculatePriceRequest request, String pickupWardCode);
+
+    /**
+     * Create a pickup order by a registered customer online.
+     * Staff at the nearest office will be notified to assign a shipper.
+     *
+     * @param request the customer order request
+     * @param currentAccount the customer's account
+     * @return the created order with tracking number
+     */
+    OrderResponse createCustomerPickupOrder(CustomerCreateOrderRequest request, Account currentAccount);
+
+    /**
+     * Get pending pickup orders at an office (orders awaiting shipper assignment).
+     *
+     * @param pageable pagination parameters
+     * @param currentAccount the staff's account
+     * @return paginated list of pending pickup orders
+     */
+    PageResponse<OrderResponse> getPendingPickupOrders(Pageable pageable, Account currentAccount);
+
+    // ==================== SHIPPER ASSIGNMENT ====================
+
+    /**
+     * Assign a shipper to pick up an order from customer's location.
+     * The shipper will receive a notification.
+     *
+     * @param request the assignment request
+     * @param currentAccount the staff's account
+     * @return the updated order
+     */
+    OrderResponse assignShipperToPickup(AssignShipperRequest request, Account currentAccount);
+
+    /**
+     * Get orders assigned to a shipper for pickup.
+     *
+     * @param pageable pagination parameters
+     * @param currentAccount the shipper's account
+     * @return paginated list of assigned orders
+     */
+    PageResponse<OrderResponse> getShipperAssignedOrders(Pageable pageable, Account currentAccount);
+
+    /**
+     * Mark an order as picked up by shipper.
+     *
+     * @param orderId the order ID
+     * @param currentAccount the shipper's account
+     * @return the updated order
+     */
+    OrderResponse markOrderPickedUp(UUID orderId, Account currentAccount);
 }

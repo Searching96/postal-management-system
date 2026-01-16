@@ -8,7 +8,7 @@ services:
     command:
       [
         "--character-set-server=utf8mb4",
-        "--collation-server=utf8mb4_unicode_ci"
+        "--collation-server=utf8mb4_unicode_ci",
       ]
     restart: unless-stopped
     environment:
@@ -50,6 +50,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pms_db
       SPRING_DATASOURCE_USERNAME: postal_user
@@ -57,6 +59,10 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "false"
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQLDialect
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
     ports:
       - "8080:8080"
     networks:
@@ -76,10 +82,34 @@ services:
       retries: 3
       start_period: 60s
 
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: postal-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672" # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - postal-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
 networks:
   postal-network:
     driver: bridge
 
 volumes:
   mysql_data:
+    driver: local
+  rabbitmq_data:
     driver: local

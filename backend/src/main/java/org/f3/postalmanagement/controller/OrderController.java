@@ -10,8 +10,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.f3.postalmanagement.dto.request.order.AssignShipperRequest;
 import org.f3.postalmanagement.dto.request.order.CalculatePriceRequest;
 import org.f3.postalmanagement.dto.request.order.CreateOrderRequest;
+import org.f3.postalmanagement.dto.request.order.CustomerCreateOrderRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.order.OrderResponse;
 import org.f3.postalmanagement.dto.response.order.PriceCalculationResponse;
@@ -190,6 +192,136 @@ public class OrderController {
             @AuthenticationPrincipal Account currentAccount
     ) {
         PageResponse<OrderResponse> response = orderService.getOrdersByCustomerId(customerId, pageable, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
+    // ==================== CUSTOMER ONLINE ORDER ====================
+
+    @PostMapping("/customer/calculate-price")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(
+            summary = "Calculate shipping price for customer",
+            description = "Customer can preview shipping cost and SLA before creating a pickup order.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Price calculated successfully",
+                    content = @Content(schema = @Schema(implementation = PriceCalculationResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data")
+    })
+    public ResponseEntity<PriceCalculationResponse> calculatePriceForCustomer(
+            @Valid @RequestBody CalculatePriceRequest request,
+            @Parameter(description = "Ward code of pickup location") @RequestParam String pickupWardCode
+    ) {
+        PriceCalculationResponse response = orderService.calculatePriceForCustomer(request, pickupWardCode);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/customer/pickup")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(
+            summary = "Create pickup order",
+            description = "Registered customer creates a pickup order online. Staff at the nearest office will be " +
+                    "notified to assign a shipper for package pickup.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Pickup order created successfully",
+                    content = @Content(schema = @Schema(implementation = OrderResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data")
+    })
+    public ResponseEntity<OrderResponse> createCustomerPickupOrder(
+            @Valid @RequestBody CustomerCreateOrderRequest request,
+            @AuthenticationPrincipal Account currentAccount
+    ) {
+        OrderResponse response = orderService.createCustomerPickupOrder(request, currentAccount);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // ==================== STAFF - PICKUP ORDER MANAGEMENT ====================
+
+    @GetMapping("/pending-pickups")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Get pending pickup orders",
+            description = "List orders awaiting shipper assignment for pickup. These are orders created by customers online.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Pending orders retrieved",
+                    content = @Content(schema = @Schema(implementation = PageResponse.class)))
+    })
+    public ResponseEntity<PageResponse<OrderResponse>> getPendingPickupOrders(
+            @ParameterObject
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.ASC) Pageable pageable,
+            @AuthenticationPrincipal Account currentAccount
+    ) {
+        PageResponse<OrderResponse> response = orderService.getPendingPickupOrders(pageable, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/assign-shipper")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Assign shipper to pickup order",
+            description = "Staff assigns a shipper to go to customer's location and pickup the package. " +
+                    "The shipper will receive a real-time notification.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Shipper assigned successfully",
+                    content = @Content(schema = @Schema(implementation = OrderResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request or order not in correct status"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
+    public ResponseEntity<OrderResponse> assignShipperToPickup(
+            @Valid @RequestBody AssignShipperRequest request,
+            @AuthenticationPrincipal Account currentAccount
+    ) {
+        OrderResponse response = orderService.assignShipperToPickup(request, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
+    // ==================== SHIPPER ENDPOINTS ====================
+
+    @GetMapping("/shipper/assigned")
+    @PreAuthorize("hasRole('SHIPPER')")
+    @Operation(
+            summary = "Get shipper's assigned pickup orders",
+            description = "Shipper views their assigned orders that need to be picked up from customers.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Assigned orders retrieved",
+                    content = @Content(schema = @Schema(implementation = PageResponse.class)))
+    })
+    public ResponseEntity<PageResponse<OrderResponse>> getShipperAssignedOrders(
+            @ParameterObject
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @AuthenticationPrincipal Account currentAccount
+    ) {
+        PageResponse<OrderResponse> response = orderService.getShipperAssignedOrders(pageable, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{orderId}/pickup")
+    @PreAuthorize("hasRole('SHIPPER')")
+    @Operation(
+            summary = "Mark order as picked up",
+            description = "Shipper confirms they have picked up the package from the customer's location.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Order marked as picked up",
+                    content = @Content(schema = @Schema(implementation = OrderResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Order not in correct status"),
+            @ApiResponse(responseCode = "403", description = "Not assigned to this order")
+    })
+    public ResponseEntity<OrderResponse> markOrderPickedUp(
+            @Parameter(description = "Order ID") @PathVariable UUID orderId,
+            @AuthenticationPrincipal Account currentAccount
+    ) {
+        OrderResponse response = orderService.markOrderPickedUp(orderId, currentAccount);
         return ResponseEntity.ok(response);
     }
 }

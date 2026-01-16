@@ -2,8 +2,11 @@ package org.f3.postalmanagement.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.f3.postalmanagement.dto.notification.NotificationMessage;
+import org.f3.postalmanagement.dto.request.order.AssignShipperRequest;
 import org.f3.postalmanagement.dto.request.order.CalculatePriceRequest;
 import org.f3.postalmanagement.dto.request.order.CreateOrderRequest;
+import org.f3.postalmanagement.dto.request.order.CustomerCreateOrderRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.order.OrderResponse;
 import org.f3.postalmanagement.dto.response.order.PriceCalculationResponse;
@@ -20,6 +23,7 @@ import org.f3.postalmanagement.enums.PackageType;
 import org.f3.postalmanagement.enums.Role;
 import org.f3.postalmanagement.enums.ServiceType;
 import org.f3.postalmanagement.repository.*;
+import org.f3.postalmanagement.service.INotificationService;
 import org.f3.postalmanagement.service.IOrderService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -48,6 +52,7 @@ public class OrderServiceImpl implements IOrderService {
     private final CustomerRepository customerRepository;
     private final WardRepository wardRepository;
     private final OfficeRepository officeRepository;
+    private final INotificationService notificationService;
 
     // ==================== PRICING CONSTANTS ====================
     // In a real system, these would come from a PriceTable entity
@@ -552,5 +557,395 @@ public class OrderServiceImpl implements IOrderService {
                 .hasNext(page.hasNext())
                 .hasPrevious(page.hasPrevious())
                 .build();
+    }
+
+    // ==================== CUSTOMER ONLINE ORDER METHODS ====================
+
+    @Override
+    @Transactional(readOnly = true)
+    public PriceCalculationResponse calculatePriceForCustomer(CalculatePriceRequest request, String pickupWardCode) {
+        // Get pickup ward to determine origin
+        Ward pickupWard = wardRepository.findById(pickupWardCode)
+                .orElseThrow(() -> new IllegalArgumentException("Pickup ward not found: " + pickupWardCode));
+        
+        // Get destination ward
+        Ward destinationWard = wardRepository.findById(request.getDestinationWardCode())
+                .orElseThrow(() -> new IllegalArgumentException("Destination ward not found: " + request.getDestinationWardCode()));
+        
+        // Calculate weights
+        BigDecimal actualWeight = request.getWeightKg();
+        BigDecimal volumetricWeight = calculateVolumetricWeight(request.getLengthCm(), request.getWidthCm(), request.getHeightCm());
+        BigDecimal chargeableWeight = actualWeight.max(volumetricWeight != null ? volumetricWeight : BigDecimal.ZERO);
+        
+        // Determine routing info based on wards
+        boolean sameProvince = pickupWard.getProvince().getCode().equals(destinationWard.getProvince().getCode());
+        boolean sameRegion = pickupWard.getProvince().getAdministrativeRegion().getId()
+                .equals(destinationWard.getProvince().getAdministrativeRegion().getId());
+        
+        // Calculate surcharges
+        BigDecimal weightSurcharge = calculateWeightSurcharge(chargeableWeight);
+        BigDecimal packageTypeSurcharge = calculatePackageTypeSurcharge(request.getPackageType());
+        BigDecimal distanceSurcharge = calculateDistanceSurcharge(sameProvince, sameRegion);
+        BigDecimal insuranceFee = request.isAddInsurance() && request.getDeclaredValue() != null 
+                ? request.getDeclaredValue().multiply(INSURANCE_RATE).setScale(0, RoundingMode.UP)
+                : BigDecimal.ZERO;
+        
+        // Build service options
+        List<PriceCalculationResponse.ServiceOption> serviceOptions = new ArrayList<>();
+        
+        for (ServiceType serviceType : ServiceType.values()) {
+            BigDecimal baseRate = getBaseRate(serviceType);
+            BigDecimal shippingFee = baseRate.add(weightSurcharge).add(packageTypeSurcharge).add(distanceSurcharge);
+            BigDecimal totalAmount = shippingFee.add(insuranceFee);
+            int deliveryDays = getDeliveryDays(serviceType, sameProvince, sameRegion);
+            LocalDateTime estimatedDelivery = calculateEstimatedDeliveryDate(deliveryDays);
+            
+            serviceOptions.add(PriceCalculationResponse.ServiceOption.builder()
+                    .serviceType(serviceType)
+                    .serviceName(getServiceName(serviceType))
+                    .shippingFee(shippingFee)
+                    .totalAmount(totalAmount)
+                    .estimatedDeliveryDays(deliveryDays)
+                    .estimatedDeliveryDate(estimatedDelivery)
+                    .slaDescription(getSlaDescription(serviceType, deliveryDays))
+                    .build());
+        }
+        
+        // Get selected service details
+        ServiceType selectedService = request.getServiceType();
+        BigDecimal baseRate = getBaseRate(selectedService);
+        BigDecimal shippingFee = baseRate.add(weightSurcharge).add(packageTypeSurcharge).add(distanceSurcharge);
+        BigDecimal totalAmount = shippingFee.add(insuranceFee);
+        int deliveryDays = getDeliveryDays(selectedService, sameProvince, sameRegion);
+        
+        return PriceCalculationResponse.builder()
+                .actualWeightKg(actualWeight)
+                .volumetricWeightKg(volumetricWeight)
+                .chargeableWeightKg(chargeableWeight)
+                .originProvinceName(pickupWard.getProvince().getName())
+                .destinationProvinceName(destinationWard.getProvince().getName())
+                .destinationWardName(destinationWard.getName())
+                .sameProvince(sameProvince)
+                .sameRegion(sameRegion)
+                .baseShippingFee(baseRate)
+                .weightSurcharge(weightSurcharge)
+                .packageTypeSurcharge(packageTypeSurcharge)
+                .distanceSurcharge(distanceSurcharge)
+                .shippingFee(shippingFee)
+                .insuranceFee(insuranceFee)
+                .totalAmount(totalAmount)
+                .serviceType(selectedService)
+                .estimatedDeliveryDays(deliveryDays)
+                .estimatedDeliveryDate(calculateEstimatedDeliveryDate(deliveryDays))
+                .slaDescription(getSlaDescription(selectedService, deliveryDays))
+                .availableServices(serviceOptions)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse createCustomerPickupOrder(CustomerCreateOrderRequest request, Account currentAccount) {
+        // Validate customer role
+        if (currentAccount.getRole() != Role.CUSTOMER) {
+            throw new AccessDeniedException("Only customers can create pickup orders");
+        }
+        
+        // Get customer
+        Customer customer = customerRepository.findByAccountId(currentAccount.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Customer not found for account"));
+        
+        // Get pickup ward
+        Ward pickupWard = wardRepository.findById(request.getPickupWardCode())
+                .orElseThrow(() -> new IllegalArgumentException("Pickup ward not found: " + request.getPickupWardCode()));
+        
+        // Get destination ward
+        Ward destinationWard = wardRepository.findById(request.getDestinationWardCode())
+                .orElseThrow(() -> new IllegalArgumentException("Destination ward not found: " + request.getDestinationWardCode()));
+        
+        // Find the nearest post office (ward-level or province-level)
+        Office originOffice = findNearestPostOffice(pickupWard);
+        if (originOffice == null) {
+            throw new IllegalArgumentException("No post office found for pickup location");
+        }
+        
+        // Calculate weights
+        BigDecimal volumetricWeight = calculateVolumetricWeight(request.getLengthCm(), request.getWidthCm(), request.getHeightCm());
+        BigDecimal chargeableWeight = request.getWeightKg().max(volumetricWeight != null ? volumetricWeight : BigDecimal.ZERO);
+        
+        // Calculate pricing
+        boolean sameProvince = pickupWard.getProvince().getCode().equals(destinationWard.getProvince().getCode());
+        boolean sameRegion = pickupWard.getProvince().getAdministrativeRegion().getId()
+                .equals(destinationWard.getProvince().getAdministrativeRegion().getId());
+        
+        BigDecimal baseRate = getBaseRate(request.getServiceType());
+        BigDecimal weightSurcharge = calculateWeightSurcharge(chargeableWeight);
+        BigDecimal packageTypeSurcharge = calculatePackageTypeSurcharge(request.getPackageType());
+        BigDecimal distanceSurcharge = calculateDistanceSurcharge(sameProvince, sameRegion);
+        BigDecimal shippingFee = baseRate.add(weightSurcharge).add(packageTypeSurcharge).add(distanceSurcharge);
+        
+        BigDecimal insuranceFee = BigDecimal.ZERO;
+        if (request.isAddInsurance() && request.getDeclaredValue() != null) {
+            insuranceFee = request.getDeclaredValue().multiply(INSURANCE_RATE).setScale(0, RoundingMode.UP);
+        }
+        BigDecimal totalAmount = shippingFee.add(insuranceFee);
+        
+        int deliveryDays = getDeliveryDays(request.getServiceType(), sameProvince, sameRegion);
+        LocalDateTime estimatedDelivery = calculateEstimatedDeliveryDate(deliveryDays);
+        
+        // Generate tracking number
+        String trackingNumber = generateTrackingNumber();
+        
+        // Create order
+        Order order = new Order();
+        order.setTrackingNumber(trackingNumber);
+        
+        // Sender info from customer account
+        order.setSenderCustomer(customer);
+        order.setSenderName(customer.getFullName());
+        order.setSenderPhone(customer.getPhoneNumber());
+        order.setSenderAddress(request.getPickupAddress());
+        
+        // Receiver info
+        order.setReceiverName(request.getReceiverName());
+        order.setReceiverPhone(request.getReceiverPhone());
+        order.setReceiverAddress(request.getReceiverAddress());
+        order.setDestinationWard(destinationWard);
+        
+        // Package info
+        order.setPackageType(request.getPackageType());
+        order.setPackageDescription(request.getPackageDescription());
+        order.setWeightKg(request.getWeightKg());
+        order.setLengthCm(request.getLengthCm());
+        order.setWidthCm(request.getWidthCm());
+        order.setHeightCm(request.getHeightCm());
+        order.setVolumetricWeightKg(volumetricWeight);
+        order.setChargeableWeightKg(chargeableWeight);
+        
+        // Service & pricing
+        order.setServiceType(request.getServiceType());
+        order.setShippingFee(shippingFee);
+        order.setCodAmount(request.getCodAmount() != null ? request.getCodAmount() : BigDecimal.ZERO);
+        order.setDeclaredValue(request.getDeclaredValue());
+        order.setInsuranceFee(insuranceFee);
+        order.setTotalAmount(totalAmount);
+        
+        // SLA
+        order.setEstimatedDeliveryDate(estimatedDelivery);
+        
+        // Status & location - PENDING_PICKUP means awaiting shipper assignment
+        order.setStatus(OrderStatus.PENDING_PICKUP);
+        order.setOriginOffice(originOffice);
+        order.setCurrentOffice(originOffice);
+        // No createdByEmployee for customer-created orders
+        
+        // Notes
+        order.setDeliveryInstructions(request.getDeliveryInstructions());
+        
+        // Save order
+        Order savedOrder = orderRepository.save(order);
+        
+        // Create initial status history
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setOrder(savedOrder);
+        history.setStatus(OrderStatus.PENDING_PICKUP);
+        history.setOffice(originOffice);
+        history.setDescription("Order created online by customer. Awaiting shipper pickup at: " + request.getPickupAddress());
+        history.setLocationDetails(request.getPickupAddress());
+        statusHistoryRepository.save(history);
+        
+        log.info("Customer created pickup order {} for pickup at {}", 
+                trackingNumber, request.getPickupAddress());
+        
+        // Send notification to office staff
+        NotificationMessage notification = NotificationMessage.createNewOrderNotification(
+                savedOrder.getId(),
+                trackingNumber,
+                originOffice.getId(),
+                originOffice.getOfficeName(),
+                customer.getFullName(),
+                request.getPickupAddress()
+        );
+        notificationService.notifyOfficeNewPickupOrder(
+                originOffice.getId(), 
+                originOffice.getOfficeName(), 
+                notification
+        );
+        
+        return mapToOrderResponse(savedOrder);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<OrderResponse> getPendingPickupOrders(Pageable pageable, Account currentAccount) {
+        validateStaffRole(currentAccount);
+        Employee currentEmployee = getCurrentEmployee(currentAccount);
+        UUID officeId = currentEmployee.getOffice().getId();
+        
+        Page<Order> orderPage = orderRepository.findPendingPickupOrdersByOfficeId(officeId, pageable);
+        Page<OrderResponse> responsePage = orderPage.map(this::mapToOrderResponse);
+        
+        return mapToPageResponse(responsePage);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse assignShipperToPickup(AssignShipperRequest request, Account currentAccount) {
+        validateStaffRole(currentAccount);
+        Employee currentEmployee = getCurrentEmployee(currentAccount);
+        
+        // Get order
+        Order order = orderRepository.findById(request.getOrderId())
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + request.getOrderId()));
+        
+        // Validate order is pending pickup
+        if (order.getStatus() != OrderStatus.PENDING_PICKUP) {
+            throw new IllegalArgumentException("Order is not in PENDING_PICKUP status");
+        }
+        
+        // Validate order belongs to staff's office
+        if (!order.getOriginOffice().getId().equals(currentEmployee.getOffice().getId())) {
+            throw new AccessDeniedException("You can only assign shippers for orders at your office");
+        }
+        
+        // Get shipper
+        Employee shipper = employeeRepository.findById(request.getShipperId())
+                .orElseThrow(() -> new IllegalArgumentException("Shipper not found: " + request.getShipperId()));
+        
+        // Validate shipper role
+        if (shipper.getAccount().getRole() != Role.SHIPPER) {
+            throw new IllegalArgumentException("Selected employee is not a shipper");
+        }
+        
+        // Validate shipper belongs to same office
+        if (!shipper.getOffice().getId().equals(currentEmployee.getOffice().getId())) {
+            throw new IllegalArgumentException("Shipper must belong to the same office");
+        }
+        
+        // Assign shipper
+        order.setAssignedShipper(shipper);
+        
+        // Add notes if provided
+        if (request.getNotes() != null && !request.getNotes().isBlank()) {
+            String existingNotes = order.getInternalNotes() != null ? order.getInternalNotes() + "\n" : "";
+            order.setInternalNotes(existingNotes + "Pickup notes: " + request.getNotes());
+        }
+        
+        Order savedOrder = orderRepository.save(order);
+        
+        // Create status history entry
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setOrder(savedOrder);
+        history.setStatus(OrderStatus.PENDING_PICKUP);
+        history.setOffice(currentEmployee.getOffice());
+        history.setEmployee(currentEmployee);
+        history.setDescription("Shipper " + shipper.getFullName() + " assigned for pickup");
+        statusHistoryRepository.save(history);
+        
+        log.info("Assigned shipper {} to order {} by staff {}", 
+                shipper.getFullName(), order.getTrackingNumber(), currentEmployee.getFullName());
+        
+        // Notify shipper
+        NotificationMessage notification = NotificationMessage.createShipperAssignmentNotification(
+                order.getId(),
+                order.getTrackingNumber(),
+                shipper.getId(),
+                shipper.getFullName(),
+                order.getSenderName(),
+                order.getSenderAddress(),
+                currentEmployee.getFullName()
+        );
+        notificationService.notifyShipperAssignment(shipper.getId(), notification);
+        
+        return mapToOrderResponse(savedOrder);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<OrderResponse> getShipperAssignedOrders(Pageable pageable, Account currentAccount) {
+        // Validate shipper role
+        if (currentAccount.getRole() != Role.SHIPPER) {
+            throw new AccessDeniedException("Only shippers can access this endpoint");
+        }
+        
+        Employee shipper = employeeRepository.findById(currentAccount.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Shipper not found"));
+        
+        Page<Order> orderPage = orderRepository.findAssignedPickupOrders(shipper.getId(), pageable);
+        Page<OrderResponse> responsePage = orderPage.map(this::mapToOrderResponse);
+        
+        return mapToPageResponse(responsePage);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse markOrderPickedUp(UUID orderId, Account currentAccount) {
+        // Validate shipper role
+        if (currentAccount.getRole() != Role.SHIPPER) {
+            throw new AccessDeniedException("Only shippers can mark orders as picked up");
+        }
+        
+        Employee shipper = employeeRepository.findById(currentAccount.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Shipper not found"));
+        
+        // Get order
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+        
+        // Validate shipper is assigned to this order
+        if (order.getAssignedShipper() == null || !order.getAssignedShipper().getId().equals(shipper.getId())) {
+            throw new AccessDeniedException("You are not assigned to this order");
+        }
+        
+        // Validate order status
+        if (order.getStatus() != OrderStatus.PENDING_PICKUP) {
+            throw new IllegalArgumentException("Order is not in PENDING_PICKUP status");
+        }
+        
+        // Update status to PICKED_UP
+        OrderStatus previousStatus = order.getStatus();
+        order.setStatus(OrderStatus.PICKED_UP);
+        
+        Order savedOrder = orderRepository.save(order);
+        
+        // Create status history entry
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setOrder(savedOrder);
+        history.setStatus(OrderStatus.PICKED_UP);
+        history.setPreviousStatus(previousStatus);
+        history.setEmployee(shipper);
+        history.setDescription("Package picked up from customer by shipper " + shipper.getFullName());
+        history.setLocationDetails(order.getSenderAddress());
+        statusHistoryRepository.save(history);
+        
+        log.info("Order {} picked up by shipper {}", order.getTrackingNumber(), shipper.getFullName());
+        
+        return mapToOrderResponse(savedOrder);
+    }
+
+    // ==================== ADDITIONAL PRIVATE HELPERS ====================
+
+    /**
+     * Find the nearest post office for a given ward.
+     * First looks for ward-level post office, then falls back to province-level.
+     */
+    private Office findNearestPostOffice(Ward ward) {
+        // First, try to find a ward-level post office
+        List<Office> wardOffices = officeRepository.findByProvinceCodeAndOfficeType(
+                ward.getProvince().getCode(), OfficeType.WARD_POST);
+        
+        if (!wardOffices.isEmpty()) {
+            // Return the first ward post office (in a real system, we'd calculate distance)
+            return wardOffices.get(0);
+        }
+        
+        // Fall back to province-level post office
+        List<Office> provinceOffices = officeRepository.findByProvinceCodeAndOfficeType(
+                ward.getProvince().getCode(), OfficeType.PROVINCE_POST);
+        
+        if (!provinceOffices.isEmpty()) {
+            return provinceOffices.get(0);
+        }
+        
+        return null;
     }
 }
