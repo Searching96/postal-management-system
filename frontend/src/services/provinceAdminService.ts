@@ -87,6 +87,7 @@ export const provinceAdminService = {
     page = 0,
     size = 12,
     search?: string,
+    status: "all" | "assigned" | "unassigned" = "all",
     signal?: AbortSignal
   ): Promise<ApiResponse<PageResponse<WardAssignmentInfo>>> => {
     const params = new URLSearchParams();
@@ -94,6 +95,7 @@ export const provinceAdminService = {
     params.append("page", page.toString());
     params.append("size", size.toString());
     if (search && search.trim()) params.append("search", search.trim());
+    params.append("status", status);
     const response = await api.get<ApiResponse<PageResponse<WardAssignmentInfo>>>(
       `/province-admin/wards/assignment-status?${params.toString()}`,
       { signal }

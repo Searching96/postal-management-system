@@ -540,6 +540,7 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         Account currentAccount,
         String provinceCode,
         String search,
+        String status,
         Pageable pageable
     ) {
         Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
@@ -563,9 +564,10 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         }
 
         // Get paginated and filtered wards in the province
-        Page<Ward> wardPage = wardRepository.searchByProvinceCodeAndNameOrCode(
+        Page<Ward> wardPage = wardRepository.searchByProvinceCodeAndNameOrCodeAndStatus(
             targetProvinceCode,
             search,
+            status.toLowerCase(),
             pageable
         );
 

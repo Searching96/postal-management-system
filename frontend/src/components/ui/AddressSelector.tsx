@@ -144,6 +144,7 @@ export function AddressSelector({
                             { value: "", label: "-- Chọn Tỉnh/Thành --" },
                             ...provinces.map(p => ({ value: p.code, label: p.name }))
                         ]}
+                            searchable
                     />
                 )}
 
@@ -161,6 +162,7 @@ export function AddressSelector({
                         },
                         ...wards.map(w => ({ value: w.code, label: w.name }))
                     ]}
+                        searchable
                 />
             </div>
 

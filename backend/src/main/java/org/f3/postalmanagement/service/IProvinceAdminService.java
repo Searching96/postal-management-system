@@ -107,7 +107,7 @@ public interface IProvinceAdminService {
      * @param provinceCode the province code (optional, uses current user's province if not provided)
      * @return list of wards with their assignment status
      */
-    PageResponse<WardAssignmentInfo> getAvailableWardsForAssignment(Account currentAccount, String provinceCode, String search, Pageable pageable);
+    PageResponse<WardAssignmentInfo> getAvailableWardsForAssignment(Account currentAccount, String provinceCode, String search, String status, Pageable pageable);
 
     /**
      * Get all staff in the current admin's office with pagination and search.

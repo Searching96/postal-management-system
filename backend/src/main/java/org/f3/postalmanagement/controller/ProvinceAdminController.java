@@ -212,11 +212,12 @@ public class ProvinceAdminController {
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "all") String status,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         PageRequest pageable = PageRequest.of(page, size);
         PageResponse<IProvinceAdminService.WardAssignmentInfo> wardInfo =
-                provinceAdminService.getAvailableWardsForAssignment(userDetails.getAccount(), provinceCode, search, pageable);
+                provinceAdminService.getAvailableWardsForAssignment(userDetails.getAccount(), provinceCode, search, status, pageable);
 
         return ResponseEntity.ok(
                 ApiResponse.<PageResponse<IProvinceAdminService.WardAssignmentInfo>>builder()

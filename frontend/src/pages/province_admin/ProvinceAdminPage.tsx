@@ -35,7 +35,6 @@ import {
   Modal,
   FormInput,
   AddressSelector,
-  // ...existing code...
 } from "../../components/ui";
 import { PaginationControls } from "../common/ProvincesPage";
 import { getRoleLabel } from "../../lib/utils";
@@ -43,9 +42,9 @@ import { getRoleLabel } from "../../lib/utils";
 export function ProvinceAdminPage() {
   const [activeTab, setActiveTab] = useState<"offices" | "wards" | "employees">("offices");
   const [offices, setOffices] = useState<WardOfficePairResponse[]>([]);
-  const [wardStatus, setWardStatus] = useState<WardAssignmentInfo[] | undefined>([]);
+  const [wardStatus, setWardStatus] = useState<WardAssignmentInfo[]>([]);
   const [wardPage, setWardPage] = useState(0);
-  const [wardPageSize] = useState(12);
+  const [wardPageSize, setWardPageSize] = useState(12);
   const [wardTotalPages, setWardTotalPages] = useState(0);
   const [wardTotalElements, setWardTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,6 +62,7 @@ export function ProvinceAdminPage() {
 
   // Selected for assignment
   const [selectedOfficePair, setSelectedOfficePair] = useState<string>("");
+  const [selectedWards, setSelectedWards] = useState<string[]>([]);
 
   // Pagination & Search
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,7 +77,7 @@ export function ProvinceAdminPage() {
     title: string;
     message: string;
     action: () => Promise<void>;
-  }>({ title: "", message: "", action: async () => { } });
+  }>({ title: "", message: "", action: async () => {} });
 
   useEffect(() => {
     const updateItemsPerPage = () => {
@@ -96,7 +96,9 @@ export function ProvinceAdminPage() {
       const availableHeight = height - 500;
       const rows = Math.max(2, Math.floor(availableHeight / 180));
 
-      setItemsPerPage(cols * rows);
+      const pageSize = cols * rows;
+      setItemsPerPage(pageSize);
+      setWardPageSize(pageSize);
     };
 
     updateItemsPerPage();
@@ -108,20 +110,13 @@ export function ProvinceAdminPage() {
     fetchData();
     fetchProvinces();
     fetchAdminProfile();
-  }, [activeTab]);
+  }, [activeTab, wardPage, wardPageSize, searchTerm, statusFilter]);
 
   useEffect(() => {
     setWardPage(0);
     setModalSearchTerm(""); // Reset modal search on tab change
   }, [activeTab, searchTerm, statusFilter]);
 
-  const filteredWards = (wardStatus ?? []).filter(w => {
-    if (statusFilter === "assigned") return (w as WardAssignmentInfo).isAssigned;
-    if (statusFilter === "unassigned") return !(w as WardAssignmentInfo).isAssigned;
-    return true;
-  });
-
-  // Removed unused paginatedWards and totalPages
 
   const paginatedOffices = offices.slice(
     (currentPage - 1) * itemsPerPage,
@@ -132,28 +127,23 @@ export function ProvinceAdminPage() {
   const openAssignModal = async (pairId?: string) => {
     setIsLoading(true);
     try {
+      // For assign modal, we always fetch ALL wards (status=all) for correct pre-selection
       const response = await provinceAdminService.getWardAssignmentStatusPaginated(
         currentAdminProvince?.code,
-        wardPage,
-        wardPageSize,
-        searchTerm
+        0,
+        9999, // large enough to get all
+        "",
+        "all"
       );
       if (response.success) {
-        setWardStatus(response.data.content);
-        setWardTotalPages(response.data.totalPages);
-        setWardTotalElements(response.data.totalElements);
-        if (pairId) {
-          setSelectedOfficePair(pairId);
-          const pair = offices.find(o => o.officePairId === pairId);
-          // Pre-select wards already assigned to this pair
-          const alreadyAssigned = response.data.content
-            .filter((w: WardAssignmentInfo) => pair && w.assignedPostOfficeId === pair.postOffice.officeId)
-            .map((w: WardAssignmentInfo) => w.wardCode);
-          setSelectedWards(alreadyAssigned);
-        } else {
-          setSelectedOfficePair("");
-          setSelectedWards([]);
-        }
+        setSelectedOfficePair(pairId || "");
+        const pair = pairId ? offices.find((o) => o.officePairId === pairId) : null;
+
+        const alreadyAssigned = response.data.content
+          .filter((w: WardAssignmentInfo) => pair && w.assignedPostOfficeId === pair.postOffice.officeId)
+          .map((w: WardAssignmentInfo) => w.wardCode);
+
+        setSelectedWards(alreadyAssigned);
         setIsAssignModalOpen(true);
       }
     } catch (err) {
@@ -195,7 +185,6 @@ export function ProvinceAdminPage() {
   };
 
   const fetchData = async () => {
-    // Abort previous request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -204,27 +193,33 @@ export function ProvinceAdminPage() {
 
     setIsLoading(true);
     setError("");
+
     try {
       if (activeTab === "offices") {
         const response = await provinceAdminService.getWardOfficePairs(controller.signal);
-        if (response.success && abortControllerRef.current === controller) setOffices(response.data);
+        if (response.success && abortControllerRef.current === controller) {
+          setOffices(response.data);
+        }
       } else if (activeTab === "wards") {
         const response = await provinceAdminService.getWardAssignmentStatusPaginated(
           currentAdminProvince?.code,
           wardPage,
           wardPageSize,
           searchTerm,
+          statusFilter,
           controller.signal
         );
         if (response.success && abortControllerRef.current === controller) {
-          setWardStatus(response.data.content);
-          setWardTotalPages(response.data.totalPages);
-          setWardTotalElements(response.data.totalElements);
+          setWardStatus(response.data.content ?? []);
+          setWardTotalPages(response.data.totalPages ?? 0);
+          setWardTotalElements(response.data.totalElements ?? 0);
         }
       }
     } catch (err: any) {
       if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return;
-      if (abortControllerRef.current === controller) setError("Không thể tải dữ liệu");
+      if (abortControllerRef.current === controller) {
+        setError("Không thể tải dữ liệu");
+      }
     } finally {
       if (abortControllerRef.current === controller) setIsLoading(false);
     }
@@ -339,9 +334,6 @@ export function ProvinceAdminPage() {
     }
   };
 
-  // --- ASSIGN WARDS ---
-  const [selectedWards, setSelectedWards] = useState<string[]>([]);
-
   const handleAssignWards = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOfficePair) return;
@@ -354,13 +346,13 @@ export function ProvinceAdminPage() {
         try {
           const response = await provinceAdminService.assignWardsToOfficePair({
             officePairId: selectedOfficePair,
-            wardCodes: selectedWards
+            wardCodes: selectedWards,
           });
           if (response.success) {
             setSuccess("Gán phường/xã thành công");
             setIsAssignModalOpen(false);
             setSelectedWards([]);
-            fetchData();
+            fetchData(); // Refresh the list
           } else {
             setError(response.message);
           }
@@ -370,7 +362,7 @@ export function ProvinceAdminPage() {
           setIsLoading(false);
           setIsConfirmOpen(false);
         }
-      }
+      },
     });
     setIsConfirmOpen(true);
   };
@@ -649,7 +641,7 @@ export function ProvinceAdminPage() {
                 <CardSkeleton key={i} />
               ))}
             </div>
-          ) : filteredWards.length === 0 ? (
+          ) : wardStatus.length === 0 ? (
             <Card className="flex flex-col items-center justify-center p-12 text-gray-400 bg-gray-50/50 border-dashed">
               <Search className="w-12 h-12 mb-4 opacity-10" />
               <p className="font-medium">Không tìm thấy phường xã nào khớp với yêu cầu.</p>
@@ -657,7 +649,7 @@ export function ProvinceAdminPage() {
           ) : (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredWards.map((ward) => (
+                {wardStatus.map((ward) => (
                   <Card
                     key={ward.wardCode}
                     className={`group !p-4 border-l-[6px] transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${ward.isAssigned ? 'border-l-green-500 bg-green-50/20' : 'border-l-yellow-500 bg-yellow-50/20'
@@ -744,7 +736,7 @@ export function ProvinceAdminPage() {
           <div className="space-y-10">
             {/* Shared Province Selection - Only show if currentAdminProvince is not set (e.g. higher level admins) */}
             {!currentAdminProvince && (
-              <div className="p-5 bg-primary-50/30 border border-primary-100 rounded-2xl">
+              <div className="p-5 bg-primary-50/30 border border-primary-100 rounded-2xl" style={{overflow: 'visible'}}>
                 <FormSelect
                   label="Tỉnh / Thành phố quản lý"
                   icon={Building2}
@@ -945,6 +937,7 @@ export function ProvinceAdminPage() {
               value: o.officePairId,
               label: `${o.postOffice.officeName} (${(o.assignedWards || []).length} đã gán)`
             }))}
+            searchable
           />
 
           <div>
@@ -1081,6 +1074,7 @@ export function ProvinceAdminPage() {
                 { value: pair.postOffice.officeId, label: `[Bưu cục] ${pair.postOffice.officeName}`, group: pair.postOffice.officeName },
                 { value: pair.warehouse.officeId, label: `[Kho] ${pair.warehouse.officeName}`, group: pair.postOffice.officeName }
               ])}
+              searchable
             />
           )}
 
