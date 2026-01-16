@@ -5,6 +5,7 @@ import type {
   RegionResponse,
   ProvinceResponse,
   WardResponse,
+  OfficeResponse,
 } from "../models";
 
 export const administrativeService = {
@@ -86,6 +87,17 @@ export const administrativeService = {
 
     const response = await api.get<ApiResponse<PageResponse<WardResponse>>>(
       `/administrative/provinces/${provinceCode}/wards/paginated?${params.toString()}`,
+      { signal }
+    );
+    return response.data;
+  },
+
+  getPostOfficesByProvince: async (
+    provinceCode: string,
+    signal?: AbortSignal
+  ): Promise<ApiResponse<OfficeResponse[]>> => {
+    const response = await api.get<ApiResponse<OfficeResponse[]>>(
+      `/administrative/provinces/${provinceCode}/post-offices`,
       { signal }
     );
     return response.data;

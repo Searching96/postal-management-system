@@ -8,6 +8,7 @@ import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.administrative.ProvinceResponse;
 import org.f3.postalmanagement.dto.response.administrative.RegionResponse;
 import org.f3.postalmanagement.dto.response.administrative.WardResponse;
+import org.f3.postalmanagement.dto.response.office.OfficeResponse;
 import org.f3.postalmanagement.entity.ApiResponse;
 import org.f3.postalmanagement.service.IAdministrativeService;
 import org.springframework.data.domain.PageRequest;
@@ -144,6 +145,25 @@ public class AdministrativeController {
                         .success(true)
                         .message("Wards fetched successfully")
                         .data(wards)
+                        .build()
+        );
+    }
+
+    @GetMapping("/provinces/{provinceCode}/post-offices")
+    @Operation(
+            summary = "Get post offices by province",
+            description = "Get all post offices (PROVINCE_POST, WARD_POST) in a specific province. No authentication required."
+    )
+    public ResponseEntity<ApiResponse<List<OfficeResponse>>> getPostOfficesByProvince(
+            @PathVariable String provinceCode
+    ) {
+        List<OfficeResponse> offices = administrativeService.getPostOfficesByProvince(provinceCode);
+        
+        return ResponseEntity.ok(
+                ApiResponse.<List<OfficeResponse>>builder()
+                        .success(true)
+                        .message("Post offices fetched successfully")
+                        .data(offices)
                         .build()
         );
     }

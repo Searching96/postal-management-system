@@ -13,6 +13,7 @@ import {
   Settings,
   Package,
   Plus,
+  Truck,
 } from "lucide-react";
 import { useState } from "react";
 import { getRoleLabel } from "../lib/utils";
@@ -57,6 +58,16 @@ export function Layout() {
   if (role === "PO_STAFF") {
     primaryNav.push({ to: "/orders", icon: Package, label: "Quản lý đơn hàng" });
     primaryNav.push({ to: "/orders/create", icon: Plus, label: "Tạo vận đơn" });
+    primaryNav.push({ to: "/orders/pending-pickups", icon: Truck, label: "Đơn chờ lấy hàng" });
+  }
+
+  if (role === "SHIPPER") {
+    primaryNav.push({ to: "/shipper", icon: Truck, label: "Đơn hàng của tôi" });
+  }
+
+  if (role === "CUSTOMER") {
+    primaryNav.push({ to: "/customer/pickup", icon: Truck, label: "Tạo yêu cầu lấy hàng" });
+    primaryNav.push({ to: "/orders", icon: Package, label: "Đơn hàng của tôi" }); // Assuming OrderListPage supports customers
   }
 
   const secondaryNav = [
