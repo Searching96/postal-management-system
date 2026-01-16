@@ -536,7 +536,12 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<WardAssignmentInfo> getAvailableWardsForAssignment(Account currentAccount, String provinceCode) {
+    public PageResponse<WardAssignmentInfo> getAvailableWardsForAssignment(
+        Account currentAccount,
+        String provinceCode,
+        String search,
+        Pageable pageable
+    ) {
         Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
                 .orElseThrow(() -> {
                     log.error("Employee record not found for current user");
@@ -551,14 +556,18 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
 
         String targetProvinceCode = currentOffice.getProvince().getCode();
 
-        // Optional: validate provinceCode parameter matches user's province if provided
+        // Validate provinceCode parameter matches user's province if provided
         if (provinceCode != null && !provinceCode.isBlank() && !provinceCode.equals(targetProvinceCode)) {
             log.error("Province code mismatch: provided {} but user belongs to {}", provinceCode, targetProvinceCode);
             throw new IllegalArgumentException("You can only view wards in your province");
         }
 
         // Get paginated and filtered wards in the province
-        Page<Ward> wardPage = wardRepository.searchByProvinceCodeAndNameOrCode(targetProvinceCode, search, pageable);
+        Page<Ward> wardPage = wardRepository.searchByProvinceCodeAndNameOrCode(
+            targetProvinceCode,
+            search,
+            pageable
+        );
 
         // Get all ward assignments in the province
         List<WardOfficeAssignment> allAssignments = wardOfficeAssignmentRepository.findAllByProvinceCode(targetProvinceCode);
@@ -588,11 +597,16 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
 
     private <T> PageResponse<T> mapToPageResponse(Page<?> page, List<T> content) {
         return PageResponse.<T>builder()
-                .content(content)
-                .totalItems((int) page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .currentPage(page.getNumber())
-                .build();
+            .content(content)
+            .pageNumber(page.getNumber())
+            .pageSize(page.getSize())
+            .totalElements(page.getTotalElements())
+            .totalPages(page.getTotalPages())
+            .first(page.isFirst())
+            .last(page.isLast())
+            .hasNext(page.hasNext())
+            .hasPrevious(page.hasPrevious())
+            .build();
     }
 
     private void validateProvinceAccess(Office currentOffice, Office targetOffice) {

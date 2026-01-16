@@ -38,10 +38,20 @@ export const administrativeService = {
   getAllProvincesPaginated: async (
     page = 0,
     size = 10,
+    search?: string,
     signal?: AbortSignal
   ): Promise<ApiResponse<PageResponse<ProvinceResponse>>> => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      size: size.toString(),
+    });
+
+    if (search && search.trim()) {
+      params.append('search', search.trim());
+    }
+
     const response = await api.get<ApiResponse<PageResponse<ProvinceResponse>>>(
-      `/administrative/provinces/paginated?page=${page}&size=${size}`,
+      `/administrative/provinces/paginated?${params.toString()}`,
       { signal }
     );
     return response.data;
@@ -62,10 +72,20 @@ export const administrativeService = {
     provinceCode: string,
     page = 0,
     size = 10,
+    search?: string,
     signal?: AbortSignal
   ): Promise<ApiResponse<PageResponse<WardResponse>>> => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      size: size.toString(),
+    });
+
+    if (search && search.trim()) {
+      params.append('search', search.trim());
+    }
+
     const response = await api.get<ApiResponse<PageResponse<WardResponse>>>(
-      `/administrative/provinces/${provinceCode}/wards/paginated?page=${page}&size=${size}`,
+      `/administrative/provinces/${provinceCode}/wards/paginated?${params.toString()}`,
       { signal }
     );
     return response.data;

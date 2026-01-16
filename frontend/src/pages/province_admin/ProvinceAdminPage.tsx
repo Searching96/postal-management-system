@@ -27,23 +27,27 @@ import {
 import {
   PageHeader,
   Card,
-  LoadingSpinner,
   Alert,
   FormSelect,
   ConfirmationModal,
   CardSkeleton,
-  ListSkeleton,
   Button,
   Modal,
   FormInput,
   AddressSelector,
+  // ...existing code...
 } from "../../components/ui";
+import { PaginationControls } from "../common/ProvincesPage";
 import { getRoleLabel } from "../../lib/utils";
 
 export function ProvinceAdminPage() {
   const [activeTab, setActiveTab] = useState<"offices" | "wards" | "employees">("offices");
   const [offices, setOffices] = useState<WardOfficePairResponse[]>([]);
-  const [wardStatus, setWardStatus] = useState<WardAssignmentInfo[]>([]);
+  const [wardStatus, setWardStatus] = useState<WardAssignmentInfo[] | undefined>([]);
+  const [wardPage, setWardPage] = useState(0);
+  const [wardPageSize] = useState(12);
+  const [wardTotalPages, setWardTotalPages] = useState(0);
+  const [wardTotalElements, setWardTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -107,24 +111,17 @@ export function ProvinceAdminPage() {
   }, [activeTab]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    setWardPage(0);
     setModalSearchTerm(""); // Reset modal search on tab change
   }, [activeTab, searchTerm, statusFilter]);
 
-  const filteredWards = wardStatus.filter(w => {
-    const matchesSearch = w.wardName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      w.wardCode.includes(searchTerm);
-
-    if (statusFilter === "assigned") return matchesSearch && w.isAssigned;
-    if (statusFilter === "unassigned") return matchesSearch && !w.isAssigned;
-    return matchesSearch;
+  const filteredWards = (wardStatus ?? []).filter(w => {
+    if (statusFilter === "assigned") return (w as WardAssignmentInfo).isAssigned;
+    if (statusFilter === "unassigned") return !(w as WardAssignmentInfo).isAssigned;
+    return true;
   });
 
-  const totalPages = Math.ceil(filteredWards.length / itemsPerPage);
-  const paginatedWards = filteredWards.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Removed unused paginatedWards and totalPages
 
   const paginatedOffices = offices.slice(
     (currentPage - 1) * itemsPerPage,
@@ -135,16 +132,23 @@ export function ProvinceAdminPage() {
   const openAssignModal = async (pairId?: string) => {
     setIsLoading(true);
     try {
-      const response = await provinceAdminService.getWardAssignmentStatus();
+      const response = await provinceAdminService.getWardAssignmentStatusPaginated(
+        currentAdminProvince?.code,
+        wardPage,
+        wardPageSize,
+        searchTerm
+      );
       if (response.success) {
-        setWardStatus(response.data);
+        setWardStatus(response.data.content);
+        setWardTotalPages(response.data.totalPages);
+        setWardTotalElements(response.data.totalElements);
         if (pairId) {
           setSelectedOfficePair(pairId);
           const pair = offices.find(o => o.officePairId === pairId);
           // Pre-select wards already assigned to this pair
-          const alreadyAssigned = response.data
-            .filter(w => pair && w.assignedPostOfficeId === pair.postOffice.officeId)
-            .map(w => w.wardCode);
+          const alreadyAssigned = response.data.content
+            .filter((w: WardAssignmentInfo) => pair && w.assignedPostOfficeId === pair.postOffice.officeId)
+            .map((w: WardAssignmentInfo) => w.wardCode);
           setSelectedWards(alreadyAssigned);
         } else {
           setSelectedOfficePair("");
@@ -205,8 +209,18 @@ export function ProvinceAdminPage() {
         const response = await provinceAdminService.getWardOfficePairs(controller.signal);
         if (response.success && abortControllerRef.current === controller) setOffices(response.data);
       } else if (activeTab === "wards") {
-        const response = await provinceAdminService.getWardAssignmentStatus(undefined, controller.signal);
-        if (response.success && abortControllerRef.current === controller) setWardStatus(response.data);
+        const response = await provinceAdminService.getWardAssignmentStatusPaginated(
+          currentAdminProvince?.code,
+          wardPage,
+          wardPageSize,
+          searchTerm,
+          controller.signal
+        );
+        if (response.success && abortControllerRef.current === controller) {
+          setWardStatus(response.data.content);
+          setWardTotalPages(response.data.totalPages);
+          setWardTotalElements(response.data.totalElements);
+        }
       }
     } catch (err: any) {
       if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return;
@@ -222,6 +236,7 @@ export function ProvinceAdminPage() {
     warehouseEmail: "",
     warehousePhoneNumber: "",
     warehouseAddress: "",
+    warehouseCapacity: 1000,
     postOfficeName: "",
     postOfficeEmail: "",
     postOfficePhoneNumber: "",
@@ -245,6 +260,9 @@ export function ProvinceAdminPage() {
     }
     if (!officeFormData.warehouseAddress || officeFormData.warehouseAddress.split(", ").length < 2) {
       errors.warehouseAddress = "Vui lòng chọn đầy đủ địa chỉ kho (Phường/Xã và Số nhà)";
+    }
+    if (!officeFormData.warehouseCapacity || officeFormData.warehouseCapacity <= 0) {
+      errors.warehouseCapacity = "Công suất kho phải lớn hơn 0";
     }
 
     // Post Office
@@ -274,13 +292,24 @@ export function ProvinceAdminPage() {
         setSuccess("Tạo bưu cục và kho thành công");
         setIsOfficeModalOpen(false);
         setOfficeFormData({
-          warehouseName: "", warehouseEmail: "", warehousePhoneNumber: "", warehouseAddress: "",
+          warehouseName: "", warehouseEmail: "", warehousePhoneNumber: "", warehouseAddress: "", warehouseCapacity: 1000,
           postOfficeName: "", postOfficeEmail: "", postOfficePhoneNumber: "", postOfficeAddress: "",
-          provinceCode: "",
+          provinceCode: currentAdminProvince?.code || "",
         });
         fetchData();
       } else {
-        if (response.errorCode === "VALIDATION_ERROR" && response.data) {
+        // Handle duplicate email errors
+        let errors: Record<string, string> = {};
+        if (response.message?.includes("Post office email already exists")) {
+          errors.postOfficeEmail = response.message;
+        }
+        if (response.message?.includes("Warehouse email already exists")) {
+          errors.warehouseEmail = response.message;
+        }
+        if (Object.keys(errors).length > 0) {
+          setOfficeErrors(errors);
+          setError("");
+        } else if (response.errorCode === "VALIDATION_ERROR" && response.data) {
           setOfficeErrors(response.data as unknown as Record<string, string>);
           setError("Thông tin nhập vào không hợp lệ. Vui lòng kiểm tra lại.");
         } else {
@@ -289,7 +318,17 @@ export function ProvinceAdminPage() {
       }
     } catch (err: any) {
       const errorData = err.response?.data;
-      if (errorData?.errorCode === "VALIDATION_ERROR" && errorData.data) {
+      let errors: Record<string, string> = {};
+      if (errorData?.message?.includes("Post office email already exists")) {
+        errors.postOfficeEmail = errorData.message;
+      }
+      if (errorData?.message?.includes("Warehouse email already exists")) {
+        errors.warehouseEmail = errorData.message;
+      }
+      if (Object.keys(errors).length > 0) {
+        setOfficeErrors(errors);
+        setError("");
+      } else if (errorData?.errorCode === "VALIDATION_ERROR" && errorData.data) {
         setOfficeErrors(errorData.data);
         setError("Lỗi xác thực từ máy chủ");
       } else {
@@ -575,7 +614,7 @@ export function ProvinceAdminPage() {
                   placeholder="Tìm theo tên hoặc mã..."
                   className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium"
                   value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
+                  onChange={e => { setWardPage(0); setSearchTerm(e.target.value); }}
                 />
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
@@ -606,11 +645,11 @@ export function ProvinceAdminPage() {
 
           {isLoading && !isOfficeModalOpen && !isAssignModalOpen ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, i) => (
+              {Array.from({ length: wardPageSize }).map((_, i) => (
                 <CardSkeleton key={i} />
               ))}
             </div>
-          ) : paginatedWards.length === 0 ? (
+          ) : filteredWards.length === 0 ? (
             <Card className="flex flex-col items-center justify-center p-12 text-gray-400 bg-gray-50/50 border-dashed">
               <Search className="w-12 h-12 mb-4 opacity-10" />
               <p className="font-medium">Không tìm thấy phường xã nào khớp với yêu cầu.</p>
@@ -618,7 +657,7 @@ export function ProvinceAdminPage() {
           ) : (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {paginatedWards.map((ward) => (
+                {filteredWards.map((ward) => (
                   <Card
                     key={ward.wardCode}
                     className={`group !p-4 border-l-[6px] transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${ward.isAssigned ? 'border-l-green-500 bg-green-50/20' : 'border-l-yellow-500 bg-yellow-50/20'
@@ -659,53 +698,15 @@ export function ProvinceAdminPage() {
                 ))}
               </div>
 
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 pt-8">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter(page => {
-                        return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
-                      })
-                      .map((page, index, array) => (
-                        <div key={page} className="flex items-center gap-1">
-                          {index > 0 && array[index - 1] !== page - 1 && (
-                            <span className="text-gray-300 px-1">...</span>
-                          )}
-                          <Button
-                            variant={currentPage === page ? "primary" : "ghost"}
-                            size="sm"
-                            onClick={() => setCurrentPage(page)}
-                            className={`h-8 w-8 p-0 text-xs font-bold transition-all ${currentPage === page
-                              ? "shadow-md shadow-primary-200"
-                              : "text-gray-500 hover:text-primary-600 hover:bg-primary-50"
-                              }`}
-                          >
-                            {page}
-                          </Button>
-                        </div>
-                      ))}
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
+              {/* Pagination Controls */}
+              {wardTotalPages > 1 && (
+                <PaginationControls
+                  page={wardPage}
+                  totalPages={wardTotalPages}
+                  totalElements={wardTotalElements}
+                  pageSize={wardPageSize}
+                  onPageChange={setWardPage}
+                />
               )}
             </>
           )}
@@ -790,6 +791,29 @@ export function ProvinceAdminPage() {
                   className="!bg-white"
                 />
               </div>
+
+                <div className="relative grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-end gap-2">
+                    <div className="relative w-full">
+                      <FormInput
+                        label="Công suất kho"
+                        type="number"
+                        required
+                        value={officeFormData.warehouseCapacity}
+                        onChange={e => setOfficeFormData(prev => ({ ...prev, warehouseCapacity: Number(e.target.value) }))}
+                        error={officeErrors.warehouseCapacity}
+                        className="!bg-white"
+                        min={1}
+                        suffix={
+                          <>
+                            <span className="w-px h-5 bg-gray-200 mx-2"></span>
+                            <span className="text-sm font-medium text-gray-500">kiện</span>
+                          </>
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
 
               <div className="relative grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormInput
@@ -912,7 +936,7 @@ export function ProvinceAdminPage() {
               setSelectedOfficePair(pairId);
               const pair = offices.find(o => o.officePairId === pairId);
               // Update selected wards based on newly selected pair
-              const alreadyAssigned = wardStatus
+              const alreadyAssigned = (wardStatus ?? [])
                 .filter(w => pair && w.assignedPostOfficeId === pair.postOffice.officeId)
                 .map(w => w.wardCode);
               setSelectedWards(alreadyAssigned);
@@ -938,7 +962,7 @@ export function ProvinceAdminPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-              {wardStatus
+              {(wardStatus ?? [])
                 .filter(w => {
                   const pair = offices.find(o => o.officePairId === selectedOfficePair);
                   const isEligible = !w.isAssigned || (pair && w.assignedPostOfficeId === pair.postOffice.officeId);
@@ -973,7 +997,7 @@ export function ProvinceAdminPage() {
                     </label>
                   );
                 })}
-              {wardStatus.filter(w => {
+              {(wardStatus ?? []).filter(w => {
                 const pair = offices.find(o => o.officePairId === selectedOfficePair);
                 return !w.isAssigned || (pair && w.assignedPostOfficeId === pair.postOffice.officeId);
               }).length === 0 && (

@@ -28,9 +28,7 @@ export function ProvincesPage() {
 
   // --- PROVINCE STATE ---
   const [provinces, setProvinces] = useState<ProvinceResponse[]>([]);
-  const [allProvincesCache, setAllProvincesCache] = useState<ProvinceResponse[]>(
-    []
-  );
+  const [allProvincesCache, setAllProvincesCache] = useState<ProvinceResponse[]>([]);
   const [provincePage, setProvincePage] = useState(0);
   const [provinceTotalPages, setProvinceTotalPages] = useState(0);
   const [provinceTotalElements, setProvinceTotalElements] = useState(0);
@@ -39,11 +37,8 @@ export function ProvincesPage() {
   const [searchTerm, setSearchTerm] = useState("");
 
   // --- WARD STATE (Nested) ---
-  const [expandedProvinceCode, setExpandedProvinceCode] = useState<string | null>(
-    null
-  );
+  const [expandedProvinceCode, setExpandedProvinceCode] = useState<string | null>(null);
   const [wards, setWards] = useState<WardResponse[]>([]);
-  const [allWardsCache, setAllWardsCache] = useState<WardResponse[]>([]);
   const [wardPage, setWardPage] = useState(0);
   const [wardTotalPages, setWardTotalPages] = useState(0);
   const [wardTotalElements, setWardTotalElements] = useState(0);
@@ -52,8 +47,8 @@ export function ProvincesPage() {
   const [wardSearchTerm, setWardSearchTerm] = useState("");
 
   // --- LOADER STATE ---
-  const [isLoading, setIsLoading] = useState(true); // Province list loader
-  const [isLoadingWards, setIsLoadingWards] = useState(false); // Ward nested loader
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingWards, setIsLoadingWards] = useState(false);
   const [error, setError] = useState("");
 
   const [provincePageSize, setProvincePageSize] = useState(10);
@@ -68,20 +63,14 @@ export function ProvincesPage() {
       const height = window.innerHeight;
       const width = window.innerWidth;
 
-      // Province list (single column)
-      // Header (~200px) + Controls (~200px) + Pagination (~100px) = ~500px offset
-      // Row height ~80px
       const pRows = Math.max(5, Math.floor((height - 500) / 80));
       setProvincePageSize(pRows);
 
-      // Ward grid (multi column)
-      // Search box (~60px) + Pagination (~60px) = ~120px offset within province row
-      // Grid item height ~60px
       let cols = 2;
       if (width >= 1024) cols = 4;
       else if (width >= 768) cols = 3;
 
-      const wRows = Math.max(3, Math.floor((height * 0.4) / 60)); // Wards occupy a portion of the screen
+      const wRows = Math.max(3, Math.floor((height * 0.4) / 60));
       setWardPageSize(cols * wRows);
     };
 
@@ -98,7 +87,6 @@ export function ProvincesPage() {
 
   const loadProvincesData = useCallback(
     async (page: number, search: string) => {
-      // Abort previous request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -109,23 +97,18 @@ export function ProvincesPage() {
       setError("");
 
       try {
-        const useClientSide =
-          search.trim().length > 0 || selectedRegion !== null;
+        // Use client-side filtering only when a region filter is applied
+        const useClientSide = selectedRegion !== null;
 
         if (useClientSide) {
-          // Client-side mode (Search or Region Filter)
+          // Client-side mode (Region Filter)
           let sourceData = allProvincesCache;
 
           if (sourceData.length === 0) {
-            let response;
-            if (selectedRegion !== null) {
-              response = await administrativeService.getProvincesByRegion(
-                selectedRegion,
-                controller.signal
-              );
-            } else {
-              response = await administrativeService.getAllProvinces(controller.signal);
-            }
+            const response = await administrativeService.getProvincesByRegion(
+              selectedRegion,
+              controller.signal
+            );
 
             if (response.success) {
               sourceData = response.data;
@@ -137,6 +120,7 @@ export function ProvincesPage() {
             }
           }
 
+          // Apply search filter on client side
           let filtered = sourceData;
           if (search.trim()) {
             const lowerSearch = search.toLowerCase();
@@ -156,12 +140,14 @@ export function ProvincesPage() {
             setProvinceTotalPages(Math.ceil(filtered.length / provincePageSize));
           }
         } else {
-          // Server-side mode
+          // Server-side mode (with search handled by backend)
           const response = await administrativeService.getAllProvincesPaginated(
             page,
             provincePageSize,
+            search.trim() || undefined,
             controller.signal
           );
+
           if (response.success) {
             if (abortControllerRef.current === controller) {
               setProvinces(response.data.content);
@@ -192,7 +178,6 @@ export function ProvincesPage() {
 
   const loadWardsData = useCallback(
     async (page: number, search: string, provinceCode: string) => {
-      // Abort previous request
       if (wardAbortControllerRef.current) {
         wardAbortControllerRef.current.abort();
       }
@@ -201,60 +186,23 @@ export function ProvincesPage() {
 
       setIsLoadingWards(true);
       try {
-        const useClientSide = search.trim().length > 0;
+        // Always use server-side pagination and search for wards
+        const response = await administrativeService.getWardsByProvincePaginated(
+          provinceCode,
+          page,
+          wardPageSize,
+          search.trim() || undefined,
+          controller.signal
+        );
 
-        if (useClientSide) {
-          // Client-side mode (Search in Wards)
-          let sourceData = allWardsCache;
-
-          if (sourceData.length === 0) {
-            const response = await administrativeService.getWardsByProvince(
-              provinceCode,
-              controller.signal
-            );
-            if (response.success) {
-              sourceData = response.data;
-              setAllWardsCache(sourceData);
-            } else {
-              console.error(response.message || "Không thể tải danh sách phường xã");
-              if (wardAbortControllerRef.current === controller) setIsLoadingWards(false);
-              return;
-            }
-          }
-
-          const lowerSearch = search.toLowerCase();
-          const filtered = sourceData.filter(
-            (w) =>
-              w.name.toLowerCase().includes(lowerSearch) ||
-              w.code.toLowerCase().includes(lowerSearch)
-          );
-
-          const start = page * wardPageSize;
-          const pagedData = filtered.slice(start, start + wardPageSize);
-
+        if (response.success) {
           if (wardAbortControllerRef.current === controller) {
-            setWards(pagedData);
-            setWardTotalElements(filtered.length);
-            setWardTotalPages(Math.ceil(filtered.length / wardPageSize));
+            setWards(response.data.content);
+            setWardTotalPages(response.data.totalPages);
+            setWardTotalElements(response.data.totalElements);
           }
         } else {
-          // Server-side mode (Pagination for Wards)
-          const response =
-            await administrativeService.getWardsByProvincePaginated(
-              provinceCode,
-              page,
-              wardPageSize,
-              controller.signal
-            );
-          if (response.success) {
-            if (wardAbortControllerRef.current === controller) {
-              setWards(response.data.content);
-              setWardTotalPages(response.data.totalPages);
-              setWardTotalElements(response.data.totalElements);
-            }
-          } else {
-            console.error(response.message || "Không thể tải danh sách phường xã");
-          }
+          console.error(response.message || "Không thể tải danh sách phường xã");
         }
       } catch (err: any) {
         if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
@@ -268,19 +216,22 @@ export function ProvincesPage() {
         }
       }
     },
-    [allWardsCache, wardPageSize]
+    [wardPageSize]
   );
 
   // --- EFFECTS ---
 
-  // 1. Load Provinces (Initial + Page Change + Search Debounce)
+  // Load Provinces on page/size change
   useEffect(() => {
     loadProvincesData(provincePage, searchTerm);
-  }, [provincePage, provincePageSize]); // Trigger on page change or size change
+  }, [provincePage, provincePageSize]);
 
-  // Region change logic
+  // Region change - reset and reload
   useEffect(() => {
-    loadProvincesData(0, searchTerm); // Reload on region change (page reset handled in handler)
+    setProvincePage(0);
+    setSearchTerm("");
+    setAllProvincesCache([]);
+    loadProvincesData(0, "");
   }, [selectedRegion]);
 
   // Debounce PROVINCE Search
@@ -292,12 +243,12 @@ export function ProvincesPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // 2. Load Wards (Initial + Ward Page Change + Ward Size Change)
+  // Load Wards on page/size change
   useEffect(() => {
     if (expandedProvinceCode) {
       loadWardsData(wardPage, wardSearchTerm, expandedProvinceCode);
     }
-  }, [wardPage, wardPageSize]); // Trigger on ward page change or size change
+  }, [wardPage, wardPageSize]);
 
   // Debounce WARD Search
   useEffect(() => {
@@ -319,24 +270,17 @@ export function ProvincesPage() {
 
   const handleRegionFilterChange = (regionId: number | null) => {
     setSelectedRegion(regionId);
-    setAllProvincesCache([]); // Invalidate cache
-    setProvincePage(0);
-    setExpandedProvinceCode(null); // Collapse any open province
+    setExpandedProvinceCode(null);
   };
 
   const handleProvinceExpand = (provinceCode: string) => {
     if (expandedProvinceCode === provinceCode) {
-      // Collapse
       setExpandedProvinceCode(null);
     } else {
-      // Expand
       setExpandedProvinceCode(provinceCode);
-      // Reset Ward State
       setWardPage(0);
       setWardSearchTerm("");
-      setAllWardsCache([]);
       setWards([]);
-      // Load initial wards
       loadWardsData(0, "", provinceCode);
     }
   };
@@ -546,8 +490,8 @@ export function ProvincesPage() {
   );
 }
 
-// Sub-component for Pagination to reuse code
-function PaginationControls({
+// Sub-component for Pagination
+export function PaginationControls({
   page,
   totalPages,
   totalElements,

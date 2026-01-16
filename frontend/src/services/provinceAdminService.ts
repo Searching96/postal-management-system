@@ -9,6 +9,7 @@ import type {
   CreateWardOfficeRequest,
   AssignWardsRequest,
   WardAssignmentInfo,
+  PageResponse,
 } from "../models";
 
 export const provinceAdminService = {
@@ -81,13 +82,20 @@ export const provinceAdminService = {
     return response.data;
   },
 
-  getWardAssignmentStatus: async (
+  getWardAssignmentStatusPaginated: async (
     provinceCode?: string,
+    page = 0,
+    size = 12,
+    search?: string,
     signal?: AbortSignal
-  ): Promise<ApiResponse<WardAssignmentInfo[]>> => {
-    const params = provinceCode ? `?provinceCode=${provinceCode}` : "";
-    const response = await api.get<ApiResponse<WardAssignmentInfo[]>>(
-      `/province-admin/wards/assignment-status${params}`,
+  ): Promise<ApiResponse<PageResponse<WardAssignmentInfo>>> => {
+    const params = new URLSearchParams();
+    if (provinceCode) params.append("provinceCode", provinceCode);
+    params.append("page", page.toString());
+    params.append("size", size.toString());
+    if (search && search.trim()) params.append("search", search.trim());
+    const response = await api.get<ApiResponse<PageResponse<WardAssignmentInfo>>>(
+      `/province-admin/wards/assignment-status?${params.toString()}`,
       { signal }
     );
     return response.data;
