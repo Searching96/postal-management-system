@@ -2,7 +2,9 @@ package org.f3.postalmanagement.dto.request.office;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
@@ -47,6 +49,15 @@ public class CreateWardOfficeRequest {
             requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String warehouseAddress;
+
+    @NotNull(message = "Warehouse capacity is required")
+    @Min(value = 1, message = "Capacity must be at least 1")
+    @Schema(
+            description = "Capacity of the warehouse (number of packages it can hold)",
+            example = "1000",
+            requiredMode = Schema.RequiredMode.REQUIRED
+    )
+    private Integer warehouseCapacity;
 
     // --- Ward Post Office fields ---
     @NotBlank(message = "Post office name is required")

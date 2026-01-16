@@ -11,10 +11,16 @@ export interface WardOfficePairResponse {
 }
 
 export interface CreateWardOfficeRequest {
-  postOfficeName: string;
   warehouseName: string;
-  address: string;
-  provinceCode: string;
+  warehouseEmail: string;
+  warehousePhoneNumber: string;
+  warehouseAddress: string;
+  warehouseCapacity: number;
+  postOfficeName: string;
+  postOfficeEmail: string;
+  postOfficePhoneNumber: string;
+  postOfficeAddress: string;
+  provinceCode?: string;
 }
 
 export interface AssignWardsRequest {

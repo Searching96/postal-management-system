@@ -79,6 +79,7 @@ public class DataInitializer implements CommandLineRunner {
                 hub.setOfficeAddress("Address HUB " + region.getName());
                 hub.setRegion(region);
                 hub.setOfficeType(OfficeType.HUB);
+                hub.setCapacity(10000);
                 
                 Office savedHub = officeRepository.save(hub);
                 hubsByRegion.put(region.getId(), savedHub);
@@ -117,6 +118,7 @@ public class DataInitializer implements CommandLineRunner {
             warehouse.setProvince(province);
             warehouse.setParent(parentHub);
             warehouse.setOfficeType(OfficeType.PROVINCE_WAREHOUSE);
+            warehouse.setCapacity(5000);
             Office savedWarehouse = officeRepository.save(warehouse);
             
             // Create WH_PROVINCE_ADMIN for this warehouse

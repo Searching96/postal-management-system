@@ -349,6 +349,7 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         wardWarehouse.setProvince(parentWarehouse.getProvince());
         wardWarehouse.setRegion(parentWarehouse.getRegion());
         wardWarehouse.setParent(parentWarehouse);
+        wardWarehouse.setCapacity(request.getWarehouseCapacity());
 
         // Create Ward Post Office (without ward assignment initially)
         Office wardPostOffice = new Office();
