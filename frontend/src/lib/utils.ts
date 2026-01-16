@@ -8,6 +8,9 @@ export const getRoleLabel = (role: string): string => {
         PO_WARD_MANAGER: "Quản lý Xã (BC)",
         WH_WARD_MANAGER: "Quản lý Xã (Kho)",
         WARD_MANAGER: "Quản lý Xã",
+        WARD_MANAGER: "Quản lý Xã",
+        PO_STAFF: "Giao dịch viên",
+        WH_STAFF: "Nhân viên Kho",
         STAFF: "Nhân viên",
         CUSTOMER: "Khách hàng",
     };
@@ -25,4 +28,13 @@ export const getOfficeTypeLabel = (type: string): string => {
     };
 
     return types[type] || type;
+};
+
+export const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
+};
+
+export const formatDate = (dateString: string): string => {
+    if (!dateString) return "";
+    return new Date(dateString).toLocaleDateString("vi-VN");
 };

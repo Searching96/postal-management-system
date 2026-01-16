@@ -58,3 +58,10 @@ export interface CreateWardManagerEmployeeRequest {
   email: string;
   password: string;
 }
+
+export interface UpdateStaffRequest {
+  fullName?: string;
+  phoneNumber?: string;
+  email?: string;
+  active?: boolean;
+}

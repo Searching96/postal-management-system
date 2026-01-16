@@ -51,7 +51,11 @@ export function FormSelect({
   // Close on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const isInsideContainer = containerRef.current?.contains(target);
+      const isInsideDropdown = dropdownRef.current?.contains(target);
+
+      if (!isInsideContainer && !isInsideDropdown) {
         setIsOpen(false);
       }
     };
@@ -64,26 +68,26 @@ export function FormSelect({
 
     // Create observer only once
     observerRef.current = new IntersectionObserver(
-        (entries) => {
+      (entries) => {
         // If the button is not intersecting (not visible in viewport)
         if (!entries[0].isIntersecting && isOpen) {
-            setIsOpen(false);
+          setIsOpen(false);
         }
-        },
-        {
+      },
+      {
         threshold: 0.1,           // Consider "visible" if at least 10% is in view
         rootMargin: "0px",        // You can adjust: "-50px" to close earlier
-        }
+      }
     );
 
     observerRef.current.observe(buttonRef.current);
 
     return () => {
-        if (observerRef.current) {
+      if (observerRef.current) {
         observerRef.current.disconnect();
-        }
+      }
     };
-    }, [isOpen]);
+  }, [isOpen]);
 
   // Calculate position relative to viewport (best for most modal cases)
   const updatePosition = () => {
@@ -235,25 +239,22 @@ export function FormSelect({
         >
           {Icon && (
             <Icon
-              className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors ${
-                isOpen ? "text-primary-600" : "text-gray-400"
-              }`}
+              className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors ${isOpen ? "text-primary-600" : "text-gray-400"
+                }`}
             />
           )}
 
           <span
-            className={`block truncate ${
-              !selectedOption && !value ? "text-gray-400" : "text-gray-900 font-medium"
-            }`}
+            className={`block truncate ${!selectedOption && !value ? "text-gray-400" : "text-gray-900 font-medium"
+              }`}
           >
             {selectedOption ? selectedOption.label : placeholder}
           </span>
 
           <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <ChevronDown
-              className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-                isOpen ? "rotate-180 text-primary-600" : ""
-              }`}
+              className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-primary-600" : ""
+                }`}
             />
           </span>
         </button>

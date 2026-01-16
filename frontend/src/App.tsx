@@ -11,6 +11,12 @@ import {
   HubAdminPage,
   ProvinceAdminPage,
   WardManagerPage,
+  OrderListPage,
+  CreateOrderPage,
+  OrderDetailsPage,
+  BatchListPage,
+  BatchDetailsPage,
+  ShipperManagementPage,
 } from "./pages";
 
 function App() {
@@ -34,6 +40,18 @@ function App() {
               <Route path="/admin/hub" element={<HubAdminPage />} />
               <Route path="/admin/province" element={<ProvinceAdminPage />} />
               <Route path="/admin/ward" element={<WardManagerPage />} />
+
+              {/* Order Management */}
+              <Route path="/orders" element={<OrderListPage />} />
+              <Route path="/orders/create" element={<CreateOrderPage />} />
+              <Route path="/orders/:id" element={<OrderDetailsPage />} />
+
+              {/* Batch Management */}
+              <Route path="/batches" element={<BatchListPage />} />
+              <Route path="/batches/:id" element={<BatchDetailsPage />} />
+
+              {/* Other Admin */}
+              <Route path="/admin/shippers" element={<ShipperManagementPage />} />
             </Route>
           </Route>
 

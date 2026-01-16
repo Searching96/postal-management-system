@@ -36,8 +36,9 @@ import {
   FormInput,
   AddressSelector,
 } from "../../components/ui";
-import { PaginationControls } from "../common/ProvincesPage";
+import { PaginationControls } from "../../components/ui";
 import { getRoleLabel } from "../../lib/utils";
+import { EmployeeListTable } from "./EmployeeListTable";
 
 export function ProvinceAdminPage() {
   const [activeTab, setActiveTab] = useState<"offices" | "wards" | "employees">("offices");
@@ -77,7 +78,7 @@ export function ProvinceAdminPage() {
     title: string;
     message: string;
     action: () => Promise<void>;
-  }>({ title: "", message: "", action: async () => {} });
+  }>({ title: "", message: "", action: async () => { } });
 
   useEffect(() => {
     const updateItemsPerPage = () => {
@@ -124,6 +125,8 @@ export function ProvinceAdminPage() {
   );
   const totalOfficePages = Math.ceil(offices.length / itemsPerPage);
 
+  const [allWards, setAllWards] = useState<WardAssignmentInfo[]>([]);
+
   const openAssignModal = async (pairId?: string) => {
     setIsLoading(true);
     try {
@@ -136,6 +139,8 @@ export function ProvinceAdminPage() {
         "all"
       );
       if (response.success) {
+        setAllWards(response.data.content ?? []); // Store full list for modal
+
         setSelectedOfficePair(pairId || "");
         const pair = pairId ? offices.find((o) => o.officePairId === pairId) : null;
 
@@ -143,7 +148,35 @@ export function ProvinceAdminPage() {
           .filter((w: WardAssignmentInfo) => pair && w.assignedPostOfficeId === pair.postOffice.officeId)
           .map((w: WardAssignmentInfo) => w.wardCode);
 
-        setSelectedWards(alreadyAssigned);
+        // If specific pre-selected wards are passed, use them instead (e.g. from Ward Card "Assign" button)
+        // Note: The UI logic might need `selectedWards` to be merged if we support multi-select from different sources, 
+        // but typically "Assign" button implies starting fresh or adding to current.
+        // For now, let's say if we didn't pass a specific pairId (meaning we just opened the modal generally), 
+        // we might rely on the user picking a pair to see assignments. 
+        // BUT if we click "Assign" on a ward, we want that ward selected.
+
+        // Wait, the original logic was: openAssignModal(pairId).
+        // If we want to assign a specific ward, we might need a different signature or logic.
+        // Let's modify the signature in the component scope or state handling.
+
+        // Actually, let's keep the existing logic: if pairId is provided, we select the pair.
+        // The selection of wards happens via state `selectedWards`.
+        // We will handle "Assign" button click by setting `selectedWards` directly before calling/opening modal.
+
+        // So here we only reset if we are switching pairs, or if we want to sync with backend.
+        // If `selectedWards` was set by the "Assign" button (which calls this function or sets state then opens), 
+        // we should be careful not to overwrite it if no pairId is passed or if we want to preserve it.
+
+        // However, `openAssignModal` is currently used by the Card's "Phân Phối" button which passes a pairId.
+        // The new "Assign" button on Ward Card will likely call this with NO pairId, but `selectedWards` set.
+
+        if (pairId) {
+          setSelectedWards(alreadyAssigned);
+        }
+        // If no pairId (general open or from Ward Assign button), we don't overwrite selectedWards here 
+        // (assuming they might be set before calling this, or we want them empty).
+        // But wait, `fetchData` might have refreshed `offices` etc.
+
         setIsAssignModalOpen(true);
       }
     } catch (err) {
@@ -380,6 +413,7 @@ export function ProvinceAdminPage() {
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(""); // Clear any previous errors
     try {
       let response;
       if (employeeRole === "WARD_MANAGER") {
@@ -400,10 +434,23 @@ export function ProvinceAdminPage() {
         setIsEmployeeModalOpen(false);
         setEmployeeFormData({ fullName: "", phoneNumber: "", email: "", password: "", officeId: "" });
       } else {
-        setError(response.message);
+        // Handle validation errors
+        if (response.errorCode === "VALIDATION_ERROR" && response.data) {
+          const errorData = response.data as unknown as Record<string, string>;
+          const errorMessages = Object.values(errorData).join(", ");
+          setError(errorMessages || response.message || "Lỗi xác thực dữ liệu");
+        } else {
+          setError(response.message || "Lỗi khi tạo nhân viên");
+        }
       }
-    } catch (err) {
-      setError("Lỗi khi tạo nhân viên");
+    } catch (err: any) {
+      const errorData = err.response?.data;
+      if (errorData?.errorCode === "VALIDATION_ERROR" && errorData?.data) {
+        const errorMessages = Object.values(errorData.data as Record<string, string>).join(", ");
+        setError(errorMessages || errorData.message || "Lỗi xác thực dữ liệu");
+      } else {
+        setError(errorData?.message || err.message || "Lỗi khi tạo nhân viên");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -684,6 +731,36 @@ export function ProvinceAdminPage() {
                         <p className={`text-[16px] font-bold truncate flex-1 ${ward.isAssigned ? 'text-gray-900' : 'text-gray-400 italic'}`}>
                           {offices.find(o => o.postOffice.officeId === ward.assignedPostOfficeId)?.postOffice.officeName || "Chưa phân bổ"}
                         </p>
+                        {!ward.isAssigned ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-1 px-3 text-[11px] font-bold border-primary-200 text-primary-700 hover:bg-primary-50 hover:border-primary-300 shadow-sm"
+                            onClick={() => {
+                              setSelectedWards([ward.wardCode]);
+                              setSelectedOfficePair("");
+                              setIsAssignModalOpen(true);
+                              openAssignModal();
+                            }}
+                          >
+                            Phân bổ <ChevronRight className="w-3 h-3" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 rounded-full hover:bg-gray-100 text-gray-400 group-hover:text-primary-600 group-hover:bg-primary-50 transition-colors"
+                            title="Phân bổ lại"
+                            onClick={() => {
+                              setSelectedWards([ward.wardCode]);
+                              setSelectedOfficePair("");
+                              setIsAssignModalOpen(true);
+                              openAssignModal();
+                            }}
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </Card>
@@ -708,19 +785,17 @@ export function ProvinceAdminPage() {
       {/* --- EMPLOYEES TAB --- */}
       {activeTab === "employees" && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-xl font-bold text-gray-900">Quản lý Nhân sự</h2>
-            <Button onClick={() => setIsEmployeeModalOpen(true)} className="gap-2">
-              <UserIcon className="h-4 w-4" /> Thêm Nhân Viên
-            </Button>
-          </div>
-          <Card className="p-8 text-center bg-gray-50/50">
-            <div className="max-w-md mx-auto">
-              <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 font-medium">Bạn có thể tạo tài khoản cho Ward Manager, Staff hoặc Province Admin khác.</p>
-              <p className="text-sm text-gray-400 mt-2">Tính năng liệt kê danh sách nhân viên đang được cập nhật.</p>
+            <div className="flex gap-2 w-full md:w-auto">
+              {/* Search could be added here later */}
+              <Button onClick={() => setIsEmployeeModalOpen(true)} className="gap-2 flex-1 md:flex-none justify-center">
+                <UserIcon className="h-4 w-4" /> Thêm Nhân Viên
+              </Button>
             </div>
-          </Card>
+          </div>
+
+          <EmployeeListTable />
         </div>
       )}
 
@@ -736,7 +811,7 @@ export function ProvinceAdminPage() {
           <div className="space-y-10">
             {/* Shared Province Selection - Only show if currentAdminProvince is not set (e.g. higher level admins) */}
             {!currentAdminProvince && (
-              <div className="p-5 bg-primary-50/30 border border-primary-100 rounded-2xl" style={{overflow: 'visible'}}>
+              <div className="p-5 bg-primary-50/30 border border-primary-100 rounded-2xl" style={{ overflow: 'visible' }}>
                 <FormSelect
                   label="Tỉnh / Thành phố quản lý"
                   icon={Building2}
@@ -784,28 +859,28 @@ export function ProvinceAdminPage() {
                 />
               </div>
 
-                <div className="relative grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-end gap-2">
-                    <div className="relative w-full">
-                      <FormInput
-                        label="Công suất kho"
-                        type="number"
-                        required
-                        value={officeFormData.warehouseCapacity}
-                        onChange={e => setOfficeFormData(prev => ({ ...prev, warehouseCapacity: Number(e.target.value) }))}
-                        error={officeErrors.warehouseCapacity}
-                        className="!bg-white"
-                        min={1}
-                        suffix={
-                          <>
-                            <span className="w-px h-5 bg-gray-200 mx-2"></span>
-                            <span className="text-sm font-medium text-gray-500">kiện</span>
-                          </>
-                        }
-                      />
-                    </div>
+              <div className="relative grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-end gap-2">
+                  <div className="relative w-full">
+                    <FormInput
+                      label="Công suất kho"
+                      type="number"
+                      required
+                      value={officeFormData.warehouseCapacity}
+                      onChange={e => setOfficeFormData(prev => ({ ...prev, warehouseCapacity: Number(e.target.value) }))}
+                      error={officeErrors.warehouseCapacity}
+                      className="!bg-white"
+                      min={1}
+                      suffix={
+                        <>
+                          <span className="w-px h-5 bg-gray-200 mx-2"></span>
+                          <span className="text-sm font-medium text-gray-500">kiện</span>
+                        </>
+                      }
+                    />
                   </div>
                 </div>
+              </div>
 
               <div className="relative grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormInput
@@ -925,13 +1000,25 @@ export function ProvinceAdminPage() {
             value={selectedOfficePair}
             onChange={val => {
               const pairId = val as string;
+              const wasEmptyPair = !selectedOfficePair; // Check if we are coming from a "no pair selected" state
+
               setSelectedOfficePair(pairId);
               const pair = offices.find(o => o.officePairId === pairId);
-              // Update selected wards based on newly selected pair
-              const alreadyAssigned = (wardStatus ?? [])
+
+              // Get wards already assigned to this pair
+              const sourceWards = allWards.length > 0 ? allWards : (wardStatus ?? []);
+              const pairAssignedWards = sourceWards
                 .filter(w => pair && w.assignedPostOfficeId === pair.postOffice.officeId)
                 .map(w => w.wardCode);
-              setSelectedWards(alreadyAssigned);
+
+              if (wasEmptyPair) {
+                // Merge existing user selection (e.g. from Assign button) with the pair's assignments
+                const merged = Array.from(new Set([...selectedWards, ...pairAssignedWards]));
+                setSelectedWards(merged);
+              } else {
+                // Standard behavior: Reset to the new pair's assignments
+                setSelectedWards(pairAssignedWards);
+              }
             }}
             options={offices.map(o => ({
               value: o.officePairId,
@@ -955,16 +1042,29 @@ export function ProvinceAdminPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-              {(wardStatus ?? [])
+              {(allWards.length > 0 ? allWards : wardStatus ?? [])
                 .filter(w => {
-                  const pair = offices.find(o => o.officePairId === selectedOfficePair);
-                  const isEligible = !w.isAssigned || (pair && w.assignedPostOfficeId === pair.postOffice.officeId);
+                  // Show ALL wards
                   const matchesSearch = w.wardName.toLowerCase().includes(modalSearchTerm.toLowerCase()) || w.wardCode.includes(modalSearchTerm);
-                  return isEligible && matchesSearch;
+                  return matchesSearch;
+                })
+                .sort((a, b) => {
+                  // Sort by isAssigned desc (assigned first)
+                  if (a.isAssigned !== b.isAssigned) return a.isAssigned ? -1 : 1;
+                  return a.wardName.localeCompare(b.wardName, 'vi');
                 })
                 .map(ward => {
                   const pair = offices.find(o => o.officePairId === selectedOfficePair);
-                  const isCurrentAssigned = ward.isAssigned && pair && ward.assignedPostOfficeId === pair.postOffice.officeId;
+                  // Check if assigned to the CURRENTLY selected pair
+                  const isAssignedToCurrent = ward.isAssigned && pair && ward.assignedPostOfficeId === pair.postOffice.officeId;
+                  // Check if assigned to ANY OTHER pair
+                  const isAssignedToOther = ward.isAssigned && (!pair || ward.assignedPostOfficeId !== pair.postOffice.officeId);
+
+                  // Find the name of the office it's currently assigned to (if any)
+                  const currentAssignedOfficeName = ward.isAssigned
+                    ? offices.find(o => o.postOffice.officeId === ward.assignedPostOfficeId)?.postOffice.officeName
+                    : null;
+
                   return (
                     <label key={ward.wardCode} className={`flex items-center gap-2 p-2 rounded border transition-colors cursor-pointer group ${selectedWards.includes(ward.wardCode)
                       ? "bg-primary-50 border-primary-200"
@@ -979,26 +1079,28 @@ export function ProvinceAdminPage() {
                           else setSelectedWards(selectedWards.filter(c => c !== ward.wardCode));
                         }}
                       />
-                      <div className="flex flex-col">
-                        <span className={`text-sm font-bold ${selectedWards.includes(ward.wardCode) ? "text-primary-700" : "text-gray-700"}`}>
+                      <div className="flex flex-col min-w-0">
+                        <span className={`text-sm font-bold truncate ${selectedWards.includes(ward.wardCode) ? "text-primary-700" : "text-gray-700"}`}>
                           {ward.wardName}
                         </span>
-                        {isCurrentAssigned && (
+                        {isAssignedToCurrent && (
                           <span className="text-[9px] text-primary-500 font-bold uppercase tracking-tight">Đang gán cho cặp này</span>
+                        )}
+                        {isAssignedToOther && (
+                          <span className="text-[9px] text-orange-500 font-bold uppercase tracking-tight truncate flex items-center gap-1" title={`Đang gán cho: ${currentAssignedOfficeName}`}>
+                            Đang gán: {currentAssignedOfficeName}
+                          </span>
                         )}
                       </div>
                     </label>
                   );
                 })}
-              {(wardStatus ?? []).filter(w => {
-                const pair = offices.find(o => o.officePairId === selectedOfficePair);
-                return !w.isAssigned || (pair && w.assignedPostOfficeId === pair.postOffice.officeId);
-              }).length === 0 && (
-                  <div className="col-span-2 py-8 flex flex-col items-center justify-center text-gray-400">
-                    <MapPin className="w-8 h-8 mb-2 opacity-20" />
-                    <p className="text-sm italic">Tất cả phường xã trong tỉnh đã được gán</p>
-                  </div>
-                )}
+              {(allWards.length > 0 ? allWards : wardStatus ?? []).filter(w => w.wardName.toLowerCase().includes(modalSearchTerm.toLowerCase()) || w.wardCode.includes(modalSearchTerm)).length === 0 && (
+                <div className="col-span-2 py-8 flex flex-col items-center justify-center text-gray-400">
+                  <Search className="w-8 h-8 mb-2 opacity-20" />
+                  <p className="text-sm italic">Không tìm thấy phường xã nào</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1016,6 +1118,11 @@ export function ProvinceAdminPage() {
         title="Thêm Nhân Viên Mới"
       >
         <form onSubmit={handleCreateEmployee} className="space-y-4">
+          {error && (
+            <Alert type="error" onClose={() => setError("")}>
+              {error}
+            </Alert>
+          )}
           <div className="flex gap-4 p-1 bg-gray-100 rounded-lg mb-6">
             {["STAFF", "WARD_MANAGER", "PROVINCE_ADMIN"].map(role => (
               <button

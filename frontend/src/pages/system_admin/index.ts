@@ -1,1 +1,1 @@
-export { SystemAdminPage } from "./SystemAdminPage";
+export * from "./SystemAdminPage";
