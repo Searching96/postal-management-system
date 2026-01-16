@@ -6,10 +6,14 @@ import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.administrative.ProvinceResponse;
 import org.f3.postalmanagement.dto.response.administrative.RegionResponse;
 import org.f3.postalmanagement.dto.response.administrative.WardResponse;
+import org.f3.postalmanagement.dto.response.office.OfficeResponse;
 import org.f3.postalmanagement.entity.administrative.AdministrativeRegion;
 import org.f3.postalmanagement.entity.administrative.Province;
 import org.f3.postalmanagement.entity.administrative.Ward;
+import org.f3.postalmanagement.entity.unit.Office;
+import org.f3.postalmanagement.enums.OfficeType;
 import org.f3.postalmanagement.repository.AdRegionRepository;
+import org.f3.postalmanagement.repository.OfficeRepository;
 import org.f3.postalmanagement.repository.ProvinceRepository;
 import org.f3.postalmanagement.repository.WardRepository;
 import org.f3.postalmanagement.service.IAdministrativeService;
@@ -31,6 +35,7 @@ public class AdministrativeServiceImpl implements IAdministrativeService {
     private final ProvinceRepository provinceRepository;
     private final WardRepository wardRepository;
     private final AdRegionRepository adRegionRepository;
+    private final OfficeRepository officeRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -123,6 +128,29 @@ public class AdministrativeServiceImpl implements IAdministrativeService {
         return mapToPageResponse(responsePage);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<OfficeResponse> getPostOfficesByProvince(String provinceCode) {
+        // Validate province exists
+        if (!provinceRepository.existsById(provinceCode)) {
+            log.error("Province not found with code: {}", provinceCode);
+            throw new IllegalArgumentException("Province not found with code: " + provinceCode);
+        }
+
+        List<Office> offices = officeRepository.findAllByProvinceCodeAndOfficeTypeIn(
+                provinceCode, 
+                List.of(OfficeType.PROVINCE_POST, OfficeType.WARD_POST)
+        );
+        log.info("Fetched {} post offices for province code: {}", offices.size(), provinceCode);
+
+        // Sort by office name
+        Collator vietnameseCollator = Collator.getInstance(new Locale("vi", "VN"));
+        return offices.stream()
+                .sorted((o1, o2) -> vietnameseCollator.compare(o1.getOfficeName(), o2.getOfficeName()))
+                .map(this::mapToOfficeResponse)
+                .collect(Collectors.toList());
+    }
+
     private RegionResponse mapToRegionResponse(AdministrativeRegion region) {
         return RegionResponse.builder()
                 .id(region.getId())
@@ -162,8 +190,23 @@ public class AdministrativeServiceImpl implements IAdministrativeService {
                 .totalPages(page.getTotalPages())
                 .first(page.isFirst())
                 .last(page.isLast())
-                .hasNext(page.hasNext())
-                .hasPrevious(page.hasPrevious())
+                .build();
+    }
+
+    private OfficeResponse mapToOfficeResponse(Office office) {
+        return OfficeResponse.builder()
+                .officeId(office.getId())
+                .officeName(office.getOfficeName())
+                .officeEmail(office.getOfficeEmail())
+                .officePhoneNumber(office.getOfficePhoneNumber())
+                .officeAddress(office.getOfficeAddress())
+                .officeType(office.getOfficeType().name())
+                .provinceCode(office.getProvince() != null ? office.getProvince().getCode() : null)
+                .provinceName(office.getProvince() != null ? office.getProvince().getName() : null)
+                .regionName(office.getRegion() != null ? office.getRegion().getName() : null)
+                .parentOfficeId(office.getParentOffice() != null ? office.getParentOffice().getId() : null)
+                .parentOfficeName(office.getParentOffice() != null ? office.getParentOffice().getOfficeName() : null)
+                .capacity(office.getCapacity())
                 .build();
     }
 }
