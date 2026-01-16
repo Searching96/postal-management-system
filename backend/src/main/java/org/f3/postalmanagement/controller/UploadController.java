@@ -2,7 +2,8 @@ package org.f3.postalmanagement.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.f3.postalmanagement.dto.ApiResponse;
+import org.f3.postalmanagement.entity.ApiResponse;
+import org.f3.postalmanagement.entity.actor.CustomUserDetails;
 import org.f3.postalmanagement.service.StorageService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,21 +37,34 @@ public class UploadController {
         try {
             log.info("Uploading avatar for user: {}", authentication.getName());
 
-            // Get user ID from authentication (adjust based on your UserPrincipal implementation)
             UUID userId = getUserIdFromAuth(authentication);
 
             String avatarUrl = storageService.uploadAvatar(userId, file);
 
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(Map.of("avatarUrl", avatarUrl)));
+            ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
+                    .success(true)
+                    .data(Map.of("avatarUrl", avatarUrl))
+                    .build();
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IllegalArgumentException e) {
             log.warn("Invalid file upload: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
+            
+            ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
+                    .success(false)
+                    .message(e.getMessage())
+                    .build();
+            
+            return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
             log.error("Error uploading avatar", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Failed to upload avatar"));
+            
+            ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
+                    .success(false)
+                    .message("Failed to upload avatar")
+                    .build();
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
@@ -61,34 +75,51 @@ public class UploadController {
     @PreAuthorize("hasAnyRole('STAFF', 'SHIPPER', 'WARD_MANAGER', 'PROVINCE_ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadEvidence(
             @PathVariable UUID orderId,
-            @RequestParam("type") String evidenceType,  // e.g., "pickup", "delivery"
+            @RequestParam("type") String evidenceType,
             @RequestParam("file") MultipartFile file,
             Authentication authentication) {
         try {
             log.info("Uploading {} evidence for order: {} by user: {}", 
                     evidenceType, orderId, authentication.getName());
 
-            // Validate evidence type
             if (!isValidEvidenceType(evidenceType)) {
-                return ResponseEntity.badRequest()
-                        .body(ApiResponse.error("Invalid evidence type. Allowed: pickup, delivery"));
+                ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
+                        .success(false)
+                        .message("Invalid evidence type. Allowed: pickup, delivery")
+                        .build();
+                
+                return ResponseEntity.badRequest().body(response);
             }
 
             String evidenceUrl = storageService.uploadEvidence(orderId, evidenceType, file);
 
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(Map.of(
+            ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
+                    .success(true)
+                    .data(Map.of(
                             "evidenceUrl", evidenceUrl,
                             "evidenceType", evidenceType
-                    )));
+                    ))
+                    .build();
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IllegalArgumentException e) {
             log.warn("Invalid file upload: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
+            
+            ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
+                    .success(false)
+                    .message(e.getMessage())
+                    .build();
+            
+            return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
             log.error("Error uploading evidence", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Failed to upload evidence"));
+            
+            ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
+                    .success(false)
+                    .message("Failed to upload evidence")
+                    .build();
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
@@ -107,30 +138,42 @@ public class UploadController {
 
             String attachmentUrl = storageService.uploadAttachment(category, file);
 
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(Map.of(
+            ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
+                    .success(true)
+                    .data(Map.of(
                             "attachmentUrl", attachmentUrl,
                             "category", category
-                    )));
+                    ))
+                    .build();
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IllegalArgumentException e) {
             log.warn("Invalid file upload: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
+            
+            ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
+                    .success(false)
+                    .message(e.getMessage())
+                    .build();
+            
+            return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
             log.error("Error uploading attachment", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Failed to upload attachment"));
+            
+            ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
+                    .success(false)
+                    .message("Failed to upload attachment")
+                    .build();
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
     // ==================== PRIVATE HELPERS ====================
 
     private UUID getUserIdFromAuth(Authentication authentication) {
-        // This should be adapted based on your UserPrincipal implementation
-        // For now, using the authentication name as a fallback
         Object principal = authentication.getPrincipal();
-        if (principal instanceof org.f3.postalmanagement.security.UserPrincipal userPrincipal) {
-            return userPrincipal.getId();
+        if (principal instanceof CustomUserDetails customUserDetails) {
+            return customUserDetails.getAccount().getId();
         }
         // Fallback: generate deterministic UUID from username
         return UUID.nameUUIDFromBytes(authentication.getName().getBytes());

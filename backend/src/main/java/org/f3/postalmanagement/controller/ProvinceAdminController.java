@@ -205,17 +205,21 @@ public class ProvinceAdminController {
     @Operation(
             summary = "Get ward assignment status",
             description = "Get all wards in the province with their office assignment status. " +
-                    "Shows which wards are already assigned to ward office pairs."
+                    "Shows which wards are already assigned to ward office pairs. Supports search and pagination."
     )
-    public ResponseEntity<ApiResponse<List<IProvinceAdminService.WardAssignmentInfo>>> getWardAssignmentStatus(
+    public ResponseEntity<ApiResponse<PageResponse<IProvinceAdminService.WardAssignmentInfo>>> getWardAssignmentStatus(
             @RequestParam(required = false) String provinceCode,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        List<IProvinceAdminService.WardAssignmentInfo> wardInfo =
-                provinceAdminService.getAvailableWardsForAssignment(userDetails.getAccount(), provinceCode);
+        PageRequest pageable = PageRequest.of(page, size);
+        PageResponse<IProvinceAdminService.WardAssignmentInfo> wardInfo =
+                provinceAdminService.getAvailableWardsForAssignment(userDetails.getAccount(), provinceCode, search, pageable);
 
         return ResponseEntity.ok(
-                ApiResponse.<List<IProvinceAdminService.WardAssignmentInfo>>builder()
+                ApiResponse.<PageResponse<IProvinceAdminService.WardAssignmentInfo>>builder()
                         .success(true)
                         .message("Ward assignment status retrieved successfully")
                         .data(wardInfo)

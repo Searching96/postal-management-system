@@ -557,16 +557,13 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
             throw new IllegalArgumentException("You can only view wards in your province");
         }
 
-        // Get all wards in the province
-        List<Ward> wards = wardRepository.findByProvince_Code(targetProvinceCode);
-
-        // Get all ward office pairs in the province
-//        List<OfficePair> officePairs = officePairRepository.findAllWardOfficePairsByProvinceCode(targetProvinceCode);
+        // Get paginated and filtered wards in the province
+        Page<Ward> wardPage = wardRepository.searchByProvinceCodeAndNameOrCode(targetProvinceCode, search, pageable);
 
         // Get all ward assignments in the province
         List<WardOfficeAssignment> allAssignments = wardOfficeAssignmentRepository.findAllByProvinceCode(targetProvinceCode);
 
-        return wards.stream()
+        List<WardAssignmentInfo> wardInfos = wardPage.getContent().stream()
                 .map(ward -> {
                     // Find assignment for this ward
                     WardOfficeAssignment assignment = allAssignments.stream()
@@ -585,6 +582,17 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
                     );
                 })
                 .collect(toList());
+
+        return mapToPageResponse(wardPage, wardInfos);
+    }
+
+    private <T> PageResponse<T> mapToPageResponse(Page<?> page, List<T> content) {
+        return PageResponse.<T>builder()
+                .content(content)
+                .totalItems((int) page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .currentPage(page.getNumber())
+                .build();
     }
 
     private void validateProvinceAccess(Office currentOffice, Office targetOffice) {
