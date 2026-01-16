@@ -1,13 +1,34 @@
-import type { WardResponse } from "./administrative";
 
 export interface WardOfficePairResponse {
   officePairId: string;
-  wardPostId: string;
-  wardPostName: string;
-  wardWarehouseId: string;
-  wardWarehouseName: string;
+  warehouse: {
+    officeId: string;
+    officeName: string;
+    officeEmail: string;
+    officePhoneNumber: string;
+    officeAddress: string;
+    officeType: string;
+    parentOfficeId: string;
+    parentOfficeName: string;
+  };
+  postOffice: {
+    officeId: string;
+    officeName: string;
+    officeEmail: string;
+    officePhoneNumber: string;
+    officeAddress: string;
+    officeType: string;
+    parentOfficeId: string;
+    parentOfficeName: string;
+  };
+  provinceCode: string;
   provinceName: string;
-  wards: WardResponse[];
+  regionName: string;
+  assignedWards: Array<{
+    wardCode: string;
+    wardName: string;
+  }>;
+  createdAt: string;
 }
 
 export interface CreateWardOfficeRequest {
@@ -31,7 +52,7 @@ export interface AssignWardsRequest {
 export interface WardAssignmentInfo {
   wardCode: string;
   wardName: string;
-  assigned: boolean;
-  officePairId?: string;
-  wardPostName?: string;
+  isAssigned: boolean;
+  assignedWarehouseId: string | null;
+  assignedPostOfficeId: string | null;
 }

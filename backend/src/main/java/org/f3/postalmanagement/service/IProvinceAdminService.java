@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface IProvinceAdminService {
+    EmployeeResponse createProvinceAdmin(CreateProvinceAdminRequest request, Account currentAccount);
 
     /**
      * Create a new Province Admin by another Province Admin.
@@ -27,7 +28,12 @@ public interface IProvinceAdminService {
      * @param request the province admin creation request
      * @param currentAccount the account of the user making the request
      * @return the created employee response
-     */
+        PageResponse<WardAssignmentInfo> getAvailableWardsForAssignment(
+            Account currentAccount,
+            String provinceCode,
+            String search,
+            Pageable pageable
+        );
     EmployeeResponse createProvinceAdmin(CreateProvinceAdminRequest request, Account currentAccount);
 
     /**
@@ -101,7 +107,7 @@ public interface IProvinceAdminService {
      * @param provinceCode the province code (optional, uses current user's province if not provided)
      * @return list of wards with their assignment status
      */
-    List<WardAssignmentInfo> getAvailableWardsForAssignment(Account currentAccount, String provinceCode);
+    PageResponse<WardAssignmentInfo> getAvailableWardsForAssignment(Account currentAccount, String provinceCode, String search, String status, Pageable pageable);
 
     /**
      * Get all staff in the current admin's office with pagination and search.

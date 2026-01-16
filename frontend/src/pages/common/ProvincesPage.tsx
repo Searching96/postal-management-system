@@ -1,115 +1,289 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { administrativeService } from "../../services/administrativeService";
 import type {
   RegionResponse,
   ProvinceResponse,
   WardResponse,
 } from "../../models";
-import { MapPin, Search, ChevronDown, ChevronUp, Filter } from "lucide-react";
-import { PageHeader, Card, LoadingSpinner, Alert } from "../../components/ui";
+import {
+  MapPin,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import {
+  PageHeader,
+  Card,
+  LoadingSpinner,
+  Alert,
+  Button,
+} from "../../components/ui";
 
 export function ProvincesPage() {
   const [regions, setRegions] = useState<RegionResponse[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<number | null>(null);
+
+  // --- PROVINCE STATE ---
   const [provinces, setProvinces] = useState<ProvinceResponse[]>([]);
-  const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
-  const [wards, setWards] = useState<WardResponse[]>([]);
+  const [allProvincesCache, setAllProvincesCache] = useState<ProvinceResponse[]>([]);
+  const [provincePage, setProvincePage] = useState(0);
+  const [provinceTotalPages, setProvinceTotalPages] = useState(0);
+  const [provinceTotalElements, setProvinceTotalElements] = useState(0);
+
+  // Global Search (Provinces)
   const [searchTerm, setSearchTerm] = useState("");
+
+  // --- WARD STATE (Nested) ---
+  const [expandedProvinceCode, setExpandedProvinceCode] = useState<string | null>(null);
+  const [wards, setWards] = useState<WardResponse[]>([]);
+  const [wardPage, setWardPage] = useState(0);
+  const [wardTotalPages, setWardTotalPages] = useState(0);
+  const [wardTotalElements, setWardTotalElements] = useState(0);
+
+  // Nested Search (Wards)
+  const [wardSearchTerm, setWardSearchTerm] = useState("");
+
+  // --- LOADER STATE ---
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingWards, setIsLoadingWards] = useState(false);
   const [error, setError] = useState("");
 
+  const [provincePageSize, setProvincePageSize] = useState(10);
+  const [wardPageSize, setWardPageSize] = useState(12);
+
+  // Abort Controllers
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const wardAbortControllerRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
-    fetchRegions();
-    fetchProvinces();
+    const updateSizes = () => {
+      const height = window.innerHeight;
+      const width = window.innerWidth;
+
+      const pRows = Math.max(5, Math.floor((height - 500) / 80));
+      setProvincePageSize(pRows);
+
+      let cols = 2;
+      if (width >= 1024) cols = 4;
+      else if (width >= 768) cols = 3;
+
+      const wRows = Math.max(3, Math.floor((height * 0.4) / 60));
+      setWardPageSize(cols * wRows);
+    };
+
+    updateSizes();
+    window.addEventListener("resize", updateSizes);
+    return () => window.removeEventListener("resize", updateSizes);
   }, []);
 
-  const fetchRegions = async () => {
-    try {
-      const response = await administrativeService.getAllRegions();
-      if (response.success) {
-        setRegions(response.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch regions:", err);
-    }
-  };
+  useEffect(() => {
+    fetchRegions();
+  }, []);
 
-  const fetchProvinces = async () => {
-    try {
+  // --- DATA LOADING: PROVINCES ---
+
+  const loadProvincesData = useCallback(
+    async (page: number, search: string) => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setIsLoading(true);
-      const response = await administrativeService.getAllProvinces();
-      if (response.success) {
-        setProvinces(response.data);
-      } else {
-        setError(response.message);
+      setError("");
+
+      try {
+        // Use client-side filtering only when a region filter is applied
+        const useClientSide = selectedRegion !== null;
+
+        if (useClientSide) {
+          // Client-side mode (Region Filter)
+          let sourceData = allProvincesCache;
+
+          if (sourceData.length === 0) {
+            const response = await administrativeService.getProvincesByRegion(
+              selectedRegion,
+              controller.signal
+            );
+
+            if (response.success) {
+              sourceData = response.data;
+              setAllProvincesCache(sourceData);
+            } else {
+              setError(response.message || "Không thể tải danh sách tỉnh thành");
+              if (abortControllerRef.current === controller) setIsLoading(false);
+              return;
+            }
+          }
+
+          // Apply search filter on client side
+          let filtered = sourceData;
+          if (search.trim()) {
+            const lowerSearch = search.toLowerCase();
+            filtered = sourceData.filter(
+              (p) =>
+                p.name.toLowerCase().includes(lowerSearch) ||
+                p.code.toLowerCase().includes(lowerSearch)
+            );
+          }
+
+          const start = page * provincePageSize;
+          const pagedData = filtered.slice(start, start + provincePageSize);
+
+          if (abortControllerRef.current === controller) {
+            setProvinces(pagedData);
+            setProvinceTotalElements(filtered.length);
+            setProvinceTotalPages(Math.ceil(filtered.length / provincePageSize));
+          }
+        } else {
+          // Server-side mode (with search handled by backend)
+          const response = await administrativeService.getAllProvincesPaginated(
+            page,
+            provincePageSize,
+            search.trim() || undefined,
+            controller.signal
+          );
+
+          if (response.success) {
+            if (abortControllerRef.current === controller) {
+              setProvinces(response.data.content);
+              setProvinceTotalPages(response.data.totalPages);
+              setProvinceTotalElements(response.data.totalElements);
+            }
+          } else {
+            setError(response.message || "Không thể tải danh sách tỉnh thành");
+          }
+        }
+      } catch (err: any) {
+        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
+          console.log("Province request canceled");
+          return;
+        }
+        setError("Tải dữ liệu tỉnh thành thất bại");
+        console.error(err);
+      } finally {
+        if (abortControllerRef.current === controller) {
+          setIsLoading(false);
+        }
       }
-    } catch (err) {
-      setError("Failed to fetch provinces");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchProvincesByRegion = async (regionId: number) => {
-    try {
-      setIsLoading(true);
-      setSelectedRegion(regionId);
-      const response = await administrativeService.getProvincesByRegion(
-        regionId
-      );
-      if (response.success) {
-        setProvinces(response.data);
-      } else {
-        setError(response.message);
-      }
-    } catch (err) {
-      setError("Failed to fetch provinces");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResetRegionFilter = async () => {
-    setSelectedRegion(null);
-    await fetchProvinces();
-  };
-
-  const fetchWards = async (provinceCode: string) => {
-    try {
-      setIsLoadingWards(true);
-      const response = await administrativeService.getWardsByProvince(
-        provinceCode
-      );
-      if (response.success) {
-        setWards(response.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch wards:", err);
-    } finally {
-      setIsLoadingWards(false);
-    }
-  };
-
-  const handleProvinceClick = (provinceCode: string) => {
-    if (selectedProvince === provinceCode) {
-      setSelectedProvince(null);
-      setWards([]);
-    } else {
-      setSelectedProvince(provinceCode);
-      fetchWards(provinceCode);
-    }
-  };
-
-  const filteredProvinces = provinces.filter(
-    (province) =>
-      province.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      province.code.toLowerCase().includes(searchTerm.toLowerCase())
+    },
+    [allProvincesCache, selectedRegion, provincePageSize]
   );
 
-  if (isLoading) {
-    return <LoadingSpinner fullScreen />;
-  }
+  // --- DATA LOADING: WARDS ---
+
+  const loadWardsData = useCallback(
+    async (page: number, search: string, provinceCode: string) => {
+      if (wardAbortControllerRef.current) {
+        wardAbortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      wardAbortControllerRef.current = controller;
+
+      setIsLoadingWards(true);
+      try {
+        // Always use server-side pagination and search for wards
+        const response = await administrativeService.getWardsByProvincePaginated(
+          provinceCode,
+          page,
+          wardPageSize,
+          search.trim() || undefined,
+          controller.signal
+        );
+
+        if (response.success) {
+          if (wardAbortControllerRef.current === controller) {
+            setWards(response.data.content);
+            setWardTotalPages(response.data.totalPages);
+            setWardTotalElements(response.data.totalElements);
+          }
+        } else {
+          console.error(response.message || "Không thể tải danh sách phường xã");
+        }
+      } catch (err: any) {
+        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
+          console.log("Ward request canceled");
+          return;
+        }
+        console.error("Lỗi khi tải danh sách phường xã", err);
+      } finally {
+        if (wardAbortControllerRef.current === controller) {
+          setIsLoadingWards(false);
+        }
+      }
+    },
+    [wardPageSize]
+  );
+
+  // --- EFFECTS ---
+
+  // Load Provinces on page/size change
+  useEffect(() => {
+    loadProvincesData(provincePage, searchTerm);
+  }, [provincePage, provincePageSize]);
+
+  // Region change - reset and reload
+  useEffect(() => {
+    setProvincePage(0);
+    setSearchTerm("");
+    setAllProvincesCache([]);
+    loadProvincesData(0, "");
+  }, [selectedRegion]);
+
+  // Debounce PROVINCE Search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setProvincePage(0);
+      loadProvincesData(0, searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Load Wards on page/size change
+  useEffect(() => {
+    if (expandedProvinceCode) {
+      loadWardsData(wardPage, wardSearchTerm, expandedProvinceCode);
+    }
+  }, [wardPage, wardPageSize]);
+
+  // Debounce WARD Search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (expandedProvinceCode) {
+        setWardPage(0);
+        loadWardsData(0, wardSearchTerm, expandedProvinceCode);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [wardSearchTerm]);
+
+  // --- HANDLERS ---
+
+  const fetchRegions = async () => {
+    const response = await administrativeService.getAllRegions();
+    if (response.success) setRegions(response.data);
+  };
+
+  const handleRegionFilterChange = (regionId: number | null) => {
+    setSelectedRegion(regionId);
+    setExpandedProvinceCode(null);
+  };
+
+  const handleProvinceExpand = (provinceCode: string) => {
+    if (expandedProvinceCode === provinceCode) {
+      setExpandedProvinceCode(null);
+    } else {
+      setExpandedProvinceCode(provinceCode);
+      setWardPage(0);
+      setWardSearchTerm("");
+      setWards([]);
+      loadWardsData(0, "", provinceCode);
+    }
+  };
 
   if (error) {
     return <Alert type="error">{error}</Alert>;
@@ -118,52 +292,51 @@ export function ProvincesPage() {
   return (
     <div>
       <PageHeader
-        title="Provinces & Wards"
-        description="Browse administrative units"
+        title="Tỉnh thành & Phường xã"
+        description="Tra cứu đơn vị hành chính"
       />
 
-      {/* Region Filter */}
-      <div className="mb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Filter className="h-4 w-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700">
-            Filter by Region:
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={handleResetRegionFilter}
-            className={`px-4 py-2 rounded-lg border transition-colors ${
-              selectedRegion === null
+      {/* Top Controls */}
+      <div className="mb-6 space-y-4">
+        {/* Region Filter */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Filter className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-700">
+              Lọc theo Vùng:
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleRegionFilterChange(null)}
+              className={`px-4 py-2 rounded-lg border transition-colors ${selectedRegion === null
                 ? "bg-primary-500 text-white border-primary-500"
                 : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-            }`}
-          >
-            All Regions
-          </button>
-          {regions.map((region) => (
-            <button
-              key={region.id}
-              onClick={() => fetchProvincesByRegion(region.id)}
-              className={`px-4 py-2 rounded-lg border transition-colors ${
-                selectedRegion === region.id
+                }`}
+            >
+              Tất cả các Vùng
+            </button>
+            {regions.map((region) => (
+              <button
+                key={region.id}
+                onClick={() => handleRegionFilterChange(region.id)}
+                className={`px-4 py-2 rounded-lg border transition-colors ${selectedRegion === region.id
                   ? "bg-primary-500 text-white border-primary-500"
                   : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              {region.name}
-            </button>
-          ))}
+                  }`}
+              >
+                {region.name}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Search */}
-      <div className="mb-6">
+        {/* Global Search Bar (Provinces) */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Search provinces..."
+            placeholder="Tìm kiếm tỉnh thành..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -171,74 +344,195 @@ export function ProvincesPage() {
         </div>
       </div>
 
-      {/* Provinces List */}
+      {/* CONTENT AREA */}
       <Card className="p-0 overflow-hidden">
-        <div className="divide-y divide-gray-200">
-          {filteredProvinces.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              No provinces found
-            </div>
-          ) : (
-            filteredProvinces.map((province) => (
-              <div key={province.code}>
-                <button
-                  onClick={() => handleProvinceClick(province.code)}
-                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center">
-                    <MapPin className="h-5 w-5 text-primary-500 mr-3" />
-                    <div className="text-left">
-                      <p className="font-medium text-gray-900">
-                        {province.name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {province.code} • {province.administrativeRegionName}
-                      </p>
-                    </div>
-                  </div>
-                  {selectedProvince === province.code ? (
-                    <ChevronUp className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
-
-                {/* Wards expansion */}
-                {selectedProvince === province.code && (
-                  <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-                    {isLoadingWards ? (
-                      <div className="flex items-center justify-center py-4">
-                        <LoadingSpinner size="sm" />
-                        <span className="ml-2 text-gray-500">
-                          Loading wards...
-                        </span>
-                      </div>
-                    ) : wards.length === 0 ? (
-                      <p className="text-gray-500 text-center py-4">
-                        No wards found
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                        {wards.map((ward) => (
-                          <div
-                            key={ward.code}
-                            className="px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm"
-                          >
-                            <p className="font-medium text-gray-900">
-                              {ward.name}
-                            </p>
-                            <p className="text-xs text-gray-500">{ward.code}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+        {isLoading ? (
+          <div className="p-8 flex justify-center">
+            <LoadingSpinner />
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {provinces.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                Không tìm thấy tỉnh thành nào
               </div>
-            ))
-          )}
-        </div>
+            ) : (
+              provinces.map((province) => (
+                <div key={province.code}>
+                  <button
+                    onClick={() => handleProvinceExpand(province.code)}
+                    className={`w-full px-6 py-4 flex items-center justify-between transition-colors text-left ${expandedProvinceCode === province.code
+                      ? "bg-gray-50"
+                      : "hover:bg-gray-50"
+                      }`}
+                  >
+                    <div className="flex items-center">
+                      <MapPin
+                        className={`h-5 w-5 mr-3 ${expandedProvinceCode === province.code
+                          ? "text-primary-600"
+                          : "text-primary-500"
+                          }`}
+                      />
+                      <div>
+                        <p
+                          className={`font-medium ${expandedProvinceCode === province.code
+                            ? "text-primary-700"
+                            : "text-gray-900"
+                            }`}
+                        >
+                          {province.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Mã: {province.code} • {province.administrativeRegionName}
+                        </p>
+                      </div>
+                    </div>
+                    {expandedProvinceCode === province.code ? (
+                      <ChevronUp className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-gray-400" />
+                    )}
+                  </button>
+
+                  {/* NESTED WARD AREA */}
+                  {expandedProvinceCode === province.code && (
+                    <div className="bg-gray-50 px-6 py-4 border-t border-b border-gray-100 shadow-inner">
+                      {/* Nested Search */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder={`Tìm kiếm phường xã tại ${province.name}...`}
+                          value={wardSearchTerm}
+                          onChange={(e) => setWardSearchTerm(e.target.value)}
+                          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                        />
+                      </div>
+
+                      {/* Ward List */}
+                      {isLoadingWards ? (
+                        <div className="flex justify-center py-4">
+                          <LoadingSpinner size="sm" />
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                            {wards.length === 0 ? (
+                              <div className="col-span-full text-center text-gray-500 text-sm py-2">
+                                Không tìm thấy phường xã nào
+                              </div>
+                            ) : (
+                              wards.map((ward) => (
+                                <div
+                                  key={ward.code}
+                                  className="px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm"
+                                >
+                                  <p className="font-medium text-gray-900">
+                                    {ward.name}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {ward.code}
+                                  </p>
+                                </div>
+                              ))
+                            )}
+                          </div>
+
+                          {/* Ward Pagination */}
+                          {wards.length > 0 && (
+                            <div className="mt-4 flex items-center justify-between text-xs text-gray-600">
+                              <span>
+                                Trang {wardPage + 1} / {wardTotalPages} (
+                                {wardTotalElements} kết quả)
+                              </span>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setWardPage((p) => p - 1)}
+                                  disabled={wardPage === 0}
+                                  className="py-1 px-2 h-7 text-xs"
+                                >
+                                  Trước
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setWardPage((p) => p + 1)}
+                                  disabled={wardPage >= wardTotalPages - 1}
+                                  className="py-1 px-2 h-7 text-xs"
+                                >
+                                  Sau
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+
+            {/* Province Pagination */}
+            {provinces.length > 0 && (
+              <PaginationControls
+                page={provincePage}
+                totalPages={provinceTotalPages}
+                totalElements={provinceTotalElements}
+                pageSize={provincePageSize}
+                onPageChange={setProvincePage}
+              />
+            )}
+          </div>
+        )}
       </Card>
+    </div>
+  );
+}
+
+// Sub-component for Pagination
+export function PaginationControls({
+  page,
+  totalPages,
+  totalElements,
+  pageSize,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalElements: number;
+  pageSize: number;
+  onPageChange: (p: number) => void;
+}) {
+  return (
+    <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200 bg-gray-50">
+      <span className="text-sm text-gray-700">
+        Đang hiển thị <span className="font-medium">{page * pageSize + 1}</span> đến{" "}
+        <span className="font-medium">
+          {Math.min((page + 1) * pageSize, totalElements)}
+        </span>{" "}
+        trong tổng số <span className="font-medium">{totalElements}</span> kết quả
+      </span>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 0}
+          className="py-1 px-3 text-sm h-9"
+        >
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Trước
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages - 1}
+          className="py-1 px-3 text-sm h-9"
+        >
+          Sau
+          <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
     </div>
   );
 }

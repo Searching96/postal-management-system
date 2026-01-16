@@ -12,10 +12,10 @@ services:
       ]
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: admin
-      MYSQL_DATABASE: pms_db
-      MYSQL_USER: postal_user
-      MYSQL_PASSWORD: postal_pass
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-admin}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-pms_db}
+      MYSQL_USER: ${MYSQL_USER:-postal_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-postal_pass}
     ports:
       - "3307:3306"
     volumes:
@@ -33,14 +33,14 @@ services:
           "localhost",
           "-u",
           "root",
-          "-prootpassword",
+          "-p${MYSQL_ROOT_PASSWORD:-admin}",
         ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
 
-  # Spring Boot Application
+  # Spring Boot Application (uses external MinIO server)
   app:
     build:
       context: .
@@ -53,12 +53,17 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pms_db
-      SPRING_DATASOURCE_USERNAME: postal_user
-      SPRING_DATASOURCE_PASSWORD: postal_pass
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-pms_db}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-postal_user}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-postal_pass}
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "false"
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQLDialect
+      # MinIO Configuration (pointing to external server)
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://localhost:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: guest

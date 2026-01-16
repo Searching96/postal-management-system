@@ -1,8 +1,8 @@
 import { useState, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../../services/authService";
-import { User, Mail, Lock, MapPin, CheckCircle } from "lucide-react";
-import { Alert, Button, FormInput } from "../../components/ui";
+import { User, Mail, Lock, CheckCircle } from "lucide-react";
+import { Alert, Button, FormInput, AddressSelector } from "../../components/ui";
 
 export function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -119,15 +119,10 @@ export function RegisterPage() {
             placeholder="••••••"
           />
 
-          <FormInput
-            label="Address"
-            name="address"
-            icon={MapPin}
-            type="text"
+          <AddressSelector
+            label="Địa chỉ thường trú"
             required
-            value={formData.address}
-            onChange={handleChange}
-            placeholder="123 Main St, City"
+            onAddressChange={(val) => setFormData((prev) => ({ ...prev, address: val }))}
           />
 
           <Button

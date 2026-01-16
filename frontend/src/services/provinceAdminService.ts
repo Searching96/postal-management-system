@@ -9,6 +9,7 @@ import type {
   CreateWardOfficeRequest,
   AssignWardsRequest,
   WardAssignmentInfo,
+  PageResponse,
 } from "../models";
 
 export const provinceAdminService = {
@@ -62,11 +63,12 @@ export const provinceAdminService = {
     return response.data;
   },
 
-  getWardOfficePairs: async (): Promise<
-    ApiResponse<WardOfficePairResponse[]>
-  > => {
+  getWardOfficePairs: async (
+    signal?: AbortSignal
+  ): Promise<ApiResponse<WardOfficePairResponse[]>> => {
     const response = await api.get<ApiResponse<WardOfficePairResponse[]>>(
-      "/province-admin/ward-offices"
+      "/province-admin/ward-offices",
+      { signal }
     );
     return response.data;
   },
@@ -80,12 +82,23 @@ export const provinceAdminService = {
     return response.data;
   },
 
-  getWardAssignmentStatus: async (
-    provinceCode?: string
-  ): Promise<ApiResponse<WardAssignmentInfo[]>> => {
-    const params = provinceCode ? `?provinceCode=${provinceCode}` : "";
-    const response = await api.get<ApiResponse<WardAssignmentInfo[]>>(
-      `/province-admin/wards/assignment-status${params}`
+  getWardAssignmentStatusPaginated: async (
+    provinceCode?: string,
+    page = 0,
+    size = 12,
+    search?: string,
+    status: "all" | "assigned" | "unassigned" = "all",
+    signal?: AbortSignal
+  ): Promise<ApiResponse<PageResponse<WardAssignmentInfo>>> => {
+    const params = new URLSearchParams();
+    if (provinceCode) params.append("provinceCode", provinceCode);
+    params.append("page", page.toString());
+    params.append("size", size.toString());
+    if (search && search.trim()) params.append("search", search.trim());
+    params.append("status", status);
+    const response = await api.get<ApiResponse<PageResponse<WardAssignmentInfo>>>(
+      `/province-admin/wards/assignment-status?${params.toString()}`,
+      { signal }
     );
     return response.data;
   },

@@ -536,7 +536,13 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<WardAssignmentInfo> getAvailableWardsForAssignment(Account currentAccount, String provinceCode) {
+    public PageResponse<WardAssignmentInfo> getAvailableWardsForAssignment(
+        Account currentAccount,
+        String provinceCode,
+        String search,
+        String status,
+        Pageable pageable
+    ) {
         Employee currentEmployee = employeeRepository.findById(currentAccount.getId())
                 .orElseThrow(() -> {
                     log.error("Employee record not found for current user");
@@ -551,22 +557,24 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
 
         String targetProvinceCode = currentOffice.getProvince().getCode();
 
-        // Optional: validate provinceCode parameter matches user's province if provided
+        // Validate provinceCode parameter matches user's province if provided
         if (provinceCode != null && !provinceCode.isBlank() && !provinceCode.equals(targetProvinceCode)) {
             log.error("Province code mismatch: provided {} but user belongs to {}", provinceCode, targetProvinceCode);
             throw new IllegalArgumentException("You can only view wards in your province");
         }
 
-        // Get all wards in the province
-        List<Ward> wards = wardRepository.findByProvince_Code(targetProvinceCode);
-
-        // Get all ward office pairs in the province
-//        List<OfficePair> officePairs = officePairRepository.findAllWardOfficePairsByProvinceCode(targetProvinceCode);
+        // Get paginated and filtered wards in the province
+        Page<Ward> wardPage = wardRepository.searchByProvinceCodeAndNameOrCodeAndStatus(
+            targetProvinceCode,
+            search,
+            status.toLowerCase(),
+            pageable
+        );
 
         // Get all ward assignments in the province
         List<WardOfficeAssignment> allAssignments = wardOfficeAssignmentRepository.findAllByProvinceCode(targetProvinceCode);
 
-        return wards.stream()
+        List<WardAssignmentInfo> wardInfos = wardPage.getContent().stream()
                 .map(ward -> {
                     // Find assignment for this ward
                     WardOfficeAssignment assignment = allAssignments.stream()
@@ -585,6 +593,22 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
                     );
                 })
                 .collect(toList());
+
+        return mapToPageResponse(wardPage, wardInfos);
+    }
+
+    private <T> PageResponse<T> mapToPageResponse(Page<?> page, List<T> content) {
+        return PageResponse.<T>builder()
+            .content(content)
+            .pageNumber(page.getNumber())
+            .pageSize(page.getSize())
+            .totalElements(page.getTotalElements())
+            .totalPages(page.getTotalPages())
+            .first(page.isFirst())
+            .last(page.isLast())
+            .hasNext(page.hasNext())
+            .hasPrevious(page.hasPrevious())
+            .build();
     }
 
     private void validateProvinceAccess(Office currentOffice, Office targetOffice) {

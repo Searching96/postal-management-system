@@ -5,8 +5,8 @@ spring:
   # Database Configuration
   datasource:
     url: jdbc:mysql://localhost:3306/pms_db
-    username: root
-    password: octguy
+    username: postal_user
+    password: postal_pass
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   # JPA/Hibernate Configuration
@@ -35,3 +35,21 @@ server:
 logging:
   level:
     org.f3.postalmanagement: DEBUG
+
+# MinIO Object Storage Configuration
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  public-url: ${MINIO_PUBLIC_URL:http://localhost:9000}
+  max-file-size: 10MB
+  allowed-extensions:
+    - jpg
+    - jpeg
+    - png
+    - gif
+    - webp
+  bucket:
+    avatars: postal-avatars
+    evidence: postal-evidence
+    attachments: postal-attachments
