@@ -110,4 +110,27 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
            "o.status = org.f3.postalmanagement.enums.OrderStatus.PENDING_PICKUP " +
            "ORDER BY o.createdAt DESC")
     Page<Order> findAssignedPickupOrders(@Param("shipperId") UUID shipperId, Pageable pageable);
+
+    /**
+     * Find unbatched orders at an office that are ready for batching
+     */
+    @Query("SELECT o FROM Order o WHERE o.originOffice.id = :originOfficeId AND " +
+           "o.batchPackage IS NULL AND " +
+           "o.status IN :statuses AND " +
+           "(:destinationOfficeId IS NULL OR o.destinationOffice.id = :destinationOfficeId) " +
+           "ORDER BY o.chargeableWeightKg DESC")
+    java.util.List<Order> findUnbatchedOrders(@Param("originOfficeId") UUID originOfficeId,
+                                               @Param("destinationOfficeId") UUID destinationOfficeId,
+                                               @Param("statuses") java.util.List<OrderStatus> statuses);
+
+    /**
+     * Count unbatched orders for a destination
+     */
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.originOffice.id = :originOfficeId AND " +
+           "o.batchPackage IS NULL AND " +
+           "o.destinationOffice.id = :destinationOfficeId AND " +
+           "o.status IN :statuses")
+    long countUnbatchedOrdersForDestination(@Param("originOfficeId") UUID originOfficeId,
+                                             @Param("destinationOfficeId") UUID destinationOfficeId,
+                                             @Param("statuses") java.util.List<OrderStatus> statuses);
 }

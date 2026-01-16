@@ -239,6 +239,15 @@ public class Order extends BaseEntity {
     @JoinColumn(name = "assigned_shipper_id")
     private Employee assignedShipper;
 
+    // ==================== BATCH CONSOLIDATION ====================
+
+    /**
+     * The batch package this order belongs to (for consolidated shipping)
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "batch_package_id")
+    private BatchPackage batchPackage;
+
     // ==================== NOTES ====================
 
     /**
