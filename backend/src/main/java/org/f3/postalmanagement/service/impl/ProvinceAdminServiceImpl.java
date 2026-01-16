@@ -10,6 +10,7 @@ import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
 import org.f3.postalmanagement.dto.request.office.CreateWardOfficeRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
+import org.f3.postalmanagement.dto.response.office.OfficeResponse;
 import org.f3.postalmanagement.dto.response.office.WardOfficePairResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.entity.actor.Employee;
@@ -797,6 +798,40 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
                 .last(page.isLast())
                 .hasNext(page.hasNext())
                 .hasPrevious(page.hasPrevious())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<OfficeResponse> getWardOfficesByProvince(String search, Pageable pageable, Account currentAccount) {
+        Employee currentEmployee = getCurrentEmployee(currentAccount);
+        String provinceCode = currentEmployee.getOffice().getProvince().getCode();
+
+        List<OfficeType> wardOfficeTypes = List.of(OfficeType.WARD_WAREHOUSE, OfficeType.WARD_POST);
+        Page<Office> officePage = officeRepository.findByProvinceCodeAndOfficeTypeInWithSearch(
+                provinceCode, wardOfficeTypes, search, pageable);
+
+        Page<OfficeResponse> responsePage = officePage.map(this::mapToOfficeResponse);
+        log.info("Fetched page {} of ward offices for province {} with search '{}' (total: {})", 
+                pageable.getPageNumber(), provinceCode, search, officePage.getTotalElements());
+
+        return mapToPageResponse(responsePage);
+    }
+
+    private OfficeResponse mapToOfficeResponse(Office office) {
+        return OfficeResponse.builder()
+                .officeId(office.getId())
+                .officeName(office.getOfficeName())
+                .officeEmail(office.getOfficeEmail())
+                .officePhoneNumber(office.getOfficePhoneNumber())
+                .officeAddress(office.getOfficeAddress())
+                .officeType(office.getOfficeType().name())
+                .provinceCode(office.getProvince() != null ? office.getProvince().getCode() : null)
+                .provinceName(office.getProvince() != null ? office.getProvince().getName() : null)
+                .regionName(office.getRegion() != null ? office.getRegion().getName() : null)
+                .parentOfficeId(office.getParent() != null ? office.getParent().getId() : null)
+                .parentOfficeName(office.getParent() != null ? office.getParent().getOfficeName() : null)
+                .capacity(office.getCapacity())
                 .build();
     }
 }

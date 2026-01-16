@@ -8,6 +8,7 @@ import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
 import org.f3.postalmanagement.dto.request.office.CreateWardOfficeRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
+import org.f3.postalmanagement.dto.response.office.OfficeResponse;
 import org.f3.postalmanagement.dto.response.office.WardOfficePairResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.springframework.data.domain.Pageable;
@@ -139,6 +140,16 @@ public interface IProvinceAdminService {
      * @param currentAccount the account of the user making the request
      */
     void deleteStaff(UUID staffId, Account currentAccount);
+
+    /**
+     * Get all ward offices (WARD_WAREHOUSE and WARD_POST) in the province with pagination and search.
+     *
+     * @param search optional search term for office name or email
+     * @param pageable pagination parameters
+     * @param currentAccount the account of the user making the request
+     * @return paginated office response
+     */
+    PageResponse<OfficeResponse> getWardOfficesByProvince(String search, Pageable pageable, Account currentAccount);
 
     /**
      * DTO for ward assignment information

@@ -3,7 +3,9 @@ package org.f3.postalmanagement.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.f3.postalmanagement.dto.request.employee.hub.RegisterHubAdminRequest;
+import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
+import org.f3.postalmanagement.dto.response.office.OfficeResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.entity.actor.Employee;
 import org.f3.postalmanagement.entity.unit.Office;
@@ -13,10 +15,14 @@ import org.f3.postalmanagement.repository.AccountRepository;
 import org.f3.postalmanagement.repository.EmployeeRepository;
 import org.f3.postalmanagement.repository.OfficeRepository;
 import org.f3.postalmanagement.service.IHubAdminService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @Slf4j
@@ -113,5 +119,58 @@ public class HubAdminServiceImpl implements IHubAdminService {
 
         // Other roles are not authorized
         throw new AccessDeniedException("You are not authorized to register HUB admins");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<OfficeResponse> getProvinceOfficesByRegion(String search, Pageable pageable, Account currentAccount) {
+        Employee currentEmployee = getCurrentEmployee(currentAccount);
+        Integer regionId = currentEmployee.getOffice().getRegion().getId();
+
+        List<OfficeType> provinceOfficeTypes = List.of(OfficeType.PROVINCE_WAREHOUSE, OfficeType.PROVINCE_POST);
+        Page<Office> officePage = officeRepository.findByRegionIdAndOfficeTypeInWithSearch(
+                regionId, provinceOfficeTypes, search, pageable);
+
+        Page<OfficeResponse> responsePage = officePage.map(this::mapToOfficeResponse);
+        log.info("Fetched page {} of province offices for region {} with search '{}' (total: {})", 
+                pageable.getPageNumber(), regionId, search, officePage.getTotalElements());
+
+        return mapToPageResponse(responsePage);
+    }
+
+    private Employee getCurrentEmployee(Account currentAccount) {
+        return employeeRepository.findById(currentAccount.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Employee record not found for current user"));
+    }
+
+    private OfficeResponse mapToOfficeResponse(Office office) {
+        return OfficeResponse.builder()
+                .officeId(office.getId())
+                .officeName(office.getOfficeName())
+                .officeEmail(office.getOfficeEmail())
+                .officePhoneNumber(office.getOfficePhoneNumber())
+                .officeAddress(office.getOfficeAddress())
+                .officeType(office.getOfficeType().name())
+                .provinceCode(office.getProvince() != null ? office.getProvince().getCode() : null)
+                .provinceName(office.getProvince() != null ? office.getProvince().getName() : null)
+                .regionName(office.getRegion() != null ? office.getRegion().getName() : null)
+                .parentOfficeId(office.getParent() != null ? office.getParent().getId() : null)
+                .parentOfficeName(office.getParent() != null ? office.getParent().getOfficeName() : null)
+                .capacity(office.getCapacity())
+                .build();
+    }
+
+    private <T> PageResponse<T> mapToPageResponse(Page<T> page) {
+        return PageResponse.<T>builder()
+                .content(page.getContent())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .first(page.isFirst())
+                .last(page.isLast())
+                .hasNext(page.hasNext())
+                .hasPrevious(page.hasPrevious())
+                .build();
     }
 }

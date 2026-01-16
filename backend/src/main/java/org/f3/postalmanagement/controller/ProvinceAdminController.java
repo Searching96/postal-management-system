@@ -14,6 +14,7 @@ import org.f3.postalmanagement.dto.request.office.AssignWardsRequest;
 import org.f3.postalmanagement.dto.request.office.CreateWardOfficeRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.employee.EmployeeResponse;
+import org.f3.postalmanagement.dto.response.office.OfficeResponse;
 import org.f3.postalmanagement.dto.response.office.WardOfficePairResponse;
 import org.f3.postalmanagement.entity.ApiResponse;
 import org.f3.postalmanagement.entity.actor.CustomUserDetails;
@@ -308,6 +309,33 @@ public class ProvinceAdminController {
                 ApiResponse.<Void>builder()
                         .success(true)
                         .message("Staff deleted successfully")
+                        .build()
+        );
+    }
+
+    @GetMapping("/offices/ward")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Get all ward offices in the province",
+            description = "Get all WARD_WAREHOUSE and WARD_POST offices in the Province Admin's province with pagination and optional search."
+    )
+    public ResponseEntity<ApiResponse<PageResponse<OfficeResponse>>> getWardOfficesByProvince(
+            @Parameter(description = "Search term for office name or email")
+            @RequestParam(required = false) String search,
+            @Parameter(description = "Page number (0-indexed)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Number of items per page", example = "10")
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        PageResponse<OfficeResponse> response = provinceAdminService.getWardOfficesByProvince(search, pageable, userDetails.getAccount());
+
+        return ResponseEntity.ok(
+                ApiResponse.<PageResponse<OfficeResponse>>builder()
+                        .success(true)
+                        .message("Ward offices fetched successfully")
+                        .data(response)
                         .build()
         );
     }
