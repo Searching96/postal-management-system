@@ -14,7 +14,6 @@ import org.f3.postalmanagement.repository.ProvinceRepository;
 import org.f3.postalmanagement.repository.WardRepository;
 import org.f3.postalmanagement.service.IAdministrativeService;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,29 +78,13 @@ public class AdministrativeServiceImpl implements IAdministrativeService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<ProvinceResponse> getAllProvincesPaginated(Pageable pageable) {
-        List<Province> allProvinces = provinceRepository.findAll();
-        Collator vietnameseCollator = Collator.getInstance(new Locale("vi", "VN"));
-        allProvinces.sort((p1, p2) -> vietnameseCollator.compare(p1.getName(), p2.getName()));
+    public PageResponse<ProvinceResponse> getAllProvincesPaginated(String search, Pageable pageable) {
+        Page<Province> provincePage = provinceRepository.searchByNameOrCode(search, pageable);
         
-        // Manual pagination from list
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), allProvinces.size());
+        Page<ProvinceResponse> responsePage = provincePage.map(this::mapToProvinceResponse);
+        log.info("Fetched page {} of provinces with search '{}' (total: {})", pageable.getPageNumber(), search, provincePage.getTotalElements());
         
-        // Handle case where start is beyond list size
-        List<ProvinceResponse> pageContent;
-        if (start >= allProvinces.size()) {
-            pageContent = List.of(); // Empty list for pages beyond available data
-        } else {
-            pageContent = allProvinces.subList(start, end).stream()
-                    .map(this::mapToProvinceResponse)
-                    .collect(Collectors.toList());
-        }
-        
-        Page<ProvinceResponse> page = new PageImpl<>(pageContent, pageable, allProvinces.size());
-        log.info("Fetched page {} of all provinces (total: {})", pageable.getPageNumber(), allProvinces.size());
-        
-        return mapToPageResponse(page);
+        return mapToPageResponse(responsePage);
     }
 
     @Override
@@ -125,35 +108,19 @@ public class AdministrativeServiceImpl implements IAdministrativeService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<WardResponse> getWardsByProvincePaginated(String provinceCode, Pageable pageable) {
+    public PageResponse<WardResponse> getWardsByProvincePaginated(String provinceCode, String search, Pageable pageable) {
         // Validate province exists
         if (!provinceRepository.existsById(provinceCode)) {
             log.error("Province not found with code: {}", provinceCode);
             throw new IllegalArgumentException("Province not found with code: " + provinceCode);
         }
         
-        List<Ward> allWards = wardRepository.findByProvince_Code(provinceCode);
-        Collator vietnameseCollator = Collator.getInstance(new Locale("vi", "VN"));
-        allWards.sort((w1, w2) -> vietnameseCollator.compare(w1.getName(), w2.getName()));
+        Page<Ward> wardPage = wardRepository.searchByProvinceCodeAndNameOrCode(provinceCode, search, pageable);
         
-        // Manual pagination from list
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), allWards.size());
+        Page<WardResponse> responsePage = wardPage.map(this::mapToWardResponse);
+        log.info("Fetched page {} of wards for province code: {} with search '{}' (total: {})", pageable.getPageNumber(), provinceCode, search, wardPage.getTotalElements());
         
-        // Handle case where start is beyond list size
-        List<WardResponse> pageContent;
-        if (start >= allWards.size()) {
-            pageContent = List.of(); // Empty list for pages beyond available data
-        } else {
-            pageContent = allWards.subList(start, end).stream()
-                    .map(this::mapToWardResponse)
-                    .collect(Collectors.toList());
-        }
-        
-        Page<WardResponse> page = new PageImpl<>(pageContent, pageable, allWards.size());
-        log.info("Fetched page {} of wards for province code: {} (total: {})", pageable.getPageNumber(), provinceCode, allWards.size());
-        
-        return mapToPageResponse(page);
+        return mapToPageResponse(responsePage);
     }
 
     private RegionResponse mapToRegionResponse(AdministrativeRegion region) {
