@@ -11,6 +11,8 @@ import {
   User,
   HelpCircle,
   Settings,
+  Package,
+  Plus,
 } from "lucide-react";
 import { useState } from "react";
 import { getRoleLabel } from "../lib/utils";
@@ -50,6 +52,11 @@ export function Layout() {
 
   if (role === "PO_WARD_MANAGER" || role === "WH_WARD_MANAGER") {
     primaryNav.push({ to: "/admin/ward", icon: Building2, label: "Quản lý xã" });
+  }
+
+  if (role === "PO_STAFF") {
+    primaryNav.push({ to: "/orders", icon: Package, label: "Quản lý đơn hàng" });
+    primaryNav.push({ to: "/orders/create", icon: Plus, label: "Tạo vận đơn" });
   }
 
   const secondaryNav = [

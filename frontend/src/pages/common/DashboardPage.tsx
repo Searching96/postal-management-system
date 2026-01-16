@@ -13,8 +13,6 @@ import {
   HelpCircle,
   BarChart3,
   ShieldCheck,
-  BarChart3,
-  ShieldCheck,
   UserCheck,
   Plus
 } from "lucide-react";
@@ -29,7 +27,6 @@ export function DashboardPage() {
   const isCustomer = role === "CUSTOMER";
   const isSystemAdmin = role === "SYSTEM_ADMIN";
   const isHubAdmin = role === "HUB_ADMIN";
-  const isProvinceAdmin = role.includes("PROVINCE_ADMIN");
   const isProvinceAdmin = role.includes("PROVINCE_ADMIN");
   const isWardManager = role.includes("WARD_MANAGER");
   const isPOStaff = role === "PO_STAFF";
