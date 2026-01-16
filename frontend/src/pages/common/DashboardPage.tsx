@@ -1,105 +1,222 @@
+import { Link } from "react-router-dom";
 import { useAuth } from "../../lib/AuthContext";
-import { MapPin, Users, Building2, Package } from "lucide-react";
+import {
+  MapPin,
+  Users,
+  Building2,
+  Package,
+  TrendingUp,
+  ClipboardList,
+  Truck,
+  Settings,
+  HelpCircle,
+  BarChart3,
+  ShieldCheck,
+  UserCheck
+} from "lucide-react";
 import { PageHeader, Card } from "../../components/ui";
+import { getRoleLabel } from "../../lib/utils";
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const role = user?.role || "";
 
-  const isCustomer = user?.role === "CUSTOMER";
+  // Helpers for role checks
+  const isCustomer = role === "CUSTOMER";
+  const isSystemAdmin = role === "SYSTEM_ADMIN";
+  const isHubAdmin = role === "HUB_ADMIN";
+  const isProvinceAdmin = role.includes("PROVINCE_ADMIN");
+  const isWardManager = role.includes("WARD_MANAGER");
 
-  const stats = [
-    { label: "Active Orders", value: "—", icon: Package, color: "bg-blue-500" },
-    { label: "Delivered", value: "—", icon: MapPin, color: "bg-green-500" },
-    { label: "Pending", value: "—", icon: Building2, color: "bg-yellow-500" },
-    { label: "Total", value: "—", icon: Users, color: "bg-purple-500" },
-  ];
+  // --- STATS CONFIGURATION ---
+  const getStats = () => {
+    // Basic stats for Customers
+    if (isCustomer) {
+      return [
+        { label: "Đơn hàng đang giao", value: "0", icon: Package, color: "bg-blue-500" },
+        { label: "Đã hoàn thành", value: "0", icon: Truck, color: "bg-green-500" },
+        { label: "Đang chờ xử lý", value: "0", icon: ClipboardList, color: "bg-yellow-500" },
+        { label: "Tổng chi tiêu", value: "0đ", icon: TrendingUp, color: "bg-purple-500" },
+      ];
+    }
+
+    // Admin/Manager stats (System-wide or Area-wide)
+    if (isSystemAdmin || isHubAdmin) {
+      return [
+        { label: "Tổng đơn hàng", value: "—", icon: Package, color: "bg-blue-500" },
+        { label: "Người dùng mới", value: "—", icon: Users, color: "bg-green-500" },
+        { label: "Số lượng bưu cục", value: "—", icon: Building2, color: "bg-yellow-500" },
+        { label: "Doanh thu", value: "—", icon: BarChart3, color: "bg-purple-500" },
+      ];
+    }
+
+    // Province/Ward stats (Focus on management, not orders directly)
+    if (isProvinceAdmin || isWardManager) {
+      return [
+        { label: "Nhân viên bưu cục", value: "—", icon: Users, color: "bg-blue-500" },
+        { label: "Bưu cục quản lý", value: "—", icon: Building2, color: "bg-green-500" },
+        { label: "Hiệu suất xử lý", value: "—", icon: TrendingUp, color: "bg-yellow-500" },
+        { label: "Thông báo mới", value: "0", icon: ClipboardList, color: "bg-purple-500" },
+      ];
+    }
+
+    return [];
+  };
+
+  // --- ACTIONS CONFIGURATION ---
+  const getActions = () => {
+    const actions = [];
+
+    if (isSystemAdmin) {
+      actions.push({
+        title: "Quản trị Hệ thống",
+        desc: "Đăng ký admin và cấu hình",
+        icon: ShieldCheck,
+        color: "text-primary-600",
+        to: "/admin/system"
+      });
+    }
+
+    if (isHubAdmin) {
+      actions.push({
+        title: "Quản trị Hub",
+        desc: "Quản lý Hub Admin địa phương",
+        icon: Building2,
+        color: "text-indigo-600",
+        to: "/admin/hub"
+      });
+    }
+
+    if (isCustomer) {
+      actions.push({
+        title: "Tạo đơn hàng",
+        desc: "Bắt đầu một chuyến gửi hàng mới",
+        icon: Package,
+        color: "text-blue-500",
+        to: "/orders/create"
+      });
+      actions.push({
+        title: "Tra cứu vận đơn",
+        desc: "Kiểm tra tình trạng hàng hóa",
+        icon: MapPin,
+        color: "text-green-500",
+        to: "/track"
+      });
+    }
+
+    if (isProvinceAdmin) {
+      actions.push({
+        title: "Quản trị Tỉnh",
+        desc: "Quản lý bưu cục & phân phường",
+        icon: Building2,
+        color: "text-orange-600",
+        to: "/admin/province"
+      });
+    }
+
+    if (isWardManager) {
+      actions.push({
+        title: "Quản lý Phường",
+        desc: "Điều hành nhân sự tại đơn vị",
+        icon: UserCheck,
+        color: "text-green-600",
+        to: "/admin/ward"
+      });
+    }
+
+    // Common management actions
+    if (role && !isCustomer) {
+      actions.push({
+        title: "Sơ đồ bưu chính",
+        desc: "Tra cứu hệ thống tỉnh thành",
+        icon: MapPin,
+        color: "text-indigo-500",
+        to: "/provinces"
+      });
+    }
+
+    // Common actions
+    actions.push({
+      title: "Hỗ trợ",
+      desc: "Giải đáp thắc mắc và khiếu nại",
+      icon: HelpCircle,
+      color: "text-gray-500",
+      to: "/support"
+    });
+
+    return actions;
+  };
+
+  const stats = getStats();
+  const actions = getActions();
 
   return (
-    <div>
+    <div className="space-y-8 pb-8">
       <PageHeader
-        title="Dashboard"
-        description={`Welcome back, ${
-          user && "fullName" in user ? user.fullName : "User"
-        }!`}
+        title="Tổng quan"
+        description={`Chào mừng trở lại, ${user && "fullName" in user ? user.fullName : "Người dùng"
+          }!`}
       />
 
-      {/* User Info Card */}
-      <Card title="Your Profile" className="mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-500">Role</p>
-            <p className="font-medium">{user?.role}</p>
+      {/* Hero Card / Welcome */}
+      <Card className="bg-gradient-to-r from-primary-600 to-primary-700 text-white border-none p-8 overflow-hidden relative">
+        <div className="relative z-10">
+          <h2 className="text-2xl font-bold mb-2">Xin chào, {user?.fullName}!</h2>
+          <p className="text-primary-100 max-w-md">
+            Hôm nay bạn có {isCustomer ? "0 đơn hàng" : "một số công việc"} cần xử lý. Hãy bắt đầu một ngày làm việc năng suất nhé!
+          </p>
+          <div className="mt-6">
+            <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold backdrop-blur-sm">
+              Vai trò: {getRoleLabel(role)}
+            </span>
           </div>
-          {user && "phone" in user && (
-            <div>
-              <p className="text-sm text-gray-500">Phone</p>
-              <p className="font-medium">{user.phone}</p>
-            </div>
-          )}
-          {user && "email" in user && (
-            <div>
-              <p className="text-sm text-gray-500">Email</p>
-              <p className="font-medium">{user.email}</p>
-            </div>
-          )}
-          {user && "officeName" in user && (
-            <div>
-              <p className="text-sm text-gray-500">Office</p>
-              <p className="font-medium">{user.officeName}</p>
-            </div>
-          )}
-          {user && "officeType" in user && (
-            <div>
-              <p className="text-sm text-gray-500">Office Type</p>
-              <p className="font-medium">{user.officeType}</p>
-            </div>
-          )}
-          {isCustomer && user && "address" in user && (
-            <div className="md:col-span-2">
-              <p className="text-sm text-gray-500">Address</p>
-              <p className="font-medium">{user.address}</p>
-            </div>
-          )}
         </div>
+        <Package className="absolute right-[-20px] bottom-[-20px] w-64 h-64 text-white/10 rotate-12" />
       </Card>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <div className="flex items-center">
-              <div className={`${stat.color} p-3 rounded-lg`}>
-                <stat.icon className="h-6 w-6 text-white" />
+      {stats.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {stats.map((stat, idx) => (
+            <Card key={idx} className="p-4 hover:shadow-md transition-shadow">
+              <div className="flex items-center">
+                <div className={`${stat.color} p-3 rounded-xl shadow-inner`}>
+                  <stat.icon className="h-6 w-6 text-white" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{stat.label}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-500">{stat.label}</p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Quick Actions */}
-      <Card title="Quick Actions">
+      <section>
+        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <Settings className="w-5 h-5 text-gray-400" />
+          Thực hiện nhanh
+        </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors text-left">
-            <Package className="h-8 w-8 text-primary-500 mb-2" />
-            <p className="font-medium text-gray-900">Create Order</p>
-            <p className="text-sm text-gray-500">Start a new delivery</p>
-          </button>
-          <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors text-left">
-            <MapPin className="h-8 w-8 text-primary-500 mb-2" />
-            <p className="font-medium text-gray-900">Track Package</p>
-            <p className="text-sm text-gray-500">Find your delivery</p>
-          </button>
-          <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-colors text-left">
-            <Building2 className="h-8 w-8 text-primary-500 mb-2" />
-            <p className="font-medium text-gray-900">View Offices</p>
-            <p className="text-sm text-gray-500">Find nearest office</p>
-          </button>
+          {actions.map((action, idx) => (
+            <Link
+              key={idx}
+              to={action.to}
+              className="p-5 bg-white border border-gray-100 rounded-2xl hover:border-primary-500 hover:shadow-lg hover:shadow-primary-500/10 transition-all text-left flex items-start gap-4 group"
+            >
+              <div className={`p-3 rounded-xl bg-gray-50 group-hover:bg-primary-50 transition-colors ${action.color}`}>
+                <action.icon className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-gray-900 group-hover:text-primary-600 transition-colors">{action.title}</p>
+                <p className="text-sm text-gray-500 truncate">{action.desc}</p>
+              </div>
+            </Link>
+          ))}
         </div>
-      </Card>
+      </section>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 export { LoginPage, RegisterPage } from "./auth";
 
 // Common pages
-export { DashboardPage, ProvincesPage } from "./common";
+export { DashboardPage, ProvincesPage, ProfilePage } from "./common";
 
 // Role-specific pages
 export { SystemAdminPage } from "./system_admin";

@@ -6,6 +6,7 @@ import {
   RegisterPage,
   DashboardPage,
   ProvincesPage,
+  ProfilePage,
   SystemAdminPage,
   HubAdminPage,
   ProvinceAdminPage,
@@ -27,6 +28,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/provinces" element={<ProvincesPage />} />
               <Route path="/admin/system" element={<SystemAdminPage />} />
               <Route path="/admin/hub" element={<HubAdminPage />} />

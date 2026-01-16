@@ -4,22 +4,40 @@ export interface UserRole {
 
 export interface CustomerMeResponse {
   id: string;
-  fullName: string;
-  phone: string;
+  username: string;
   email: string;
+  role: string;
+  fullName: string;
+  phoneNumber: string;
   address: string;
   subscriptionPlan: string;
-  role: string;
+  active: boolean;
 }
 
 export interface EmployeeMeResponse {
   id: string;
-  fullName: string;
-  phone: string;
+  username: string;
   email: string;
   role: string;
-  officeName: string;
-  officeType: string;
+  fullName: string;
+  phoneNumber: string;
+  active: boolean;
+  office: {
+    id: string;
+    name: string;
+    email: string;
+    phoneNumber: string;
+    address: string;
+    type: string;
+    region?: {
+      id: number;
+      name: string;
+    };
+    province?: {
+      code: string;
+      name: string;
+    };
+  };
 }
 
 export type MeResponse = CustomerMeResponse | EmployeeMeResponse;

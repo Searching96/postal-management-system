@@ -1,8 +1,10 @@
 import { useState, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/AuthContext";
+import { isAxiosError } from "axios";
 import { Mail, Lock } from "lucide-react";
 import { Alert, Button, FormInput } from "../../components/ui";
+import { ApiResponse } from "../../models";
 
 export function LoginPage() {
   const [username, setUsername] = useState("");
@@ -21,9 +23,18 @@ export function LoginPage() {
       await login(username, password);
       navigate("/dashboard");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Login failed. Please try again."
-      );
+      if (isAxiosError(err) && err.response?.data) {
+        const data = err.response.data as ApiResponse<null>;
+        if (data.errorCode === "BAD_CREDENTIALS") {
+          setError("Invalid phone number or password");
+        } else {
+          setError(data.message || "Login failed. Please try again.");
+        }
+      } else {
+        setError(
+          err instanceof Error ? err.message : "Login failed. Please try again."
+        );
+      }
     } finally {
       setIsLoading(false);
     }

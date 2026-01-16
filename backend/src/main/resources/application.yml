@@ -5,8 +5,8 @@ spring:
   # Database Configuration
   datasource:
     url: jdbc:mysql://localhost:3306/pms_db
-    username: root
-    password: octguy
+    username: postal_user
+    password: postal_pass
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   # JPA/Hibernate Configuration

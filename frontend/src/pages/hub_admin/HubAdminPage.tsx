@@ -1,28 +1,31 @@
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect } from "react";
 import { hubAdminService } from "../../services/hubAdminService";
 import { administrativeService } from "../../services/administrativeService";
-import { User, Mail, Lock, Building2 } from "lucide-react";
-import type { EmployeeResponse, RegionResponse } from "../../models";
+import { User, Mail, Lock, Building2, Phone, Plus, ShieldCheck, Map, Users } from "lucide-react";
+import type { RegionResponse } from "../../models";
 import {
   PageHeader,
   Card,
   Alert,
   Button,
   FormInput,
+  Modal,
+  FormSelect,
 } from "../../components/ui";
 
 export function HubAdminPage() {
   const [regions, setRegions] = useState<RegionResponse[]>([]);
   const [formData, setFormData] = useState({
     fullName: "",
-    phone: "",
+    phoneNumber: "",
     email: "",
     password: "",
-    regionId: 1,
+    regionId: 0,
   });
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState<EmployeeResponse | null>(null);
+  const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchRegions();
@@ -42,141 +45,148 @@ export function HubAdminPage() {
     }
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === "regionId" ? parseInt(value) : value,
-    }));
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setSuccess(null);
+    setSuccess("");
     setIsLoading(true);
 
     try {
       const response = await hubAdminService.registerHubAdmin(formData);
       if (response.success) {
-        setSuccess(response.data);
+        setSuccess(`Đã đăng ký thành công Hub Admin: ${response.data.fullName}`);
         setFormData({
           fullName: "",
-          phone: "",
+          phoneNumber: "",
           email: "",
           password: "",
-          regionId: 1,
+          regionId: regions.length > 0 ? regions[0].id : 0,
         });
+        setIsModalOpen(false);
       } else {
         setError(response.message);
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to register hub admin"
-      );
+      setError("Lỗi khi đăng ký Hub Admin. Vui lòng thử lại.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const systemStats = [
+    { label: "Khu vực quản lý", value: regions.length.toString(), icon: Map, color: "bg-blue-500" },
+    { label: "Quản trị viên Hub", value: "—", icon: ShieldCheck, color: "bg-primary-500" },
+    { label: "Tổng nhân sự bưu cục", value: "—", icon: Users, color: "bg-green-500" },
+    { label: "Tình trạng Hub", value: "Ổn định", icon: Building2, color: "bg-indigo-500" },
+  ];
+
   return (
-    <div>
+    <div className="space-y-8 pb-8">
       <PageHeader
-        title="Hub Administration"
-        description="Manage HUB administrators"
+        title="Quản trị Hub"
+        description="Quản lý và cấp quyền cho các Quản trị viên Khu vực (Hub Admins)"
       />
 
-      <div className="max-w-2xl">
-        <Card title="Register New HUB Admin">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <Alert type="error">{error}</Alert>}
-
-            {success && (
-              <Alert type="success">
-                <p className="font-medium">
-                  Hub Admin registered successfully!
-                </p>
-                <div className="mt-2">
-                  <p>Name: {success.fullName}</p>
-                  <p>Role: {success.role}</p>
-                  <p>Office: {success.officeName}</p>
-                </div>
-              </Alert>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormInput
-                label="Full Name"
-                name="fullName"
-                icon={User}
-                type="text"
-                required
-                value={formData.fullName}
-                onChange={handleChange}
-              />
-
-              <FormInput
-                label="Phone"
-                name="phone"
-                icon={Mail}
-                type="text"
-                required
-                pattern="[0-9]{10}"
-                value={formData.phone}
-                onChange={handleChange}
-              />
-
-              <FormInput
-                label="Email"
-                name="email"
-                icon={Mail}
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-              />
-
-              <FormInput
-                label="Password"
-                name="password"
-                icon={Lock}
-                type="password"
-                required
-                minLength={6}
-                value={formData.password}
-                onChange={handleChange}
-              />
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Region
-                </label>
-                <div className="mt-1 relative">
-                  <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <select
-                    name="regionId"
-                    value={formData.regionId}
-                    onChange={handleChange}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    {regions.map((region) => (
-                      <option key={region.id} value={region.id}>
-                        {region.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {systemStats.map((stat, idx) => (
+          <Card key={idx} className="p-4">
+            <div className="flex items-center">
+              <div className={`${stat.color} p-3 rounded-xl shadow-inner`}>
+                <stat.icon className="h-6 w-6 text-white" />
+              </div>
+              <div className="ml-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{stat.label}</p>
+                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
               </div>
             </div>
-
-            <Button type="submit" isLoading={isLoading} className="w-full">
-              Register Hub Admin
-            </Button>
-          </form>
-        </Card>
+          </Card>
+        ))}
       </div>
+
+      {error && <Alert type="error" onClose={() => setError("")}>{error}</Alert>}
+      {success && <Alert type="success" onClose={() => setSuccess("")}>{success}</Alert>}
+
+      <Card title="Quản lý Quản trị viên Khu vực">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <p className="text-sm text-gray-500">
+            Cấp quyền cho quản trị viên mới để quản lý hoạt động bưu chính và kho bãi tại các vùng miền.
+          </p>
+          <Button onClick={() => setIsModalOpen(true)} className="gap-2 shrink-0">
+            <Plus className="w-4 h-4" /> Đăng ký Admin mới
+          </Button>
+        </div>
+
+        <div className="border border-dashed border-gray-200 rounded-2xl p-12 text-center">
+          <ShieldCheck className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-gray-900 font-bold mb-1">Danh sách Quản trị viên Hub</h3>
+          <p className="text-sm text-gray-400">Chưa có dữ liệu liệt kê. Sử dụng nút đăng ký để thêm mới.</p>
+        </div>
+      </Card>
+
+      {/* MODAL */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Đăng ký Hub Admin Mới"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <p className="text-sm text-gray-500 mb-4">
+            Vui lòng nhập đầy đủ thông tin để khởi tạo tài khoản quản trị cho khu vực.
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <FormInput
+              label="Họ và Tên"
+              icon={User}
+              required
+              value={formData.fullName}
+              onChange={e => setFormData({ ...formData, fullName: e.target.value })}
+            />
+
+            <FormInput
+              label="Số Điện Thoại"
+              icon={Phone}
+              required
+              value={formData.phoneNumber}
+              onChange={e => setFormData({ ...formData, phoneNumber: e.target.value })}
+            />
+
+            <FormInput
+              label="Email"
+              icon={Mail}
+              type="email"
+              required
+              value={formData.email}
+              onChange={e => setFormData({ ...formData, email: e.target.value })}
+            />
+
+            <FormInput
+              label="Mật Khẩu"
+              icon={Lock}
+              type="password"
+              required
+              minLength={6}
+              value={formData.password}
+              onChange={e => setFormData({ ...formData, password: e.target.value })}
+            />
+          </div>
+
+          <FormSelect
+            label="Khu vực phụ trách (Region)"
+            icon={Building2}
+            value={formData.regionId}
+            onChange={val => setFormData({ ...formData, regionId: val as number })}
+            required
+            options={regions.map(r => ({ value: r.id, label: r.name }))}
+          />
+
+          <div className="flex justify-end gap-3 pt-6 border-t mt-6">
+            <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Hủy</Button>
+            <Button type="submit" isLoading={isLoading} className="px-8">Đăng ký ngay</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
