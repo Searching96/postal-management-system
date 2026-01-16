@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { wardManagerService } from "../../services/wardManagerService";
 import { User, Mail, Lock, Users, Phone, ShieldCheck, ClipboardList, TrendingUp, Plus } from "lucide-react";
 import {
@@ -58,9 +58,33 @@ export function WardManagerPage() {
     }
   };
 
+  // --- STATS & DATA FETCHING ---
+  const [statsData, setStatsData] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [staffs, orders] = await Promise.all([
+          wardManagerService.getEmployees({ size: 1 }),
+          // Assuming we can use orderService here. If specific ward-filtering is needed, 
+          // backend should handle it based on logged in user context.
+          import("../../services/orderService").then(m => m.orderService.getOrders({ size: 1 })).catch(() => ({ data: { totalElements: 0 } }))
+        ]);
+
+        setStatsData({
+          staffCount: staffs.data.totalElements.toString(),
+          orderCount: orders.data.totalElements.toString(),
+        });
+      } catch (e) {
+        console.error("Failed to fetch ward manager stats", e);
+      }
+    };
+    fetchData();
+  }, []);
+
   const stats = [
-    { label: "Nhân sự trực thuộc", value: "—", icon: Users, color: "bg-blue-500" },
-    { label: "Đơn hàng trong ngày", value: "—", icon: ClipboardList, color: "bg-green-500" },
+    { label: "Nhân sự trực thuộc", value: statsData.staffCount || "0", icon: Users, color: "bg-blue-500" },
+    { label: "Đơn hàng trong ngày", value: statsData.orderCount || "0", icon: ClipboardList, color: "bg-green-500" },
     { label: "Hiệu suất xử lý", value: "—", icon: TrendingUp, color: "bg-orange-500" },
     { label: "Trạng thái vận hành", value: "Tốt", icon: ShieldCheck, color: "bg-primary-500" },
   ];

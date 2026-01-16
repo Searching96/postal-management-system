@@ -37,6 +37,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
      * Find orders by origin office with search
      */
     @Query("SELECT o FROM Order o WHERE o.originOffice.id = :officeId AND " +
+           "(:status IS NULL OR o.status = :status) AND " +
            "(:search IS NULL OR :search = '' OR " +
            "LOWER(o.trackingNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(o.senderName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
@@ -46,6 +47,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
            "ORDER BY o.createdAt DESC")
     Page<Order> findByOriginOfficeIdWithSearch(@Param("officeId") UUID officeId, 
                                                 @Param("search") String search, 
+                                                @Param("status") OrderStatus status,
                                                 Pageable pageable);
 
     /**

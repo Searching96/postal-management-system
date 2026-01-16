@@ -10,6 +10,7 @@ import type {
   AssignWardsRequest,
   WardAssignmentInfo,
   PageResponse,
+  UpdateStaffRequest,
 } from "../models";
 
 export const provinceAdminService = {
@@ -100,6 +101,26 @@ export const provinceAdminService = {
       `/province-admin/wards/assignment-status?${params.toString()}`,
       { signal }
     );
+    return response.data;
+  },
+
+  getEmployees: async (params?: { page?: number; size?: number; search?: string }): Promise<ApiResponse<PageResponse<EmployeeResponse>>> => {
+    const response = await api.get<ApiResponse<PageResponse<EmployeeResponse>>>("/province-admin/employees", { params });
+    return response.data;
+  },
+
+  getEmployeeById: async (staffId: string): Promise<ApiResponse<EmployeeResponse>> => {
+    const response = await api.get<ApiResponse<EmployeeResponse>>(`/province-admin/employees/${staffId}`);
+    return response.data;
+  },
+
+  updateEmployee: async (staffId: string, data: UpdateStaffRequest): Promise<ApiResponse<EmployeeResponse>> => {
+    const response = await api.put<ApiResponse<EmployeeResponse>>(`/province-admin/employees/${staffId}`, data);
+    return response.data;
+  },
+
+  deleteEmployee: async (staffId: string): Promise<ApiResponse<void>> => {
+    const response = await api.delete<ApiResponse<void>>(`/province-admin/employees/${staffId}`);
     return response.data;
   },
 };

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../lib/AuthContext";
 import {
@@ -27,24 +28,88 @@ export function DashboardPage() {
   const isHubAdmin = role === "HUB_ADMIN";
   const isProvinceAdmin = role.includes("PROVINCE_ADMIN");
   const isWardManager = role.includes("WARD_MANAGER");
+  const isPOStaff = role === "PO_STAFF";
+
+  // --- STATE FOR STATS ---
+  const [statsData, setStatsData] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const newData: Record<string, string> = {};
+
+        // 1. Customer Stats
+        // 1. Customer Stats
+        if (isCustomer && user && "id" in user) {
+          // Import orderService dynamically if not top-level to avoid circular deps if any, 
+          // but better to import top level. 
+          // We will assume orderService is imported.
+          const [shipping, completed, pending] = await Promise.all([
+            // Use real status strings
+            import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "SHIPPING", size: 1 })),
+            import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "DELIVERED", size: 1 })),
+            import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "CREATED", size: 1 }))
+          ]);
+          newData["shipping"] = shipping?.totalElements?.toString() || "0";
+          newData["completed"] = completed?.totalElements?.toString() || "0";
+          newData["pending"] = pending?.totalElements?.toString() || "0";
+
+          // Estimate total spend? currently no endpoint, leave as placeholder or calculate later
+        }
+
+        // 2. Admin Stats
+        if (isSystemAdmin || isHubAdmin) {
+          const orders = await import("../../services/orderService").then(m => m.orderService.getOrders({ size: 1 }));
+          newData["totalOrders"] = orders.totalElements.toString();
+
+          // TODO: Add users count and office count when APIs available
+          // const users = await import("../../services/userService").then(m => m.userService.getUsers({ size: 1 })).catch(() => null);
+          // if (users) newData["totalUsers"] = users.data.totalElements.toString();
+        }
+
+        // 3. Ward/Province Stats
+        if (isWardManager) {
+          const [staffs] = await Promise.all([
+            import("../../services/wardManagerService").then(m => m.wardManagerService.getEmployees({ size: 1 }))
+          ]);
+          newData["staffCount"] = staffs.data.totalElements.toString();
+        }
+
+        if (isProvinceAdmin) {
+          const [offices, staffs] = await Promise.all([
+            import("../../services/provinceAdminService").then(m => m.provinceAdminService.getWardOfficePairs()),
+            import("../../services/provinceAdminService").then(m => m.provinceAdminService.getEmployees({ size: 1 }))
+          ]);
+          newData["officeCount"] = offices.data.length.toString();
+          newData["staffCount"] = staffs.data.totalElements.toString();
+        }
+
+        setStatsData(newData);
+      } catch (e) {
+        console.error("Failed to fetch dashboard stats", e);
+      }
+    };
+
+    fetchStats();
+  }, [role, isCustomer, isSystemAdmin, isHubAdmin, isWardManager, isProvinceAdmin, isPOStaff]);
 
   // --- STATS CONFIGURATION ---
   const getStats = () => {
     // Basic stats for Customers
     if (isCustomer) {
       return [
-        { label: "Đơn hàng đang giao", value: "0", icon: Package, color: "bg-blue-500" },
-        { label: "Đã hoàn thành", value: "0", icon: Truck, color: "bg-green-500" },
-        { label: "Đang chờ xử lý", value: "0", icon: ClipboardList, color: "bg-yellow-500" },
-        { label: "Tổng chi tiêu", value: "0đ", icon: TrendingUp, color: "bg-purple-500" },
+        { label: "Đơn hàng đang giao", value: statsData["shipping"] || "0", icon: Package, color: "bg-blue-500" },
+        { label: "Đã hoàn thành", value: statsData["completed"] || "0", icon: Truck, color: "bg-green-500" },
+        { label: "Đang chờ xử lý", value: statsData["pending"] || "0", icon: ClipboardList, color: "bg-yellow-500" },
+        { label: "Tổng chi tiêu", value: "—", icon: TrendingUp, color: "bg-purple-500" },
       ];
     }
 
     // Admin/Manager stats (System-wide or Area-wide)
     if (isSystemAdmin || isHubAdmin) {
       return [
-        { label: "Tổng đơn hàng", value: "—", icon: Package, color: "bg-blue-500" },
-        { label: "Người dùng mới", value: "—", icon: Users, color: "bg-green-500" },
+        { label: "Tổng đơn hàng", value: statsData["totalOrders"] || "0", icon: Package, color: "bg-blue-500" },
+        { label: "Người dùng hệ thống", value: statsData["totalUsers"] || "—", icon: Users, color: "bg-green-500" },
         { label: "Số lượng bưu cục", value: "—", icon: Building2, color: "bg-yellow-500" },
         { label: "Doanh thu", value: "—", icon: BarChart3, color: "bg-purple-500" },
       ];
@@ -53,8 +118,8 @@ export function DashboardPage() {
     // Province/Ward stats (Focus on management, not orders directly)
     if (isProvinceAdmin || isWardManager) {
       return [
-        { label: "Nhân viên bưu cục", value: "—", icon: Users, color: "bg-blue-500" },
-        { label: "Bưu cục quản lý", value: "—", icon: Building2, color: "bg-green-500" },
+        { label: "Nhân viên bưu cục", value: statsData["staffCount"] || "—", icon: Users, color: "bg-blue-500" },
+        { label: "Bưu cục quản lý", value: statsData["officeCount"] || "—", icon: Building2, color: "bg-green-500" },
         { label: "Hiệu suất xử lý", value: "—", icon: TrendingUp, color: "bg-yellow-500" },
         { label: "Thông báo mới", value: "0", icon: ClipboardList, color: "bg-purple-500" },
       ];

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { hubAdminService } from "../../services/hubAdminService";
 import { administrativeService } from "../../services/administrativeService";
-import { User, Mail, Lock, Building2, Phone, Plus, ShieldCheck, Map, Users } from "lucide-react";
+import { User, Mail, Lock, Building2, Phone, Plus, ShieldCheck, Map, Users, ClipboardList } from "lucide-react";
 import type { RegionResponse } from "../../models";
 import {
   PageHeader,
@@ -45,6 +45,19 @@ export function HubAdminPage() {
     }
   };
 
+  // Fetch Hub Stats
+  const [stats, setStats] = useState({ orderCount: "0", userCount: "0" });
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Fetch orders to show activity in the hub
+        const orders = await import("../../services/orderService").then(m => m.orderService.getOrders({ size: 1 })).catch(() => ({ data: { totalElements: 0 } }));
+        setStats(prev => ({ ...prev, orderCount: orders.data.totalElements.toString() }));
+      } catch (e) { console.error(e); }
+    };
+    fetchStats();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -73,9 +86,14 @@ export function HubAdminPage() {
     }
   };
 
+  // Calculate/Fetch stats
+  const areaCount = regions.length;
+  // TODO: Add endpoint to fetch Hub Admins count directly if needed, or use separate GET /employees API
+  // TODO: Add endpoint to fetch Hub Admins count directly if needed, or use separate GET /employees API
+
   const systemStats = [
-    { label: "Khu vực quản lý", value: regions.length.toString(), icon: Map, color: "bg-blue-500" },
-    { label: "Quản trị viên Hub", value: "—", icon: ShieldCheck, color: "bg-primary-500" },
+    { label: "Khu vực quản lý", value: areaCount.toString(), icon: Map, color: "bg-blue-500" },
+    { label: "Đơn hàng xử lý", value: stats.orderCount, icon: ClipboardList, color: "bg-primary-500" },
     { label: "Tổng nhân sự bưu cục", value: "—", icon: Users, color: "bg-green-500" },
     { label: "Tình trạng Hub", value: "Ổn định", icon: Building2, color: "bg-indigo-500" },
   ];

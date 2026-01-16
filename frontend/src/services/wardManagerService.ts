@@ -4,6 +4,7 @@ import type {
   EmployeeResponse,
   CreateWardStaffRequest,
   CreateWardManagerEmployeeRequest,
+  PageResponse,
 } from "../models";
 
 export const wardManagerService = {
@@ -26,4 +27,9 @@ export const wardManagerService = {
     );
     return response.data;
   },
+
+  getEmployees: async (params?: { page?: number; size?: number }): Promise<ApiResponse<PageResponse<EmployeeResponse>>> => {
+    const response = await api.get<ApiResponse<PageResponse<EmployeeResponse>>>("/ward-manager/employees", { params });
+    return response.data;
+  }
 };

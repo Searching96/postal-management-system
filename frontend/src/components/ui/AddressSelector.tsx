@@ -8,6 +8,7 @@ interface AddressSelectorProps {
     label: string;
     onAddressChange: (fullAddress: string) => void;
     onProvinceChange?: (provinceCode: string) => void;
+    onWardChange?: (wardCode: string) => void;
     initialValue?: string;
     required?: boolean;
     provinceCode?: string; // External province code
@@ -18,6 +19,7 @@ export function AddressSelector({
     label,
     onAddressChange,
     onProvinceChange,
+    onWardChange,
     initialValue = "",
     required = false,
     provinceCode: externalProvinceCode,
@@ -144,7 +146,7 @@ export function AddressSelector({
                             { value: "", label: "-- Chọn Tỉnh/Thành --" },
                             ...provinces.map(p => ({ value: p.code, label: p.name }))
                         ]}
-                            searchable
+                        searchable
                     />
                 )}
 
@@ -154,7 +156,10 @@ export function AddressSelector({
                     required={required}
                     value={selectedWard}
                     disabled={!selectedProvince || isLoadingWards}
-                    onChange={(val) => setSelectedWard(val as string)}
+                    onChange={(val) => {
+                        setSelectedWard(val as string);
+                        if (onWardChange) onWardChange(val as string);
+                    }}
                     options={[
                         {
                             value: "",
@@ -162,7 +167,7 @@ export function AddressSelector({
                         },
                         ...wards.map(w => ({ value: w.code, label: w.name }))
                     ]}
-                        searchable
+                    searchable
                 />
             </div>
 
