@@ -14,9 +14,13 @@ import {
   OrderListPage,
   CreateOrderPage,
   OrderDetailsPage,
+  TrackOrderPage,
   BatchListPage,
   BatchDetailsPage,
   ShipperManagementPage,
+  ShipperDashboardPage,
+  PendingPickupsPage,
+  CustomerPickupPage,
 } from "./pages";
 
 function App() {
@@ -29,6 +33,9 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
           </Route>
+
+          {/* Public tracking page (no auth required) */}
+          <Route path="/track" element={<TrackOrderPage />} />
 
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
@@ -49,6 +56,11 @@ function App() {
               {/* Batch Management */}
               <Route path="/batches" element={<BatchListPage />} />
               <Route path="/batches/:id" element={<BatchDetailsPage />} />
+
+              {/* Shipper */}
+              <Route path="/shipper" element={<ShipperDashboardPage />} />
+              <Route path="/orders/pending-pickups" element={<PendingPickupsPage />} />
+              <Route path="/customer/pickup" element={<CustomerPickupPage />} />
 
               {/* Other Admin */}
               <Route path="/admin/shippers" element={<ShipperManagementPage />} />

@@ -15,7 +15,7 @@ export interface Order {
     receiverName: string;
     receiverPhone: string;
     receiverAddress: string;
-    status: "PENDING" | "ACCEPTED" | "SHIPPING" | "DELIVERING" | "COMPLETED" | "CANCELLED" | "RETURNED" | "CREATED";
+    status: "CREATED" | "PENDING_PICKUP" | "PICKED_UP" | "IN_TRANSIT_TO_HUB" | "AT_HUB" | "IN_TRANSIT_FROM_HUB" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED" | "RETURNED";
     totalAmount: number; // Changed from totalFee
     totalFee?: number; // Fallback
     weightKg: number;

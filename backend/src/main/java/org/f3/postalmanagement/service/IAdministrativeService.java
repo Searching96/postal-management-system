@@ -4,6 +4,7 @@ import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.administrative.ProvinceResponse;
 import org.f3.postalmanagement.dto.response.administrative.RegionResponse;
 import org.f3.postalmanagement.dto.response.administrative.WardResponse;
+import org.f3.postalmanagement.dto.response.office.OfficeResponse;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
@@ -52,4 +53,11 @@ public interface IAdministrativeService {
      * @return paginated wards
      */
     PageResponse<WardResponse> getWardsByProvincePaginated(String provinceCode, String search, Pageable pageable);
+
+    /**
+     * Get all post offices in a specific province
+     * @param provinceCode the province code
+     * @return list of post offices
+     */
+    List<OfficeResponse> getPostOfficesByProvince(String provinceCode);
 }
