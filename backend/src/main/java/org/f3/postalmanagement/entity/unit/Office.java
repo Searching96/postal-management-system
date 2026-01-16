@@ -46,4 +46,7 @@ public class Office extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name="office_type", nullable = false)
     private OfficeType officeType;
+
+    @Column(name="capacity")
+    private Integer capacity;
 }

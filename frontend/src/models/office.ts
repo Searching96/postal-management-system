@@ -36,6 +36,7 @@ export interface CreateWardOfficeRequest {
   warehouseEmail: string;
   warehousePhoneNumber: string;
   warehouseAddress: string;
+  warehouseCapacity: number;
   postOfficeName: string;
   postOfficeEmail: string;
   postOfficePhoneNumber: string;

@@ -31,10 +31,11 @@ public interface IAdministrativeService {
 
     /**
      * Get all provinces with pagination
+     * @param search optional search term for name or code
      * @param pageable pagination parameters
      * @return paginated provinces
      */
-    PageResponse<ProvinceResponse> getAllProvincesPaginated(Pageable pageable);
+    PageResponse<ProvinceResponse> getAllProvincesPaginated(String search, Pageable pageable);
 
     /**
      * Get all wards in a specific province
@@ -46,8 +47,9 @@ public interface IAdministrativeService {
     /**
      * Get wards in a province with pagination
      * @param provinceCode the province code
+     * @param search optional search term for name or code
      * @param pageable pagination parameters
      * @return paginated wards
      */
-    PageResponse<WardResponse> getWardsByProvincePaginated(String provinceCode, Pageable pageable);
+    PageResponse<WardResponse> getWardsByProvincePaginated(String provinceCode, String search, Pageable pageable);
 }
