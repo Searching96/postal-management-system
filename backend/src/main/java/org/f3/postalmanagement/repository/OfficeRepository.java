@@ -49,4 +49,9 @@ public interface OfficeRepository extends JpaRepository<Office, UUID> {
                                                               @Param("officeTypes") List<OfficeType> officeTypes,
                                                               @Param("search") String search,
                                                               Pageable pageable);
+
+    /**
+     * Find offices by province code and office type
+     */
+    List<Office> findByProvinceCodeAndOfficeType(String provinceCode, OfficeType officeType);
 }

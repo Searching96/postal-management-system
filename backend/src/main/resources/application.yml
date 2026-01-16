@@ -20,6 +20,14 @@ spring:
         format_sql: true
     open-in-view: false
 
+  # RabbitMQ Configuration
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+
 # Server Configuration
 server:
   port: 8080
