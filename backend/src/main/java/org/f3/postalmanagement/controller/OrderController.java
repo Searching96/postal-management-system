@@ -58,7 +58,7 @@ public class OrderController {
     })
     public ResponseEntity<PriceCalculationResponse> calculatePrice(
             @Valid @RequestBody CalculatePriceRequest request,
-            @AuthenticationPrincipal Account currentAccount
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
         PriceCalculationResponse response = orderService.calculatePrice(request, currentAccount);
         return ResponseEntity.ok(response);
@@ -82,7 +82,7 @@ public class OrderController {
     })
     public ResponseEntity<OrderResponse> createOrder(
             @Valid @RequestBody CreateOrderRequest request,
-            @AuthenticationPrincipal Account currentAccount
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
         OrderResponse response = orderService.createOrder(request, currentAccount);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -105,7 +105,7 @@ public class OrderController {
     })
     public ResponseEntity<OrderResponse> getOrderById(
             @Parameter(description = "Order ID (UUID)") @PathVariable UUID orderId,
-            @AuthenticationPrincipal Account currentAccount
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
         OrderResponse response = orderService.getOrderById(orderId, currentAccount);
         return ResponseEntity.ok(response);
@@ -147,7 +147,7 @@ public class OrderController {
             @RequestParam(required = false) String search,
             @ParameterObject
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @AuthenticationPrincipal Account currentAccount
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
         PageResponse<OrderResponse> response = orderService.getOrdersByOffice(search, pageable, currentAccount);
         return ResponseEntity.ok(response);
@@ -191,7 +191,7 @@ public class OrderController {
             @Parameter(description = "Customer ID (UUID)") @PathVariable UUID customerId,
             @ParameterObject
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @AuthenticationPrincipal Account currentAccount
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
         PageResponse<OrderResponse> response = orderService.getOrdersByCustomerId(customerId, pageable, currentAccount);
         return ResponseEntity.ok(response);
@@ -215,7 +215,7 @@ public class OrderController {
     })
     public ResponseEntity<OrderResponse> createCustomerPickupOrder(
             @Valid @RequestBody CustomerCreateOrderRequest request,
-            @AuthenticationPrincipal Account currentAccount
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
         OrderResponse response = orderService.createCustomerPickupOrder(request, currentAccount);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -237,7 +237,7 @@ public class OrderController {
     public ResponseEntity<PageResponse<OrderResponse>> getPendingPickupOrders(
             @ParameterObject
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.ASC) Pageable pageable,
-            @AuthenticationPrincipal Account currentAccount
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
         PageResponse<OrderResponse> response = orderService.getPendingPickupOrders(pageable, currentAccount);
         return ResponseEntity.ok(response);
@@ -259,7 +259,7 @@ public class OrderController {
     })
     public ResponseEntity<OrderResponse> assignShipperToPickup(
             @Valid @RequestBody AssignShipperRequest request,
-            @AuthenticationPrincipal Account currentAccount
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
         OrderResponse response = orderService.assignShipperToPickup(request, currentAccount);
         return ResponseEntity.ok(response);
@@ -281,7 +281,7 @@ public class OrderController {
     public ResponseEntity<PageResponse<OrderResponse>> getShipperAssignedOrders(
             @ParameterObject
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @AuthenticationPrincipal Account currentAccount
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
         PageResponse<OrderResponse> response = orderService.getShipperAssignedOrders(pageable, currentAccount);
         return ResponseEntity.ok(response);
@@ -302,7 +302,7 @@ public class OrderController {
     })
     public ResponseEntity<OrderResponse> markOrderPickedUp(
             @Parameter(description = "Order ID") @PathVariable UUID orderId,
-            @AuthenticationPrincipal Account currentAccount
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
         OrderResponse response = orderService.markOrderPickedUp(orderId, currentAccount);
         return ResponseEntity.ok(response);
