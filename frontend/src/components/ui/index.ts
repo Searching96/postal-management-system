@@ -14,4 +14,5 @@ export { Badge } from "./Badge";
 export { Input } from "./Input";
 export { Label } from "./Label";
 export { Table } from "./Table";
+export * from "./Tabs";
 export * from "./Dialog";

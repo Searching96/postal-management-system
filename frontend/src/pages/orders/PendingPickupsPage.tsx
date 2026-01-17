@@ -16,7 +16,8 @@ import {
     Input
 } from "../../components/ui";
 import { orderService, Order } from "../../services/orderService";
-import { shipperService, Shipper } from "../../services/ShipperService";
+import { shipperService } from "../../services/ShipperService";
+import type { EmployeeResponse } from "../../models";
 import { toast } from "sonner";
 import { formatDate } from "../../lib/utils";
 
@@ -32,7 +33,7 @@ export function PendingPickupsPage() {
     // Assignment Dialog State
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [shippers, setShippers] = useState<Shipper[]>([]);
+    const [shippers, setShippers] = useState<EmployeeResponse[]>([]);
     const [selectedShipperId, setSelectedShipperId] = useState("");
     const [assignmentNote, setAssignmentNote] = useState("");
     const [isAssigning, setIsAssigning] = useState(false);
@@ -43,9 +44,11 @@ export function PendingPickupsPage() {
         setIsLoading(true);
         try {
             const res = await orderService.getPendingPickupOrders({ page, size: pageSize });
-            setOrders(res.content);
-            setTotalPages(res.totalPages);
-            setTotalElements(res.totalElements);
+            if (res && res.success) {
+                setOrders(res.data.content);
+                setTotalPages(res.data.totalPages);
+                setTotalElements(res.data.totalElements);
+            }
         } catch (err) {
             console.error(err);
             toast.error("Không thể tải danh sách đơn chờ xử lý");
@@ -217,8 +220,8 @@ export function PendingPickupsPage() {
                                     options={[
                                         { value: "", label: "-- Chọn Shipper --" },
                                         ...shippers.map(s => ({
-                                            value: s.id,
-                                            label: `${s.fullName} (${s.phone})`
+                                            value: s.employeeId,
+                                            label: `${s.fullName} (${s.phoneNumber})`
                                         }))
                                     ]}
                                     error={!selectedShipperId && isAssigning ? "Vui lòng chọn shipper" : ""}

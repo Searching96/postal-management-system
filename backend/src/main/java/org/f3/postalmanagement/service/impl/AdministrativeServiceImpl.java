@@ -36,6 +36,7 @@ public class AdministrativeServiceImpl implements IAdministrativeService {
     private final WardRepository wardRepository;
     private final AdRegionRepository adRegionRepository;
     private final OfficeRepository officeRepository;
+    private final org.f3.postalmanagement.repository.WardOfficeAssignmentRepository wardOfficeAssignmentRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -151,6 +152,22 @@ public class AdministrativeServiceImpl implements IAdministrativeService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public OfficeResponse getOfficeByWardCode(String wardCode) {
+        // Validate ward exists
+        if (!wardRepository.existsById(wardCode)) {
+            log.warn("Ward not found with code: {}", wardCode);
+            // Instead of throwing exception, return null for better UX (client can check null)
+            // Or throw and catch in controller. Let's return null here as specific assignment might not exist
+            return null;
+        }
+
+        return wardOfficeAssignmentRepository.findByWardCode(wardCode)
+                .map(assignment -> mapToOfficeResponse(assignment.getOfficePair().getPoOffice()))
+                .orElse(null);
+    }
+
     private RegionResponse mapToRegionResponse(AdministrativeRegion region) {
         return RegionResponse.builder()
                 .id(region.getId())
@@ -204,8 +221,8 @@ public class AdministrativeServiceImpl implements IAdministrativeService {
                 .provinceCode(office.getProvince() != null ? office.getProvince().getCode() : null)
                 .provinceName(office.getProvince() != null ? office.getProvince().getName() : null)
                 .regionName(office.getRegion() != null ? office.getRegion().getName() : null)
-                .parentOfficeId(office.getParentOffice() != null ? office.getParentOffice().getId() : null)
-                .parentOfficeName(office.getParentOffice() != null ? office.getParentOffice().getOfficeName() : null)
+                .parentOfficeId(office.getParent() != null ? office.getParent().getId() : null)
+                .parentOfficeName(office.getParent() != null ? office.getParent().getOfficeName() : null)
                 .capacity(office.getCapacity())
                 .build();
     }

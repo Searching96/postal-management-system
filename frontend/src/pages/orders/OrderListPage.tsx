@@ -43,10 +43,10 @@ export function OrderListPage() {
                 res = await orderService.getOrders(params);
             }
 
-            if (res && res.content) {
-                setOrders(res.content);
-                setTotalPages(res.totalPages);
-                setTotalElements(res.totalElements);
+            if (res && res.success) {
+                setOrders(res.data.content);
+                setTotalPages(res.data.totalPages);
+                setTotalElements(res.data.totalElements);
             }
         } catch (error) {
             console.error(error);

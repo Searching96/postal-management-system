@@ -13,13 +13,15 @@ import {
     DialogTitle,
     DialogFooter,
     Label,
-    PageHeader
+    PageHeader,
+    FormSelect
 } from "../../components/ui";
-import { shipperService, Shipper, CreateShipperRequest } from "../../services/ShipperService";
+import { shipperService, CreateShipperRequest } from "../../services/ShipperService";
+import type { EmployeeResponse } from "../../models";
 import { toast } from "sonner"; // Assuming sonner or similar toast lib is used
 
 export function ShipperManagementPage() {
-    const [shippers, setShippers] = useState<Shipper[]>([]);
+    const [shippers, setShippers] = useState<EmployeeResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(0);
@@ -28,7 +30,7 @@ export function ShipperManagementPage() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-    const [selectedShipper, setSelectedShipper] = useState<Shipper | null>(null);
+    const [selectedShipper, setSelectedShipper] = useState<EmployeeResponse | null>(null);
 
     // Fetch shippers
     const fetchShippers = async () => {
@@ -68,7 +70,7 @@ export function ShipperManagementPage() {
     const handleUpdate = async (data: any) => {
         if (!selectedShipper) return;
         try {
-            await shipperService.updateShipper(selectedShipper.id, data);
+            await shipperService.updateShipper(selectedShipper.employeeId, data);
             toast.success("Cập nhật shipper thành công");
             setIsEditOpen(false);
             fetchShippers();
@@ -82,7 +84,7 @@ export function ShipperManagementPage() {
     const handleDelete = async () => {
         if (!selectedShipper) return;
         try {
-            await shipperService.deleteShipper(selectedShipper.id);
+            await shipperService.deleteShipper(selectedShipper.employeeId);
             toast.success("Xóa shipper thành công");
             setIsDeleteOpen(false);
             fetchShippers();
@@ -130,7 +132,7 @@ export function ShipperManagementPage() {
                             <tr><td colSpan={4} className="text-center py-8 text-gray-500">Chưa có dữ liệu</td></tr>
                         ) : (
                             shippers.map((shipper) => (
-                                <tr key={shipper.id} className="border-t">
+                                <tr key={shipper.employeeId} className="border-t">
                                     <td className="py-3 px-4">
                                         <div className="flex items-center gap-3">
                                             <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold">
@@ -138,14 +140,14 @@ export function ShipperManagementPage() {
                                             </div>
                                             <div>
                                                 <p className="font-medium">{shipper.fullName}</p>
-                                                <p className="text-xs text-gray-500">ID: {shipper.id.substring(0, 8)}...</p>
+                                                <p className="text-xs text-gray-500">ID: {shipper.employeeId.substring(0, 8)}...</p>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="py-3 px-4">
                                         <div className="space-y-1">
                                             <div className="flex items-center text-sm text-gray-600">
-                                                <Phone className="h-3 w-3 mr-2" /> {shipper.phone}
+                                                <Phone className="h-3 w-3 mr-2" /> {shipper.phoneNumber}
                                             </div>
                                             <div className="flex items-center text-sm text-gray-600">
                                                 <Mail className="h-3 w-3 mr-2" /> {shipper.email || "—"}
@@ -153,8 +155,8 @@ export function ShipperManagementPage() {
                                         </div>
                                     </td>
                                     <td className="py-3 px-4 text-center">
-                                        <Badge variant={shipper.status === "ACTIVE" ? "success" : "secondary"}>
-                                            {shipper.status === "ACTIVE" ? "Đang hoạt động" : "Ngưng hoạt động"}
+                                        <Badge variant="success">
+                                            Hoạt động
                                         </Badge>
                                     </td>
                                     <td className="py-3 px-4 text-right">
@@ -172,7 +174,29 @@ export function ShipperManagementPage() {
                         )}
                     </tbody>
                 </Table>
-                {/* Pagination could be added here */}
+                {totalPages > 1 && (
+                    <div className="flex justify-center gap-2 p-4 border-t">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page === 0}
+                            onClick={() => setPage(page - 1)}
+                        >
+                            Trước
+                        </Button>
+                        <span className="flex items-center px-4 text-sm font-medium">
+                            Trang {page + 1} / {totalPages}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page >= totalPages - 1}
+                            onClick={() => setPage(page + 1)}
+                        >
+                            Sau
+                        </Button>
+                    </div>
+                )}
             </Card>
 
             {/* Create Dialog */}
@@ -209,7 +233,30 @@ export function ShipperManagementPage() {
 }
 
 function CreateShipperDialog({ open, onOpenChange, onSubmit }: { open: boolean, onOpenChange: (open: boolean) => void, onSubmit: (data: any) => void }) {
-    const { register, handleSubmit, reset } = useForm<CreateShipperRequest>();
+    const { register, handleSubmit, reset, setValue, watch } = useForm<CreateShipperRequest>();
+    const [offices, setOffices] = useState<{ id: string; name: string }[]>([]);
+    const [isLoadingOffices, setIsLoadingOffices] = useState(false);
+    const selectedOfficeId = watch("officeId") || "";
+
+    useEffect(() => {
+        if (open) {
+            fetchOffices();
+        }
+    }, [open]);
+
+    const fetchOffices = async () => {
+        setIsLoadingOffices(true);
+        try {
+            const res = await shipperService.getAvailableOffices();
+            if (res.success) {
+                setOffices(res.data.map((o: any) => ({ id: o.officeId, name: o.name })));
+            }
+        } catch (error) {
+            console.error("Failed to fetch offices", error);
+        } finally {
+            setIsLoadingOffices(false);
+        }
+    };
 
     const submitHandler = (data: CreateShipperRequest) => {
         onSubmit(data);
@@ -222,23 +269,35 @@ function CreateShipperDialog({ open, onOpenChange, onSubmit }: { open: boolean, 
                 <DialogHeader>
                     <DialogTitle>Thêm Shipper Mới</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit(submitHandler)} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label>Họ và tên</Label>
-                        <Input {...register("fullName", { required: true })} placeholder="Nguyễn Văn A" />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Số điện thoại</Label>
-                        <Input {...register("phone", { required: true })} placeholder="0987..." />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Email (Tùy chọn)</Label>
-                        <Input {...register("email")} type="email" placeholder="example@email.com" />
-                    </div>
-                    {/* Suggest adding password if backend requires it for new user */}
-                    <div className="space-y-2">
-                        <Label>Mật khẩu (Mặc định)</Label>
-                        <Input type="password" {...register("password")} defaultValue="123456" />
+                <form onSubmit={handleSubmit(submitHandler)}>
+                    <div className="space-y-4 px-6 pb-4">
+                        <div className="space-y-2">
+                            <Label>Họ và tên</Label>
+                            <Input {...register("fullName", { required: true })} placeholder="Nguyễn Văn A" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Số điện thoại</Label>
+                            <Input {...register("phoneNumber", { required: true })} placeholder="0901234567" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Email</Label>
+                            <Input {...register("email", { required: true })} type="email" placeholder="shipper@example.com" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Mật khẩu</Label>
+                            <Input type="password" {...register("password", { required: true })} defaultValue="123456" />
+                        </div>
+                        <FormSelect
+                            label="Đơn vị công tác"
+                            required
+                            value={selectedOfficeId}
+                            onChange={(val) => setValue("officeId", val as string)}
+                            disabled={isLoadingOffices}
+                            options={[
+                                { value: "", label: isLoadingOffices ? "Đang tải..." : "-- Chọn đơn vị --" },
+                                ...offices.map(office => ({ value: office.id, label: office.name }))
+                            ]}
+                        />
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Hủy</Button>
@@ -250,15 +309,16 @@ function CreateShipperDialog({ open, onOpenChange, onSubmit }: { open: boolean, 
     );
 }
 
-function EditShipperDialog({ open, onOpenChange, shipper, onSubmit }: { open: boolean, onOpenChange: (open: boolean) => void, shipper: Shipper, onSubmit: (data: any) => void }) {
-    const { register, handleSubmit } = useForm({
+function EditShipperDialog({ open, onOpenChange, shipper, onSubmit }: { open: boolean, onOpenChange: (open: boolean) => void, shipper: EmployeeResponse, onSubmit: (data: any) => void }) {
+    const { register, handleSubmit, setValue, watch } = useForm({
         defaultValues: {
             fullName: shipper.fullName,
-            phone: shipper.phone,
+            phoneNumber: shipper.phoneNumber,
             email: shipper.email,
-            status: shipper.status
+            status: "ACTIVE"
         }
     });
+    const selectedStatus = watch("status") || "ACTIVE";
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -266,25 +326,29 @@ function EditShipperDialog({ open, onOpenChange, shipper, onSubmit }: { open: bo
                 <DialogHeader>
                     <DialogTitle>Cập nhật Shipper</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label>Họ và tên</Label>
-                        <Input {...register("fullName")} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Số điện thoại</Label>
-                        <Input {...register("phone")} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Email</Label>
-                        <Input {...register("email")} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Trạng thái</Label>
-                        <select {...register("status")} className="w-full border rounded-md p-2 text-sm">
-                            <option value="ACTIVE">Hoạt động</option>
-                            <option value="INACTIVE">Ngưng hoạt động</option>
-                        </select>
+                <form onSubmit={handleSubmit(onSubmit)}>
+                    <div className="space-y-4 px-6 pb-4">
+                        <div className="space-y-2">
+                            <Label>Họ và tên</Label>
+                            <Input {...register("fullName")} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Số điện thoại</Label>
+                            <Input {...register("phoneNumber")} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Email</Label>
+                            <Input {...register("email")} />
+                        </div>
+                        <FormSelect
+                            label="Trạng thái"
+                            value={selectedStatus}
+                            onChange={(val) => setValue("status", val as string)}
+                            options={[
+                                { value: "ACTIVE", label: "Hoạt động" },
+                                { value: "INACTIVE", label: "Ngưng hoạt động" }
+                            ]}
+                        />
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Hủy</Button>

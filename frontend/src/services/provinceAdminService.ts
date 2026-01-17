@@ -11,6 +11,7 @@ import type {
   WardAssignmentInfo,
   PageResponse,
   UpdateStaffRequest,
+  OfficeResponse,
 } from "../models";
 
 export const provinceAdminService = {
@@ -121,6 +122,18 @@ export const provinceAdminService = {
 
   deleteEmployee: async (staffId: string): Promise<ApiResponse<void>> => {
     const response = await api.delete<ApiResponse<void>>(`/province-admin/employees/${staffId}`);
+    return response.data;
+  },
+
+  getWardOfficesByProvince: async (params?: {
+    search?: string;
+    page?: number;
+    size?: number;
+  }): Promise<ApiResponse<PageResponse<OfficeResponse>>> => {
+    const response = await api.get<ApiResponse<PageResponse<OfficeResponse>>>(
+      "/province-admin/offices/ward",
+      { params }
+    );
     return response.data;
   },
 };

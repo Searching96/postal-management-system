@@ -248,8 +248,9 @@ export function ProvinceAdminPage() {
           setWardTotalElements(response.data.totalElements ?? 0);
         }
       }
-    } catch (err: any) {
-      if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return;
+    } catch (err: unknown) {
+      const axiosErr = err as { name?: string; code?: string; response?: { status?: number } };
+      if (axiosErr.name === "CanceledError" || axiosErr.code === "ERR_CANCELED") return;
       if (abortControllerRef.current === controller) {
         setError("Không thể tải dữ liệu");
       }
@@ -344,8 +345,9 @@ export function ProvinceAdminPage() {
           setError(response.message || "Lỗi khi tạo bưu cục");
         }
       }
-    } catch (err: any) {
-      const errorData = err.response?.data;
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string; errorCode?: string; data?: Record<string, string> } } };
+      const errorData = axiosErr.response?.data;
       let errors: Record<string, string> = {};
       if (errorData?.message?.includes("Post office email already exists")) {
         errors.postOfficeEmail = errorData.message;
@@ -443,13 +445,14 @@ export function ProvinceAdminPage() {
           setError(response.message || "Lỗi khi tạo nhân viên");
         }
       }
-    } catch (err: any) {
-      const errorData = err.response?.data;
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string; errorCode?: string; data?: Record<string, string> } }; message?: string };
+      const errorData = axiosErr.response?.data;
       if (errorData?.errorCode === "VALIDATION_ERROR" && errorData?.data) {
-        const errorMessages = Object.values(errorData.data as Record<string, string>).join(", ");
+        const errorMessages = Object.values(errorData.data).join(", ");
         setError(errorMessages || errorData.message || "Lỗi xác thực dữ liệu");
       } else {
-        setError(errorData?.message || err.message || "Lỗi khi tạo nhân viên");
+        setError(errorData?.message || axiosErr.message || "Lỗi khi tạo nhân viên");
       }
     } finally {
       setIsLoading(false);
@@ -475,8 +478,9 @@ export function ProvinceAdminPage() {
       {/* Tabs */}
       <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-100 flex gap-2">
         {tabs.map((tab) => (
-          <button
+          <Button
             key={tab.id}
+            variant="ghost"
             onClick={() => setActiveTab(tab.id as any)}
             className={`flex-1 flex items-center justify-center py-2.5 px-4 rounded-lg font-medium text-sm transition-all ${activeTab === tab.id
               ? "bg-primary-600 text-white shadow-md shadow-primary-200"
@@ -485,7 +489,7 @@ export function ProvinceAdminPage() {
           >
             <tab.icon className="h-4 w-4 mr-2" />
             {tab.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -657,27 +661,31 @@ export function ProvinceAdminPage() {
                 />
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setStatusFilter(statusFilter === "assigned" ? "all" : "assigned")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${statusFilter === "assigned"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 h-auto rounded-lg transition-all ${statusFilter === "assigned"
                     ? "bg-green-50 text-green-700 ring-1 ring-green-200"
                     : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
                     }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${statusFilter === "assigned" ? "bg-green-500 animate-pulse" : "bg-green-500/40"}`}></span>
                   Đã gán
-                </button>
+                </Button>
                 <div className="w-px h-4 bg-gray-100 mx-0.5"></div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setStatusFilter(statusFilter === "unassigned" ? "all" : "unassigned")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${statusFilter === "unassigned"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 h-auto rounded-lg transition-all ${statusFilter === "unassigned"
                     ? "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200"
                     : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
                     }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${statusFilter === "unassigned" ? "bg-yellow-500 animate-pulse" : "bg-yellow-500/40"}`}></span>
                   Chưa gán
-                </button>
+                </Button>
               </div>
             </div>
           </div>

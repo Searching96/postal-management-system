@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { userService } from "../../services/userService";
 import type { MeResponse, CustomerMeResponse, EmployeeMeResponse } from "../../models";
 import {
@@ -9,35 +9,65 @@ import {
     Shield,
     CreditCard,
     Activity,
-    Building
+    Building,
+    Camera,
+    Loader2
 } from "lucide-react";
 import { PageHeader, Card, LoadingSpinner, Alert } from "../../components/ui";
 import { getRoleLabel, getOfficeTypeLabel } from "../../lib/utils";
+import { uploadService } from "../../services/uploadService";
+import { toast } from "sonner";
 
 export function ProfilePage() {
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [profile, setProfile] = useState<MeResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState("");
 
-    useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                const response = await userService.fetchMe();
-                if (response.success) {
-                    setProfile(response.data);
-                } else {
-                    setError(response.message || "Failed to fetch profile");
-                }
-            } catch (err) {
-                setError("An error occurred while fetching your profile");
-                console.error(err);
-            } finally {
-                setIsLoading(false);
+    const fetchProfile = async () => {
+        try {
+            const response = await userService.fetchMe();
+            if (response.success) {
+                setProfile(response.data);
+            } else {
+                setError(response.message || "Failed to fetch profile");
             }
-        };
+        } catch (err) {
+            setError("An error occurred while fetching your profile");
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchProfile();
     }, []);
+
+    const handleAvatarClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        try {
+            const res = await uploadService.uploadAvatar(file);
+            if (res.success) {
+                toast.success("Cập nhật ảnh đại diện thành công");
+                // Refresh profile to get new avatar URL if it's there, 
+                // or just manually update if the API doesn't return the full profile
+                fetchProfile();
+            }
+        } catch (err) {
+            toast.error("Lỗi khi tải ảnh lên");
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     if (isLoading) {
         return (
@@ -69,10 +99,28 @@ export function ProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Profile Card */}
                 <Card className="md:col-span-1 p-6 text-center h-fit">
-                    <div className="relative mx-auto w-32 h-32 mb-4">
-                        <div className="w-full h-full rounded-full bg-primary-100 flex items-center justify-center border-4 border-white shadow-lg">
+                    <div className="relative mx-auto w-32 h-32 mb-4 group cursor-pointer" onClick={handleAvatarClick}>
+                        <div className="w-full h-full rounded-full bg-primary-100 flex items-center justify-center border-4 border-white shadow-lg overflow-hidden">
+                            {/* In a real app we'd use profile.avatarUrl here */}
                             <User className="w-16 h-16 text-primary-600" />
                         </div>
+
+                        <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            {isUploading ? (
+                                <Loader2 className="w-8 h-8 text-white animate-spin" />
+                            ) : (
+                                <Camera className="w-8 h-8 text-white" />
+                            )}
+                        </div>
+
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                        />
+
                         <div className={`absolute bottom-1 right-1 w-6 h-6 rounded-full border-2 border-white ${profile.active ? 'bg-green-500' : 'bg-red-500'}`} title={profile.active ? 'Đang hoạt động' : 'Bị khóa'}></div>
                     </div>
                     <h2 className="text-xl font-bold text-gray-900">{profile.fullName}</h2>

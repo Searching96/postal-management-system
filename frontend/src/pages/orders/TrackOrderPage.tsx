@@ -38,14 +38,16 @@ export function TrackOrderPage() {
 
         try {
             const result = await orderService.trackOrder(trackingNumber.trim());
-            setOrder(result);
-        } catch (err: any) {
-            if (err.response?.status === 404) {
-                setError("Không tìm thấy đơn hàng với mã vận đơn này");
+            if (result.success) {
+                setOrder(result.data);
+            }
+        } catch (err: unknown) {
+            const status = (err as { response?: { status?: number } }).response?.status;
+            if (status === 404) {
+                setError("Đơn hàng không tìm thấy với mã vận đơn này");
             } else {
                 setError("Đã xảy ra lỗi khi tra cứu. Vui lòng thử lại.");
             }
-            console.error(err);
         } finally {
             setIsLoading(false);
         }

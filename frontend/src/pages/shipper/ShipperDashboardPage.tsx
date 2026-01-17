@@ -21,13 +21,12 @@ export function ShipperDashboardPage() {
         setError("");
         try {
             const res = await orderService.getShipperAssignedOrders({ page, size: pageSize });
-            if (res && res.content) {
-                setOrders(res.content);
-                setTotalPages(res.totalPages);
-                setTotalElements(res.totalElements);
+            if (res && res.success) {
+                setOrders(res.data.content);
+                setTotalPages(res.data.totalPages);
+                setTotalElements(res.data.totalElements);
             }
-        } catch (err: any) {
-            console.error(err);
+        } catch (err: unknown) {
             setError("Không thể tải danh sách đơn hàng được giao");
         } finally {
             setIsLoading(false);
@@ -44,8 +43,7 @@ export function ShipperDashboardPage() {
             await orderService.markOrderPickedUp(orderId);
             toast.success("Đã xác nhận lấy hàng thành công!");
             fetchAssignedOrders(); // Refresh list
-        } catch (err: any) {
-            console.error(err);
+        } catch (err: unknown) {
             toast.error("Không thể xác nhận lấy hàng. Vui lòng thử lại.");
         } finally {
             setProcessingOrderId(null);

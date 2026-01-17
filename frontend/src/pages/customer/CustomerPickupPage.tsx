@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { orderService } from "../../services/orderService";
 import { administrativeService } from "../../services/administrativeService";
-import { OfficeResponse } from "../../models";
+import { OfficeResponse, ApiResponse } from "../../models";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/AuthContext";
@@ -83,9 +83,11 @@ export const CustomerPickupPage = () => {
 
         setIsSubmitting(true);
         try {
-            const payload = {
+            const payload: any = {
                 originOfficeId,
                 pickupAddress,
+                senderName,
+                senderPhone,
                 receiverName,
                 receiverPhone,
                 receiverAddress,
@@ -145,6 +147,35 @@ export const CustomerPickupPage = () => {
                             label=""
                             onAddressChange={setPickupAddress}
                             onProvinceChange={setPickupProvinceCode}
+                            onWardChange={(wardCode) => {
+                                // Auto-select office when ward changes
+                                if (wardCode) {
+                                    setIsLoadingOffices(true);
+                                    administrativeService.getOfficeByWardCode(wardCode)
+                                        .then((res: ApiResponse<OfficeResponse>) => {
+                                            if (res.success && res.data) {
+                                                setOriginOfficeId(res.data.officeId);
+                                                // Also make sure this office is in the list
+                                                setOffices(prev => {
+                                                    const exists = prev.some(o => o.officeId === res.data.officeId);
+                                                    return exists ? prev : [...prev, res.data];
+                                                });
+                                            } else {
+                                                setOriginOfficeId("");
+                                                if (res.success === false) {
+                                                    toast.error("Không có bưu cục nào được phân công cho phường/xã này");
+                                                }
+                                            }
+                                        })
+                                        .catch(() => {
+                                            setOriginOfficeId("");
+                                            // Silent fail or toast error
+                                        })
+                                        .finally(() => setIsLoadingOffices(false));
+                                } else {
+                                    setOriginOfficeId("");
+                                }
+                            }}
                             required
                         />
                     </div>

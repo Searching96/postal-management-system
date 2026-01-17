@@ -50,9 +50,9 @@ export function DashboardPage() {
             import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "DELIVERED", size: 1 })),
             import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "CREATED", size: 1 }))
           ]);
-          newData["shipping"] = shipping?.totalElements?.toString() || "0";
-          newData["completed"] = completed?.totalElements?.toString() || "0";
-          newData["pending"] = pending?.totalElements?.toString() || "0";
+          newData["shipping"] = shipping?.data.totalElements.toString() || "0";
+          newData["completed"] = completed?.data.totalElements.toString() || "0";
+          newData["pending"] = pending?.data.totalElements.toString() || "0";
 
           // Estimate total spend? currently no endpoint, leave as placeholder or calculate later
         }
@@ -60,7 +60,7 @@ export function DashboardPage() {
         // 2. Admin Stats
         if (isSystemAdmin || isHubAdmin) {
           const orders = await import("../../services/orderService").then(m => m.orderService.getOrders({ size: 1 }));
-          newData["totalOrders"] = orders.totalElements.toString();
+          newData["totalOrders"] = orders.data.totalElements.toString();
 
           // TODO: Add users count and office count when APIs available
           // const users = await import("../../services/userService").then(m => m.userService.getUsers({ size: 1 })).catch(() => null);

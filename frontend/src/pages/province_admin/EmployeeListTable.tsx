@@ -125,19 +125,13 @@ export function EmployeeListTable() {
                     setEditError(response.message || "Lỗi khi cập nhật nhân viên");
                 }
             }
-        } catch (err: any) {
-            console.log("Caught error:", err);
-            console.log("err.response:", err.response);
-            console.log("err.response?.data:", err.response?.data);
-
-            const errorData = err.response?.data;
+        } catch (err: unknown) {
+            const errorData = (err as any).response?.data;
             if (errorData?.errorCode === "VALIDATION_ERROR" && errorData?.data) {
                 const errorMessages = Object.values(errorData.data as Record<string, string>).join(", ");
-                console.log("Setting validation error:", errorMessages);
                 setEditError(errorMessages || errorData.message || "Lỗi xác thực dữ liệu");
             } else {
-                console.log("Setting general error:", errorData?.message);
-                setEditError(errorData?.message || err.message || "Lỗi kết nối máy chủ");
+                setEditError(errorData?.message || (err as Error).message || "Lỗi kết nối máy chủ");
             }
         } finally {
             setIsSubmitting(false);
@@ -162,8 +156,8 @@ export function EmployeeListTable() {
             } else {
                 setErrorMessage(response.message || "Lỗi khi xóa nhân viên");
             }
-        } catch (err: any) {
-            setErrorMessage(err.response?.data?.message || "Lỗi kết nối máy chủ");
+        } catch (err: unknown) {
+            setErrorMessage((err as any).response?.data?.message || "Lỗi kết nối máy chủ");
         } finally {
             setIsSubmitting(false);
             setIsDeleteConfirmOpen(false);

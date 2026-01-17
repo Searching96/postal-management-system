@@ -167,4 +167,32 @@ public class AdministrativeController {
                         .build()
         );
     }
+    @GetMapping("/wards/{wardCode}/office")
+    @Operation(
+            summary = "Get post office by ward",
+            description = "Get the assigned post office for a specific ward. No authentication required."
+    )
+    public ResponseEntity<ApiResponse<OfficeResponse>> getOfficeByWard(
+            @PathVariable String wardCode
+    ) {
+        OfficeResponse office = administrativeService.getOfficeByWardCode(wardCode);
+        
+        if (office == null) {
+            return ResponseEntity.ok(
+                    ApiResponse.<OfficeResponse>builder()
+                            .success(false)
+                            .message("No post office assigned to this ward")
+                            .data(null)
+                            .build()
+            );
+        }
+
+        return ResponseEntity.ok(
+                ApiResponse.<OfficeResponse>builder()
+                        .success(true)
+                        .message("Assigned post office fetched successfully")
+                        .data(office)
+                        .build()
+        );
+    }
 }

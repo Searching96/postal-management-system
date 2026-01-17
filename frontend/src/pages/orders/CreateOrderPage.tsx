@@ -22,7 +22,8 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogDescription
+    DialogDescription,
+    FormSelect
 } from "../../components/ui";
 import { toast } from "sonner";
 import { orderService } from "../../services/orderService";
@@ -246,8 +247,6 @@ export function CreateOrderPage() {
     };
 
     const nextStep = () => {
-        console.log("nextStep called, currentStep:", currentStep);
-        console.log("formData:", formData);
 
         if (currentStep === "INFO") {
             const newErrors: Record<string, string> = {};
@@ -286,7 +285,6 @@ export function CreateOrderPage() {
             }
 
             setErrors({});
-            console.log("All validations passed, moving to PACKAGE");
             setCurrentStep("PACKAGE");
         } else if (currentStep === "PACKAGE") {
             const newErrors: Record<string, string> = {};
@@ -457,17 +455,17 @@ export function CreateOrderPage() {
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label>Loại hàng hóa</Label>
-                                            <select
-                                                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                                            <FormSelect
+                                                label="Loại hàng hóa"
                                                 value={formData.packageType}
-                                                onChange={e => handleInputChange("packageType", e.target.value)}
-                                            >
-                                                <option value="BOX">Hộp/Thùng (Box)</option>
-                                                <option value="DOCUMENT">Tài liệu (Document)</option>
-                                                <option value="FRAGILE">Hàng dễ vỡ (Fragile)</option>
-                                                <option value="OVERSIZED">Quá khổ (Oversized)</option>
-                                            </select>
+                                                onChange={(val) => handleInputChange("packageType", val)}
+                                                options={[
+                                                    { value: "BOX", label: "Hộp/Thùng (Box)" },
+                                                    { value: "DOCUMENT", label: "Tài liệu (Document)" },
+                                                    { value: "FRAGILE", label: "Hàng dễ vỡ (Fragile)" },
+                                                    { value: "OVERSIZED", label: "Quá khổ (Oversized)" }
+                                                ]}
+                                            />
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Trọng lượng thực (kg) <span className="text-red-500">*</span></Label>
@@ -561,9 +559,10 @@ export function CreateOrderPage() {
                                                 const est = calculationResult?.availableServices?.find((x: any) => x.serviceType === s.id);
 
                                                 return (
-                                                    <button
+                                                    <Button
                                                         key={s.id}
-                                                        className={`p-3 rounded-lg border text-left transition-all ${formData.serviceType === s.id
+                                                        variant="ghost"
+                                                        className={`p-3 h-auto rounded-lg border text-left transition-all flex-col items-start ${formData.serviceType === s.id
                                                             ? "border-primary-600 bg-primary-50 ring-1 ring-primary-600"
                                                             : "border-gray-200 hover:border-primary-300"
                                                             }`}
@@ -572,12 +571,12 @@ export function CreateOrderPage() {
                                                         <div className="font-medium text-sm text-gray-900">{s.label}</div>
                                                         <div className="text-xs text-gray-500 mb-1">{s.desc}</div>
                                                         {est && (
-                                                            <div className="mt-2 pt-2 border-t border-gray-200/50">
+                                                            <div className="mt-2 pt-2 border-t border-gray-200/50 w-full">
                                                                 <div className="text-lg font-bold text-primary-700">{formatCurrency(est.totalAmount)}</div>
                                                                 <div className="text-[10px] text-gray-500">Giao: {new Date(est.estimatedDeliveryDate).toLocaleDateString('vi-VN')}</div>
                                                             </div>
                                                         )}
-                                                    </button>
+                                                    </Button>
                                                 );
                                             })}
                                         </div>

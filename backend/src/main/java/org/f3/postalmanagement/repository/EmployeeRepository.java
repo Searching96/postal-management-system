@@ -65,4 +65,14 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
                                                     @Param("role") Role role,
                                                     @Param("search") String search, 
                                                     Pageable pageable);
+
+    @Query("SELECT e FROM Employee e WHERE e.office.province.code = :provinceCode AND " +
+           "(:search IS NULL OR :search = '' OR " +
+           "LOWER(e.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(e.phoneNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(e.account.email) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY e.fullName ASC")
+    Page<Employee> findByProvinceCodeWithSearch(@Param("provinceCode") String provinceCode,
+                                                @Param("search") String search,
+                                                Pageable pageable);
 }
