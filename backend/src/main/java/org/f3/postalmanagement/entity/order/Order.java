@@ -40,26 +40,26 @@ public class Order extends BaseEntity {
     // ==================== SENDER INFORMATION ====================
     
     /**
-     * Registered customer (optional - for walk-in customers without account)
+     * Sender customer (required - must exist in database, but may not have account)
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sender_customer_id")
+    @JoinColumn(name = "sender_customer_id", nullable = false)
     private Customer senderCustomer;
 
     /**
-     * Sender's full name (required for walk-in customers)
+     * Sender's full name (snapshot at time of order creation)
      */
     @Column(name = "sender_name", nullable = false)
     private String senderName;
 
     /**
-     * Sender's phone number
+     * Sender's phone number (snapshot at time of order creation)
      */
     @Column(name = "sender_phone", nullable = false, length = 15)
     private String senderPhone;
 
     /**
-     * Sender's address
+     * Sender's address (snapshot at time of order creation)
      */
     @Column(name = "sender_address", nullable = false)
     private String senderAddress;
@@ -67,19 +67,26 @@ public class Order extends BaseEntity {
     // ==================== RECEIVER INFORMATION ====================
 
     /**
-     * Receiver's full name
+     * Receiver customer (required - must exist in database, but may not have account)
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "receiver_customer_id", nullable = false)
+    private Customer receiverCustomer;
+
+    /**
+     * Receiver's full name (snapshot at time of order creation)
      */
     @Column(name = "receiver_name", nullable = false)
     private String receiverName;
 
     /**
-     * Receiver's phone number
+     * Receiver's phone number (snapshot at time of order creation)
      */
     @Column(name = "receiver_phone", nullable = false, length = 15)
     private String receiverPhone;
 
     /**
-     * Receiver's full address
+     * Receiver's full address (snapshot at time of order creation)
      */
     @Column(name = "receiver_address", nullable = false)
     private String receiverAddress;
@@ -275,4 +282,24 @@ public class Order extends BaseEntity {
         statusHistory.add(history);
         history.setOrder(this);
     }
+
+    // ==================== COMMENT ====================
+
+    /**
+     * Single comment on this order for communication and notes
+     */
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private OrderComment comment;
+
+    /**
+     * Set the comment for this order
+     */
+    public void setComment(OrderComment comment) {
+        this.comment = comment;
+        if (comment != null) {
+            comment.setOrder(this);
+        }
+    }
+
+    
 }

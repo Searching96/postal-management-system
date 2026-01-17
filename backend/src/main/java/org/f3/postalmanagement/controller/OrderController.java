@@ -12,9 +12,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.f3.postalmanagement.dto.request.order.AssignShipperRequest;
 import org.f3.postalmanagement.dto.request.order.CalculatePriceRequest;
+import org.f3.postalmanagement.dto.request.order.CreateCommentRequest;
 import org.f3.postalmanagement.dto.request.order.CreateOrderRequest;
 import org.f3.postalmanagement.dto.request.order.CustomerCreateOrderRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
+import org.f3.postalmanagement.dto.response.order.CommentResponse;
 import org.f3.postalmanagement.dto.response.order.OrderResponse;
 import org.f3.postalmanagement.dto.response.order.PriceCalculationResponse;
 import org.f3.postalmanagement.entity.actor.Account;
@@ -305,6 +307,59 @@ public class OrderController {
             @AuthenticationPrincipal Account currentAccount
     ) {
         OrderResponse response = orderService.markOrderPickedUp(orderId, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
+    // ==================== COMMENT ====================
+
+    @PostMapping("/{orderId}/comment")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(
+            summary = "Add or update comment on order",
+            description = "Add or update the comment for an order (each order has only one comment). " +
+                    "Both sender and receiver customers can comment on the order. " +
+                    "If a comment already exists, only the original creator can update it. " +
+                    "Only one of the two parties (sender or receiver) can create the comment.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Comment created or updated successfully",
+                    content = @Content(schema = @Schema(implementation = CommentResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions - only sender/receiver can comment, or only creator can update"),
+            @ApiResponse(responseCode = "404", description = "Order not found")
+    })
+    public ResponseEntity<CommentResponse> addOrUpdateComment(
+            @Parameter(description = "Order ID") @PathVariable UUID orderId,
+            @Valid @RequestBody CreateCommentRequest request,
+            @AuthenticationPrincipal Account currentAccount
+    ) {
+        CommentResponse response = orderService.addOrUpdateComment(orderId, request, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{orderId}/comment")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(
+            summary = "Get order comment",
+            description = "Retrieve the comment for an order. " +
+                    "Both sender and receiver customers can view the comment on their order.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Comment retrieved successfully"),
+            @ApiResponse(responseCode = "204", description = "No comment exists for this order"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+            @ApiResponse(responseCode = "404", description = "Order not found")
+    })
+    public ResponseEntity<CommentResponse> getOrderComment(
+            @Parameter(description = "Order ID") @PathVariable UUID orderId,
+            @AuthenticationPrincipal Account currentAccount
+    ) {
+        CommentResponse response = orderService.getOrderComment(orderId, currentAccount);
+        if (response == null) {
+            return ResponseEntity.noContent().build();
+        }
         return ResponseEntity.ok(response);
     }
 }

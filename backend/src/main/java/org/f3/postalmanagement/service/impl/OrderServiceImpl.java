@@ -5,9 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.f3.postalmanagement.dto.notification.NotificationMessage;
 import org.f3.postalmanagement.dto.request.order.AssignShipperRequest;
 import org.f3.postalmanagement.dto.request.order.CalculatePriceRequest;
+import org.f3.postalmanagement.dto.request.order.CreateCommentRequest;
 import org.f3.postalmanagement.dto.request.order.CreateOrderRequest;
 import org.f3.postalmanagement.dto.request.order.CustomerCreateOrderRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
+import org.f3.postalmanagement.dto.response.order.CommentResponse;
 import org.f3.postalmanagement.dto.response.order.OrderResponse;
 import org.f3.postalmanagement.dto.response.order.PriceCalculationResponse;
 import org.f3.postalmanagement.entity.actor.Account;
@@ -15,6 +17,7 @@ import org.f3.postalmanagement.entity.actor.Customer;
 import org.f3.postalmanagement.entity.actor.Employee;
 import org.f3.postalmanagement.entity.administrative.Ward;
 import org.f3.postalmanagement.entity.order.Order;
+import org.f3.postalmanagement.entity.order.OrderComment;
 import org.f3.postalmanagement.entity.order.OrderStatusHistory;
 import org.f3.postalmanagement.entity.unit.Office;
 import org.f3.postalmanagement.enums.OfficeType;
@@ -49,6 +52,7 @@ public class OrderServiceImpl implements IOrderService {
 
     private final OrderRepository orderRepository;
     private final OrderStatusHistoryRepository statusHistoryRepository;
+    private final OrderCommentRepository orderCommentRepository;
     private final EmployeeRepository employeeRepository;
     private final CustomerRepository customerRepository;
     private final WardRepository wardRepository;
@@ -233,6 +237,19 @@ public class OrderServiceImpl implements IOrderService {
             log.info("Walk-in customer created/found: {} ({})", senderCustomer.getFullName(), senderCustomer.getPhoneNumber());
         }
         
+        // Get or create receiver customer (same logic as sender)
+        Customer receiverCustomer = customerRepository.findByPhoneNumber(request.getReceiverPhone())
+                .orElseGet(() -> {
+                    Customer newCustomer = new Customer();
+                    newCustomer.setFullName(request.getReceiverName());
+                    newCustomer.setPhoneNumber(request.getReceiverPhone());
+                    newCustomer.setAddress(request.getReceiverAddress());
+                    newCustomer.setSubscriptionPlan(SubscriptionPlan.BASIC);
+                    // No account for new receiver customer
+                    return customerRepository.save(newCustomer);
+                });
+        log.info("Receiver customer created/found: {} ({})", receiverCustomer.getFullName(), receiverCustomer.getPhoneNumber());
+        
         // Calculate weights
         BigDecimal volumetricWeight = calculateVolumetricWeight(request.getLengthCm(), request.getWidthCm(), request.getHeightCm());
         BigDecimal chargeableWeight = request.getWeightKg().max(volumetricWeight != null ? volumetricWeight : BigDecimal.ZERO);
@@ -270,6 +287,7 @@ public class OrderServiceImpl implements IOrderService {
         order.setSenderAddress(request.getSenderAddress());
         
         // Receiver info
+        order.setReceiverCustomer(receiverCustomer);
         order.setReceiverName(request.getReceiverName());
         order.setReceiverPhone(request.getReceiverPhone());
         order.setReceiverAddress(request.getReceiverAddress());
@@ -638,6 +656,19 @@ public class OrderServiceImpl implements IOrderService {
         Ward destinationWard = wardRepository.findById(request.getDestinationWardCode())
                 .orElseThrow(() -> new IllegalArgumentException("Destination ward not found: " + request.getDestinationWardCode()));
         
+        // Get or create receiver customer (same logic as in createOrder)
+        Customer receiverCustomer = customerRepository.findByPhoneNumber(request.getReceiverPhone())
+                .orElseGet(() -> {
+                    Customer newCustomer = new Customer();
+                    newCustomer.setFullName(request.getReceiverName());
+                    newCustomer.setPhoneNumber(request.getReceiverPhone());
+                    newCustomer.setAddress(request.getReceiverAddress());
+                    newCustomer.setSubscriptionPlan(SubscriptionPlan.BASIC);
+                    // No account for new receiver customer
+                    return customerRepository.save(newCustomer);
+                });
+        log.info("Receiver customer created/found: {} ({})", receiverCustomer.getFullName(), receiverCustomer.getPhoneNumber());
+        
         // Calculate weights
         BigDecimal volumetricWeight = calculateVolumetricWeight(request.getLengthCm(), request.getWidthCm(), request.getHeightCm());
         BigDecimal chargeableWeight = request.getWeightKg().max(volumetricWeight != null ? volumetricWeight : BigDecimal.ZERO);
@@ -681,6 +712,7 @@ public class OrderServiceImpl implements IOrderService {
         order.setSenderAddress(request.getPickupAddress());
         
         // Receiver info
+        order.setReceiverCustomer(receiverCustomer);
         order.setReceiverName(request.getReceiverName());
         order.setReceiverPhone(request.getReceiverPhone());
         order.setReceiverAddress(request.getReceiverAddress());
@@ -897,6 +929,90 @@ public class OrderServiceImpl implements IOrderService {
         return mapToOrderResponse(savedOrder);
     }
 
+    // ==================== COMMENT ====================
+
+    @Override
+    @Transactional
+    public CommentResponse addOrUpdateComment(UUID orderId, CreateCommentRequest request, Account currentAccount) {
+        // Find the order
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+        
+        // Get current user's customer
+        Customer currentCustomer = customerRepository.findByAccountId(currentAccount.getId())
+                .orElseThrow(() -> new AccessDeniedException("Only customers can comment on orders"));
+        
+        // Check if current user is either sender or receiver
+        boolean isSender = order.getSenderCustomer().getId().equals(currentCustomer.getId());
+        boolean isReceiver = order.getReceiverCustomer().getId().equals(currentCustomer.getId());
+        
+        if (!isSender && !isReceiver) {
+            throw new AccessDeniedException("Only the sender or receiver of this order can comment");
+        }
+        
+        // Verify customer has an account (should always be true since we got customer from accountId)
+        if (currentCustomer.getAccount() == null) {
+            throw new AccessDeniedException("Only customers with accounts can comment");
+        }
+        
+        // Check if comment already exists
+        OrderComment comment = orderCommentRepository.findByOrderId(orderId).orElse(null);
+        
+        if (comment == null) {
+            // Create new comment
+            comment = new OrderComment();
+            comment.setOrder(order);
+            comment.setCreatedBy(currentAccount);
+            log.info("Creating new comment for order {} by {} ({})", 
+                    order.getTrackingNumber(), 
+                    isSender ? "sender" : "receiver",
+                    currentAccount.getUsername());
+        } else {
+            // Update existing comment - only the creator can update
+            if (!comment.getCreatedBy().getId().equals(currentAccount.getId())) {
+                throw new AccessDeniedException("Only the comment creator can update it");
+            }
+            log.info("Updating existing comment for order {} by {}", 
+                    order.getTrackingNumber(), 
+                    currentAccount.getUsername());
+        }
+        
+        comment.setCommentText(request.getCommentText());
+        
+        OrderComment savedComment = orderCommentRepository.save(comment);
+        
+        return mapToCommentResponse(savedComment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CommentResponse getOrderComment(UUID orderId, Account currentAccount) {
+        // Find the order
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+        
+        // Get current user's customer
+        Customer currentCustomer = customerRepository.findByAccountId(currentAccount.getId())
+                .orElseThrow(() -> new AccessDeniedException("Only customers can view comments on orders"));
+        
+        // Check if current user is either sender or receiver
+        boolean isSender = order.getSenderCustomer().getId().equals(currentCustomer.getId());
+        boolean isReceiver = order.getReceiverCustomer().getId().equals(currentCustomer.getId());
+        
+        if (!isSender && !isReceiver) {
+            throw new AccessDeniedException("Only the sender or receiver of this order can view comments");
+        }
+        
+        // Find the comment
+        OrderComment comment = orderCommentRepository.findByOrderId(orderId).orElse(null);
+        
+        if (comment == null) {
+            return null;
+        }
+        
+        return mapToCommentResponse(comment);
+    }
+
     // ==================== ADDITIONAL PRIVATE HELPERS ====================
 
     /**
@@ -911,5 +1027,26 @@ public class OrderServiceImpl implements IOrderService {
             case ANNUALLY -> ANNUALLY_DISCOUNT;
             default -> BigDecimal.ZERO; // BASIC has no discount
         };
+    }
+
+    /**
+     * Map OrderComment entity to CommentResponse DTO.
+     * Comments are only created by registered sender customers (must have account).
+     * If a comment exists, the account is guaranteed to have an associated customer.
+     */
+    private CommentResponse mapToCommentResponse(OrderComment comment) {
+        // Get the customer - guaranteed to exist since only registered customers can comment
+        Customer customer = customerRepository.findByAccountId(comment.getCreatedBy().getId())
+                .orElseThrow(() -> new IllegalStateException("Customer not found for comment creator"));
+        
+        return CommentResponse.builder()
+                .id(comment.getId())
+                .orderId(comment.getOrder().getId())
+                .commentText(comment.getCommentText())
+                .createdById(comment.getCreatedBy().getId())
+                .createdByName(customer.getFullName())
+                .createdAt(comment.getCreatedAt())
+                .updatedAt(comment.getUpdatedAt())
+                .build();
     }
 }
