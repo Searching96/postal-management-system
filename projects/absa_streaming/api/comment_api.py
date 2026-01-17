@@ -5,12 +5,9 @@
 # comment_api.py
 # ======================================
 # Flask API nhận comment từ Spring Boot backend
-# và gửi vào Kafka topic "absa-reviews" để consumer xử lý
+# và lưu vào Redis buffer để consumer xử lý batch inference
 
 from flask import Flask, request, jsonify
-from kafka import KafkaProducer
-from kafka.admin import KafkaAdminClient, NewTopic
-from kafka.errors import TopicAlreadyExistsError
 import json
 import logging
 import time
@@ -22,52 +19,13 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-KAFKA_SERVER = "postal-kafka:9092"
-TOPIC = "absa-reviews"
 REDIS_HOST = os.getenv("REDIS_HOST", "postal-redis")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_TTL = 3600  # Kết quả tồn tại 1 giờ
+BUFFER_KEY = "absa:buffer"
 
 # === Kết nối Redis ===
 redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-
-# === Khởi tạo Kafka Producer ===
-producer = None
-
-def init_kafka():
-    """Khởi tạo Kafka producer và tạo topic nếu chưa tồn tại"""
-    global producer
-    
-    # Đợi Kafka khởi động
-    max_retries = 30
-    for i in range(max_retries):
-        try:
-            # Tạo topic nếu chưa có
-            admin = KafkaAdminClient(bootstrap_servers=KAFKA_SERVER, client_id="comment_api_admin")
-            topic = NewTopic(name=TOPIC, num_partitions=1, replication_factor=1)
-            admin.create_topics([topic])
-            logger.info(f"✅ Created topic: {TOPIC}")
-            admin.close()
-            break
-        except TopicAlreadyExistsError:
-            logger.info(f"ℹ️ Topic {TOPIC} already exists")
-            break
-        except Exception as e:
-            if i < max_retries - 1:
-                logger.warning(f"⏳ Waiting for Kafka... ({i+1}/{max_retries})")
-                time.sleep(2)
-            else:
-                logger.error(f"❌ Failed to connect to Kafka: {e}")
-                raise
-    
-    # Khởi tạo Producer
-    producer = KafkaProducer(
-        bootstrap_servers=KAFKA_SERVER,
-        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-        acks='all',  # Đảm bảo message được ghi thành công
-        retries=3
-    )
-    logger.info("✅ Kafka Producer initialized successfully")
 
 # === API Endpoints ===
 
@@ -79,17 +37,16 @@ def health_check():
 @app.route('/api/comments', methods=['POST'])
 def receive_comment():
     """
-    Nhận OrderComment từ Spring Boot và gửi vào Kafka
+    Nhận OrderComment từ Spring Boot và lưu vào Redis buffer
     
-    Expected JSON format (từ OrderComment entity):
+    Expected JSON format:
     {
-        "id": 123,  // Order comment ID
+        "id": 123,
         "comment_text": "Sản phẩm tốt! Giao hàng nhanh.",
-        "callback_url": "http://your-backend:8080/api/callbacks/absa-result"  // optional
+        "callback_url": "http://your-backend:8080/api/callbacks/absa-result"
     }
     """
     try:
-        # Validate request
         if not request.is_json:
             return jsonify({"error": "Content-Type must be application/json"}), 400
         
@@ -98,37 +55,30 @@ def receive_comment():
         # Validate required fields
         if 'comment_text' not in data:
             return jsonify({"error": "Missing required field: comment_text"}), 400
-        
         if 'id' not in data:
             return jsonify({"error": "Missing required field: id"}), 400
         
-        # Chuẩn bị message để gửi vào Kafka
-        comment_id = str(data["id"])  # Convert to string for consistency
+        # Chuẩn bị message
+        comment_id = str(data["id"])
         message = {
             "id": comment_id,
             "comment_text": data["comment_text"],
             "timestamp": data.get("timestamp", time.strftime("%Y-%m-%dT%H:%M:%S")),
-            "callback_url": data.get("callback_url")  # Optional callback URL
+            "callback_url": data.get("callback_url")
         }
         
-        # Gửi vào Kafka
-        future = producer.send(TOPIC, message)
+        # Push vào Redis buffer
+        redis_client.rpush(BUFFER_KEY, json.dumps(message))
+        buffer_count = redis_client.llen(BUFFER_KEY)
         
-        # Đợi xác nhận (blocking, nhưng timeout nhanh)
-        record_metadata = future.get(timeout=10)
-        
-        # Push vào Redis buffer cho batch inference
-        redis_client.rpush("absa:buffer", json.dumps(message))
-        
-        logger.info(f"✅ Sent OrderComment to Kafka + Redis: {comment_id}")
+        logger.info(f"✅ Added comment to buffer: {comment_id} (buffer: {buffer_count}/128)")
         
         return jsonify({
             "success": True,
             "message": "OrderComment received and queued for processing",
             "order_comment_id": comment_id,
-            "kafka_partition": record_metadata.partition,
-            "kafka_offset": record_metadata.offset,
-            "status_url": f"/api/results/{comment_id}"  # URL để check kết quả
+            "buffer_count": buffer_count,
+            "status_url": f"/api/results/{comment_id}"
         }), 201
         
     except Exception as e:
@@ -178,25 +128,24 @@ def receive_comments_batch():
                     "callback_url": comment_data.get("callback_url")
                 }
                 
-                producer.send(TOPIC, message)
-                # Push vào Redis buffer cho batch inference
-                redis_client.rpush("absa:buffer", json.dumps(message))
+                # Push vào Redis buffer
+                redis_client.rpush(BUFFER_KEY, json.dumps(message))
                 comment_ids.append(comment_id)
                 success_count += 1
                 
             except Exception as e:
-                logger.error(f"Failed to send comment: {str(e)}")
+                logger.error(f"Failed to add comment: {str(e)}")
                 failed_count += 1
         
-        producer.flush()  # Đảm bảo tất cả messages được gửi
-        
-        logger.info(f"✅ Batch sent: {success_count} success, {failed_count} failed")
+        buffer_count = redis_client.llen(BUFFER_KEY)
+        logger.info(f"✅ Batch added: {success_count} success, {failed_count} failed (buffer: {buffer_count}/128)")
         
         return jsonify({
             "success": True,
             "sent": success_count,
             "failed": failed_count,
-            "comment_ids": comment_ids
+            "comment_ids": comment_ids,
+            "buffer_count": buffer_count
         }), 201
         
     except Exception as e:
@@ -432,7 +381,6 @@ def fill_batch():
 # === Khởi động ===
 if __name__ == '__main__':
     try:
-        init_kafka()
         logger.info("🚀 Starting Comment API on port 5000...")
         app.run(host='0.0.0.0', port=5000, debug=False)
     except Exception as e:
