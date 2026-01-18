@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: postal-management
+
+  # Database Configuration
+  datasource:
+    url: jdbc:mysql://localhost:3306/pms_db
+    username: postal_user
+    password: postal_pass
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # JPA/Hibernate Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    open-in-view: false
+
+  # RabbitMQ Configuration
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+
+# Server Configuration
+server:
+  port: 8080
+
+logging:
+  level:
+    org.f3.postalmanagement: DEBUG
+
+# MinIO Object Storage Configuration
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  public-url: ${MINIO_PUBLIC_URL:http://localhost:9000}
+  max-file-size: 10MB
+  allowed-extensions:
+    - jpg
+    - jpeg
+    - png
+    - gif
+    - webp
+  bucket:
+    avatars: postal-avatars
+    evidence: postal-evidence
+    attachments: postal-attachments
