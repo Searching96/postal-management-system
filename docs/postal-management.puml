@@ -1,0 +1,73 @@
+@startmindmap
+title Postal Management System - UI Tree
+
+* Postal Management System
+** Login/Authentication
+
+** Admin (Quản trị viên)
+*** Dashboard
+*** User Management
+*** Organization Structure
+*** Pricing Configuration
+*** System Settings
+
+** Giao dịch viên (Counter Staff)
+*** Dashboard
+*** Vận Đơn (Shipment Orders)
+**** Tạo Đơn Mới
+**** Tra cứu
+**** Quản lý Đơn
+*** Khách Hàng (Customers)
+**** Tìm kiếm
+**** Thêm mới
+**** Lịch sử
+*** Thu Chi (Payments)
+**** Thu cước
+**** Thu COD
+**** Đối soát
+*** Báo cáo (Reports)
+
+** Bưu tá (Delivery Staff)
+*** Tuyến Giao Hàng
+*** Lấy Hàng (Pickup)
+*** Giao Hàng (Delivery)
+**** Delivery Success
+**** Delivery Failed
+*** COD Management
+*** My Performance
+
+** Khách hàng (Customer Portal)
+*** Dashboard
+*** Tạo Đơn (Create Order)
+*** Tra cứu (Track Shipment)
+*** Đối soát COD
+*** Báo cáo (Reports)
+*** Khiếu nại (Complaints)
+*** Cài đặt (Settings)
+
+** Nhân viên Kho (Warehouse)
+*** Quét Mã (Scan)
+*** Bảng Kê (Manifest)
+*** Phân Loại (Sorting)
+*** Kho Bãi (Inventory)
+
+** Chăm sóc Khách hàng (Support)
+*** Khiếu nại Dashboard
+*** Chi tiết Khiếu nại
+*** Thống kê
+*** Live Chat Support
+
+** Kế toán (Accountant)
+*** Đối soát COD
+*** Công Nợ
+*** Báo cáo Tài chính
+*** Thanh Toán
+
+** Quản lý Bưu cục (Manager)
+*** Dashboard
+*** Nhân Viên
+*** Hoạt động (Operations)
+*** Báo cáo (Reports)
+*** Cấu hình
+
+@endmindmap
