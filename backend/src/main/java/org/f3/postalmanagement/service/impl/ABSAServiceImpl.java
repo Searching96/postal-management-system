@@ -3,7 +3,7 @@ package org.f3.postalmanagement.service.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.f3.postalmanagement.dto.response.absa.ABSAResultResponse;
 import org.f3.postalmanagement.entity.order.OrderComment;
-import org.f3.postalmanagement.exception.ResourceNotFoundException;
+import org.f3.postalmanagement.exception.NotFoundException;
 import org.f3.postalmanagement.repository.OrderCommentRepository;
 import org.f3.postalmanagement.service.IABSAService;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,6 +43,7 @@ public class ABSAServiceImpl implements IABSAService {
     @Transactional
     public Mono<String> sendCommentForAnalysis(OrderComment orderComment) {
         log.info("Sending comment {} to ABSA for analysis", orderComment.getId());
+        log.debug("Comment text: {}", orderComment.getCommentText());
 
         // Update status to processing
         orderComment.setAbsaStatus("processing");
@@ -54,15 +55,18 @@ public class ABSAServiceImpl implements IABSAService {
         request.put("comment_text", orderComment.getCommentText());
         request.put("callback_url", callbackUrl);
 
+        log.debug("ABSA request payload: {}", request);
+        log.debug("Calling ABSA API: POST /api/comments");
+
         // Send to ABSA API
         return webClient.post()
                 .uri("/api/comments")
                 .bodyValue(request)
                 .retrieve()
                 .bodyToMono(String.class)
-                .doOnSuccess(response -> log.info("Successfully sent comment {} to ABSA", orderComment.getId()))
+                .doOnSuccess(response -> log.info("Successfully sent comment {} to ABSA. Response: {}", orderComment.getId(), response))
                 .doOnError(error -> {
-                    log.error("Failed to send comment {} to ABSA: {}", orderComment.getId(), error.getMessage());
+                    log.error("Failed to send comment {} to ABSA: {}", orderComment.getId(), error.getMessage(), error);
                     orderComment.setAbsaStatus("error");
                     orderCommentRepository.save(orderComment);
                 });
@@ -74,7 +78,7 @@ public class ABSAServiceImpl implements IABSAService {
         log.info("Processing ABSA result for comment {}: status={}", orderCommentId, status);
 
         OrderComment orderComment = orderCommentRepository.findById(orderCommentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order comment not found with id: " + orderCommentId));
+                .orElseThrow(() -> new NotFoundException("Order comment not found with id: " + orderCommentId));
 
         orderComment.setAbsaStatus(status);
         orderComment.setAbsaAnalyzedAt(LocalDateTime.now());
@@ -100,7 +104,7 @@ public class ABSAServiceImpl implements IABSAService {
     @Override
     public ABSAResultResponse getAnalysisResult(UUID orderCommentId) {
         OrderComment orderComment = orderCommentRepository.findById(orderCommentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order comment not found with id: " + orderCommentId));
+                .orElseThrow(() -> new NotFoundException("Order comment not found with id: " + orderCommentId));
 
         Map<String, String> aspects = new HashMap<>();
         if (orderComment.getAbsaTimeAspect() != null) {
@@ -120,15 +124,18 @@ public class ABSAServiceImpl implements IABSAService {
 
     @Override
     public Mono<String> triggerBatchAnalysis() {
-        log.info("Triggering batch ABSA analysis");
+        log.info("Triggering batch ABSA analysis via /api/batch/fill");
+
+        Map<String, String> body = new HashMap<>();
+        body.put("filler_text", "FILLER_IGNORE");
 
         return webClient.post()
                 .uri("/api/batch/fill")
-                .bodyValue("{}")
+                .bodyValue(body)
                 .retrieve()
                 .bodyToMono(String.class)
-                .doOnSuccess(response -> log.info("Successfully triggered batch ABSA analysis"))
-                .doOnError(error -> log.error("Failed to trigger batch ABSA analysis: {}", error.getMessage()));
+                .doOnSuccess(response -> log.info("Successfully triggered batch ABSA analysis. Response: {}", response))
+                .doOnError(error -> log.error("Failed to trigger batch ABSA analysis: {}", error.getMessage(), error));
     }
 
     /**

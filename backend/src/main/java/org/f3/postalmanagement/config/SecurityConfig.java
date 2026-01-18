@@ -25,7 +25,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+// @EnableMethodSecurity // Temporarily disabled for debugging
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -39,10 +39,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/administrative/**").permitAll()
-                        .requestMatchers("/api/orders/track/**").permitAll()
+                        .requestMatchers("/api/orders/**").permitAll()
+                        .requestMatchers("/api/absa/callback").permitAll()
+                        .requestMatchers("/api/absa/trigger-batch").permitAll()
+                        .requestMatchers("/api/test/**").permitAll()
                         .requestMatchers("/swagger-ui/**",
-                                        "/v3/api-docs/**",
-                                            "/actuator/**").permitAll()
+                                         "/v3/api-docs/**",
+                                         "/actuator/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception

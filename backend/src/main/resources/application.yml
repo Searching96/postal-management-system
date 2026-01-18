@@ -4,7 +4,7 @@ spring:
 
   # Database Configuration
   datasource:
-    url: jdbc:mysql://localhost:3306/pms_db
+    url: jdbc:mysql://localhost:3306/pms_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Ho_Chi_Minh
     username: user
     password: user
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -62,4 +62,17 @@ absa:
   api:
     url: ${ABSA_API_URL:http://localhost:5000}
   callback:
+    # Use host.docker.internal for Docker containers to reach host machine
+    # For Windows/Mac Docker: host.docker.internal
+    # For Linux Docker: use host IP (e.g., 172.17.0.1) or --add-host in docker run
     url: ${ABSA_CALLBACK_URL:http://host.docker.internal:8080/api/absa/callback}
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized

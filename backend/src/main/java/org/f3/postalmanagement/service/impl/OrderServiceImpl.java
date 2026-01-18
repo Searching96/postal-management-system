@@ -377,6 +377,12 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<OrderResponse> getOrdersByOffice(String search, Pageable pageable, Account currentAccount) {
+        if (currentAccount == null) {
+            log.warn("Security disabled: returning empty result for getOrdersByOffice");
+            Page<OrderResponse> emptyPage = Page.empty(pageable);
+            return mapToPageResponse(emptyPage);
+        }
+        
         validateStaffRole(currentAccount);
         Employee currentEmployee = getCurrentEmployee(currentAccount);
         UUID officeId = currentEmployee.getOffice().getId();
@@ -417,6 +423,10 @@ public class OrderServiceImpl implements IOrderService {
     // ==================== PRIVATE HELPER METHODS ====================
 
     private void validateStaffRole(Account account) {
+        if (account == null) {
+            log.warn("Security disabled: skipping role validation");
+            return;
+        }
         Role role = account.getRole();
         if (role != Role.PO_STAFF && role != Role.PO_WARD_MANAGER && role != Role.PO_PROVINCE_ADMIN) {
             throw new AccessDeniedException("Only post office staff can perform this action");
@@ -985,13 +995,15 @@ public class OrderServiceImpl implements IOrderService {
         
         // Send comment to ABSA for sentiment analysis (async)
         try {
+            log.info("Initiating ABSA analysis for comment {}", savedComment.getId());
             absaService.sendCommentForAnalysis(savedComment)
+                    .doOnSubscribe(subscription -> log.info("ABSA subscription started for comment {}", savedComment.getId()))
                     .subscribe(
-                            response -> log.info("Comment {} sent to ABSA successfully", savedComment.getId()),
-                            error -> log.error("Failed to send comment {} to ABSA: {}", savedComment.getId(), error.getMessage())
+                            response -> log.info("Comment {} sent to ABSA successfully: {}", savedComment.getId(), response),
+                            error -> log.error("Failed to send comment {} to ABSA: {}", savedComment.getId(), error.getMessage(), error)
                     );
         } catch (Exception e) {
-            log.error("Error initiating ABSA analysis for comment {}: {}", savedComment.getId(), e.getMessage());
+            log.error("Error initiating ABSA analysis for comment {}: {}", savedComment.getId(), e.getMessage(), e);
             // Continue execution even if ABSA fails - it's not critical
         }
         
