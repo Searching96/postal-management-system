@@ -8,6 +8,8 @@ import org.f3.postalmanagement.entity.actor.Account;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalDateTime;
+
 /**
  * Represents a comment on an order.
  * Can be added by staff members or customers for communication about the order.
@@ -39,4 +41,40 @@ public class OrderComment extends BaseEntity {
      */
     @Column(name = "comment_text", nullable = false, columnDefinition = "TEXT")
     private String commentText;
+
+    /**
+     * ABSA analysis status: pending, processing, success, error
+     */
+    @Column(name = "absa_status", length = 20)
+    private String absaStatus;
+
+    /**
+     * ABSA time aspect sentiment: not_mentioned, negative, neutral, positive
+     */
+    @Column(name = "absa_time_aspect", length = 20)
+    private String absaTimeAspect;
+
+    /**
+     * ABSA staff aspect sentiment: not_mentioned, negative, neutral, positive
+     */
+    @Column(name = "absa_staff_aspect", length = 20)
+    private String absaStaffAspect;
+
+    /**
+     * ABSA quality aspect sentiment: not_mentioned, negative, neutral, positive
+     */
+    @Column(name = "absa_quality_aspect", length = 20)
+    private String absaQualityAspect;
+
+    /**
+     * ABSA price aspect sentiment: not_mentioned, negative, neutral, positive
+     */
+    @Column(name = "absa_price_aspect", length = 20)
+    private String absaPriceAspect;
+
+    /**
+     * When ABSA analysis was completed
+     */
+    @Column(name = "absa_analyzed_at")
+    private LocalDateTime absaAnalyzedAt;
 }

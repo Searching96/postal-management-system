@@ -39,4 +39,23 @@ public class CommentResponse {
 
     @Schema(description = "When the comment was last updated")
     private LocalDateTime updatedAt;
+
+    // ABSA Analysis Results
+    @Schema(description = "ABSA analysis status: pending, processing, success, error")
+    private String absaStatus;
+
+    @Schema(description = "ABSA time aspect sentiment: not_mentioned, negative, neutral, positive")
+    private String absaTimeAspect;
+
+    @Schema(description = "ABSA staff aspect sentiment: not_mentioned, negative, neutral, positive")
+    private String absaStaffAspect;
+
+    @Schema(description = "ABSA quality aspect sentiment: not_mentioned, negative, neutral, positive")
+    private String absaQualityAspect;
+
+    @Schema(description = "ABSA price aspect sentiment: not_mentioned, negative, neutral, positive")
+    private String absaPriceAspect;
+
+    @Schema(description = "When ABSA analysis was completed")
+    private LocalDateTime absaAnalyzedAt;
 }

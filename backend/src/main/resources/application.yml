@@ -56,3 +56,10 @@ minio:
     avatars: postal-avatars
     evidence: postal-evidence
     attachments: postal-attachments
+
+# ABSA (Aspect-Based Sentiment Analysis) Configuration
+absa:
+  api:
+    url: ${ABSA_API_URL:http://localhost:5000}
+  callback:
+    url: ${ABSA_CALLBACK_URL:http://host.docker.internal:8080/api/absa/callback}

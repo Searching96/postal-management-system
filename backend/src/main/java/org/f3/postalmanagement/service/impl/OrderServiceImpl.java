@@ -27,6 +27,7 @@ import org.f3.postalmanagement.enums.Role;
 import org.f3.postalmanagement.enums.ServiceType;
 import org.f3.postalmanagement.enums.SubscriptionPlan;
 import org.f3.postalmanagement.repository.*;
+import org.f3.postalmanagement.service.IABSAService;
 import org.f3.postalmanagement.service.INotificationService;
 import org.f3.postalmanagement.service.IOrderService;
 import org.springframework.data.domain.Page;
@@ -58,6 +59,7 @@ public class OrderServiceImpl implements IOrderService {
     private final WardRepository wardRepository;
     private final OfficeRepository officeRepository;
     private final INotificationService notificationService;
+    private final IABSAService absaService;
 
     // ==================== PRICING CONSTANTS ====================
     // In a real system, these would come from a PriceTable entity
@@ -981,6 +983,18 @@ public class OrderServiceImpl implements IOrderService {
         
         OrderComment savedComment = orderCommentRepository.save(comment);
         
+        // Send comment to ABSA for sentiment analysis (async)
+        try {
+            absaService.sendCommentForAnalysis(savedComment)
+                    .subscribe(
+                            response -> log.info("Comment {} sent to ABSA successfully", savedComment.getId()),
+                            error -> log.error("Failed to send comment {} to ABSA: {}", savedComment.getId(), error.getMessage())
+                    );
+        } catch (Exception e) {
+            log.error("Error initiating ABSA analysis for comment {}: {}", savedComment.getId(), e.getMessage());
+            // Continue execution even if ABSA fails - it's not critical
+        }
+        
         return mapToCommentResponse(savedComment);
     }
 
@@ -1047,6 +1061,12 @@ public class OrderServiceImpl implements IOrderService {
                 .createdByName(customer.getFullName())
                 .createdAt(comment.getCreatedAt())
                 .updatedAt(comment.getUpdatedAt())
+                .absaStatus(comment.getAbsaStatus())
+                .absaTimeAspect(comment.getAbsaTimeAspect())
+                .absaStaffAspect(comment.getAbsaStaffAspect())
+                .absaQualityAspect(comment.getAbsaQualityAspect())
+                .absaPriceAspect(comment.getAbsaPriceAspect())
+                .absaAnalyzedAt(comment.getAbsaAnalyzedAt())
                 .build();
     }
 }
