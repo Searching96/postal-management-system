@@ -170,6 +170,13 @@ def process_buffer(model, tokenizer, config, device):
     for item, pred in zip(items, predictions):
         order_comment_id = item["id"]
         callback_url = item.get("callback_url")
+        is_filler = item.get("is_filler", False)
+        
+        # Log comment content
+        if not is_filler:
+            logger.info(f"[Comment] ID: {order_comment_id}")
+            logger.info(f"[Comment] Text: {item['comment_text'][:100]}...")
+            logger.info(f"[Comment] Predictions: {pred}")
         
         result = {
             "order_comment_id": str(order_comment_id),
@@ -187,10 +194,17 @@ def process_buffer(model, tokenizer, config, device):
         except Exception as e:
             logger.error(f"[Redis] Error: {e}")
         
-        # Send callback
-        if callback_url and callback_url.strip():
+        # Send callback (skip filler comments)
+        if callback_url and callback_url.strip() and not is_filler:
             try:
+                logger.info(f"[Callback] Sending to {callback_url}")
+                logger.info(f"[Callback] Payload: {json.dumps(result, ensure_ascii=False)}")
+                
                 response = requests.post(callback_url, json=result, timeout=5)
+                
+                logger.info(f"[Callback] Response status: {response.status_code}")
+                logger.info(f"[Callback] Response body: {response.text[:200]}")
+                
                 if response.status_code == 200:
                     logger.info(f"[Callback] ✅ {order_comment_id}")
                     success_count += 1

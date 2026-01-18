@@ -60,11 +60,18 @@ def receive_comment():
         
         # Chuẩn bị message
         comment_id = str(data["id"])
+        
+        # Fix callback URL: localhost -> host.docker.internal (for Docker containers)
+        callback_url = data.get("callback_url")
+        if callback_url and "localhost" in callback_url:
+            callback_url = callback_url.replace("localhost", "host.docker.internal")
+            logger.info(f"📝 Fixed callback URL: {callback_url}")
+        
         message = {
             "id": comment_id,
             "comment_text": data["comment_text"],
             "timestamp": data.get("timestamp", time.strftime("%Y-%m-%dT%H:%M:%S")),
-            "callback_url": data.get("callback_url")
+            "callback_url": callback_url
         }
         
         # Push vào Redis buffer
@@ -350,12 +357,9 @@ def fill_batch():
                 "is_filler": True  # Đánh dấu là filler
             }
             
-            # Gửi vào Kafka + Redis
-            producer.send(TOPIC, message)
+            # Gửi vào Redis buffer (consumer sẽ xử lý từ Redis)
             redis_client.rpush("absa:buffer", json.dumps(message))
             filler_ids.append(filler_id)
-        
-        producer.flush()
         
         new_count = redis_client.llen("absa:buffer")
         

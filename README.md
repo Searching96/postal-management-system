@@ -1,8 +1,8 @@
-Big Data Streaming ABSA System (Airflow – Spark – Kafka – PostgreSQL – Streamlit)
+ABSA API Service for Spring Boot Integration (Redis – Flask – PhoBERT)
 
 
 
-Hệ thống xử lý dữ liệu thời gian thực (real-time streaming) cho bài toán phân tích cảm xúc theo chủ đề (Aspect-Based Sentiment Analysis – ABSA). Pipeline sử dụng Kafka để truyền dữ liệu, Spark Structured Streaming để xử lý, Airflow để điều phối, PostgreSQL làm nơi lưu kết quả, và Streamlit để hiển thị dashboard real-time. Sinh viên cần tự build môi trường Docker và chạy hệ thống để quan sát toàn bộ vòng đời của pipeline.
+Hệ thống API xử lý phân tích cảm xúc theo chủ đề (Aspect-Based Sentiment Analysis – ABSA) dành riêng cho tích hợp với Spring Boot backend. Sử dụng Redis làm buffer để batch processing, Flask API nhận comments từ Spring Boot, và PhoBERT model để phân tích cảm xúc cho 4 aspects (time, staff, quality, price).
 
 
 
@@ -32,23 +32,25 @@ docker compose up -d
 
 
 
-5\. Mở web app để kiểm tra:
+5\. Kiểm tra các service:
 
-\- Airflow Web UI: truy cập http://localhost:8080
+\- Comment API: truy cập http://localhost:5000/health
 
-&nbsp; Đăng nhập:
+&nbsp; Service nhận comments từ Spring Boot và lưu vào Redis buffer
 
-&nbsp; username: airflow
+&nbsp; 
 
-&nbsp; password: airflow
+\- Redis: port 6380 (mapped từ 6379)
 
-&nbsp; Trong Airflow, bật DAG có tên absa\_streaming\_lifecycle\_demo, sau đó trigger thủ công (Run) để khởi động pipeline streaming gồm producer, consumer và các tác vụ giám sát.
+&nbsp; Buffer cho batch processing và cache kết quả ABSA
 
+&nbsp;
 
+\- ABSA Consumer: xem logs
 
-\- Streamlit Dashboard: truy cập http://localhost:8501
+&nbsp; docker logs postal-absa-consumer
 
-&nbsp; Ứng dụng hiển thị kết quả phân tích cảm xúc theo thời gian, theo chủ đề (aspect), và thống kê cảm xúc tổng hợp trong cơ sở dữ liệu. Dữ liệu sẽ tự hiển thị sau từ PostgreSQL.
+&nbsp; Monitor buffer mỗi 60s và trigger inference khi đủ 128 comments hoặc timeout 3 giờ
 
 
 
@@ -76,21 +78,23 @@ docker compose up -d
 
 Cấu trúc thư mục chính:
 
-C:\\airflow
+D:\\airflow
 
 │
 
-├── base\\ ← Dockerfile + requirements.txt cho image cơ sở
+├── models\\ ← PhoBERT ABSA model (phobert_absa_final)
 
-├── dags\\ ← các file DAG của Airflow
+├── projects\\absa\_streaming\\ 
 
-├── models\\ ← mô hình ABSA (.pt) hoặc file dummy để chạy thử
+│ &nbsp; ├── api\\comment\_api.py ← Flask API nhận comments
 
-├── projects\\absa\_streaming\\ ← code xử lý producer, consumer, streamlit app
+│ &nbsp; ├── scripts\\absa\_consumer\_standalone.py ← Consumer xử lý batch inference
 
-├── logs\\ ← log runtime của Airflow
+│ &nbsp; └── requirements.txt
 
-├── docker-compose.yaml
+├── docker-compose.yaml ← Redis, Comment API, ABSA Consumer
+
+├── Dockerfile
 
 └── README.md
 
