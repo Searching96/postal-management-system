@@ -65,7 +65,7 @@ export function OrderListPage() {
         const map: Record<string, string> = {
             CREATED: "info",         // Mới tạo
             PENDING: "secondary",    // Chờ xử lý
-            ACCEPTED: "info",      // Đã tiếp nhận
+            ACCEPTED: "primary",    // Đang xử lý
             SHIPPING: "warning",     // Đang vận chuyển
             DELIVERING: "primary",   // Đang giao
             COMPLETED: "success",    // Hoàn thành
@@ -75,7 +75,7 @@ export function OrderListPage() {
         const labels: Record<string, string> = {
             CREATED: "Mới tạo",
             PENDING: "Chờ xử lý",
-            ACCEPTED: "Đã tiếp nhận",
+            ACCEPTED: "Đang xử lý",
             SHIPPING: "Đang vận chuyển",
             DELIVERING: "Đang giao",
             COMPLETED: "Hoàn thành",
@@ -102,11 +102,13 @@ export function OrderListPage() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <PageHeader title="Quản lý Đơn hàng" description="Theo dõi và xử lý vận đơn toàn hệ thống" />
-                <Link to="/orders/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" /> Tạo đơn hàng
-                    </Button>
-                </Link>
+                {user?.role.startsWith("PO_") && (
+                    <Link to="/orders/create">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" /> Tạo đơn hàng
+                        </Button>
+                    </Link>
+                )}
             </div>
 
             {/* Toolbar */}

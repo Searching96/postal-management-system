@@ -19,6 +19,7 @@ interface FormSelectProps {
   disabled?: boolean;
   required?: boolean;
   searchable?: boolean;
+  className?: string;
 }
 
 export function FormSelect({
@@ -32,6 +33,7 @@ export function FormSelect({
   disabled = false,
   required = false,
   searchable = true,
+  className = "",
 }: FormSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -133,8 +135,8 @@ export function FormSelect({
 
   const filteredOptions = options.filter(
     (opt) =>
-      opt.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (opt.group && opt.group.toLowerCase().includes(searchTerm.toLowerCase()))
+      (opt.label || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (opt.group && (opt.group || "").toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const groups = Array.from(new Set(filteredOptions.filter((o) => o.group).map((o) => o.group)));
@@ -217,7 +219,7 @@ export function FormSelect({
   );
 
   return (
-    <div className={`space-y-1 relative ${isOpen ? "z-[60]" : "z-10"}`} ref={containerRef}>
+    <div className={`space-y-1 relative ${isOpen ? "z-[60]" : "z-10"} ${className}`} ref={containerRef}>
       <label className="block text-sm font-bold text-gray-700 ml-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>

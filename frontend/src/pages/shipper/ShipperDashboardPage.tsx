@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
-import { Package, MapPin, Phone, User, CheckCircle, Clock, Navigation } from "lucide-react";
-import { Card, Button, PageHeader, Badge, LoadingSpinner, Alert, PaginationControls } from "../../components/ui";
+import { Package, MapPin, Phone, User, CheckCircle, Clock, Navigation, XCircle, Play, Map } from "lucide-react";
+import {
+    Card, Button, PageHeader, Badge, LoadingSpinner, Alert, PaginationControls,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Input
+} from "../../components/ui";
 import { orderService, Order } from "../../services/orderService";
+import { startDelivery, openGoogleMapsDirections } from "../../services/trackingService";
+import { useLocationTracking } from "../../hooks/useLocationTracking";
 import { toast } from "sonner";
 import { formatDate } from "../../lib/utils";
 
@@ -26,8 +31,7 @@ export function ShipperDashboardPage() {
                 setTotalPages(res.totalPages);
                 setTotalElements(res.totalElements);
             }
-        } catch (err: any) {
-            console.error(err);
+        } catch (err: unknown) {
             setError("Không thể tải danh sách đơn hàng được giao");
         } finally {
             setIsLoading(false);
@@ -38,15 +42,78 @@ export function ShipperDashboardPage() {
         fetchAssignedOrders();
     }, [page]);
 
+    const [failReason, setFailReason] = useState("");
+    const [selectedOrderForFail, setSelectedOrderForFail] = useState<Order | null>(null);
+
+    // Location tracking hook
+    const { location, startTracking } = useLocationTracking();
+
+    // Start delivery - update status and begin GPS tracking
+    const handleStartDelivery = async (orderId: string) => {
+        setProcessingOrderId(orderId);
+        try {
+            await startDelivery(orderId);
+            startTracking(); // Start GPS broadcasting
+            toast.success("Đã bắt đầu giao hàng! Đang chia sẻ vị trí...");
+            fetchAssignedOrders();
+        } catch (err: unknown) {
+            toast.error("Không thể bắt đầu giao hàng");
+        } finally {
+            setProcessingOrderId(null);
+        }
+    };
+
+    // Open Google Maps for navigation
+    const handleNavigate = (order: Order) => {
+        openGoogleMapsDirections(
+            order.receiverAddress,
+            location?.latitude,
+            location?.longitude
+        );
+    };
+
     const handleMarkPickedUp = async (orderId: string) => {
         setProcessingOrderId(orderId);
         try {
             await orderService.markOrderPickedUp(orderId);
             toast.success("Đã xác nhận lấy hàng thành công!");
-            fetchAssignedOrders(); // Refresh list
-        } catch (err: any) {
-            console.error(err);
+            fetchAssignedOrders();
+        } catch (err: unknown) {
             toast.error("Không thể xác nhận lấy hàng. Vui lòng thử lại.");
+        } finally {
+            setProcessingOrderId(null);
+        }
+    };
+
+    const handleDeliverSuccess = async (orderId: string) => {
+        if (!confirm("Xác nhận đã giao hàng thành công?")) return;
+        setProcessingOrderId(orderId);
+        try {
+            await orderService.markOrderDelivered(orderId, { note: "Giao hàng thành công" });
+            toast.success("Đã giao hàng thành công!");
+            fetchAssignedOrders();
+        } catch (err: unknown) {
+            toast.error("Thao tác thất bại. Vui lòng thử lại.");
+        } finally {
+            setProcessingOrderId(null);
+        }
+    };
+
+    const openFailDialog = (order: Order) => {
+        setSelectedOrderForFail(order);
+        setFailReason("");
+    };
+
+    const handleDeliverFail = async () => {
+        if (!selectedOrderForFail) return;
+        setProcessingOrderId(selectedOrderForFail.orderId || selectedOrderForFail.id!);
+        try {
+            await orderService.markOrderDeliveryFailed(selectedOrderForFail.orderId || selectedOrderForFail.id!, { note: failReason });
+            toast.warning("Đã ghi nhận giao hàng thất bại");
+            setSelectedOrderForFail(null);
+            fetchAssignedOrders();
+        } catch (err: unknown) {
+            toast.error("Thao tác thất bại.");
         } finally {
             setProcessingOrderId(null);
         }
@@ -67,6 +134,8 @@ export function ShipperDashboardPage() {
     };
 
     const canPickUp = (status: string) => status === "PENDING_PICKUP";
+    const canStartDelivery = (status: string) => status === "PICKED_UP";
+    const canDeliver = (status: string) => status === "OUT_FOR_DELIVERY";
 
     return (
         <div className="space-y-6">
@@ -192,19 +261,74 @@ export function ShipperDashboardPage() {
                                     </span>
                                     {canPickUp(order.status) && (
                                         <Button
-                                            onClick={() => handleMarkPickedUp(order.orderId)}
-                                            disabled={processingOrderId === order.orderId}
+                                            onClick={() => handleMarkPickedUp(order.orderId || order.id!)}
+                                            disabled={!!processingOrderId}
                                             size="sm"
                                         >
-                                            {processingOrderId === order.orderId ? (
+                                            {processingOrderId === (order.orderId || order.id!) ? (
                                                 <LoadingSpinner size="sm" />
                                             ) : (
                                                 <>
                                                     <CheckCircle className="h-4 w-4 mr-1" />
-                                                    Xác nhận lấy hàng
+                                                    Lấy hàng
                                                 </>
                                             )}
                                         </Button>
+                                    )}
+                                    {canStartDelivery(order.status) && (
+                                        <Button
+                                            onClick={() => handleStartDelivery(order.orderId || order.id!)}
+                                            disabled={!!processingOrderId}
+                                            size="sm"
+                                            className="bg-blue-600 hover:bg-blue-700"
+                                        >
+                                            {processingOrderId === (order.orderId || order.id!) ? (
+                                                <LoadingSpinner size="sm" />
+                                            ) : (
+                                                <>
+                                                    <Play className="h-4 w-4 mr-1" />
+                                                    Bắt đầu giao
+                                                </>
+                                            )}
+                                        </Button>
+                                    )}
+                                    {canDeliver(order.status) && (
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => handleNavigate(order)}
+                                                size="sm"
+                                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                            >
+                                                <Map className="h-4 w-4 mr-1" />
+                                                Chỉ đường
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => openFailDialog(order)}
+                                                disabled={!!processingOrderId}
+                                                size="sm"
+                                                className="text-red-600 border-red-200 hover:bg-red-50"
+                                            >
+                                                <XCircle className="h-4 w-4 mr-1" />
+                                                Thất bại
+                                            </Button>
+                                            <Button
+                                                onClick={() => handleDeliverSuccess(order.orderId || order.id!)}
+                                                disabled={!!processingOrderId}
+                                                size="sm"
+                                                className="bg-green-600 hover:bg-green-700 text-white"
+                                            >
+                                                {processingOrderId === (order.orderId || order.id!) ? (
+                                                    <LoadingSpinner size="sm" />
+                                                ) : (
+                                                    <>
+                                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                                        Đã giao
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
                                     )}
                                 </div>
                             </Card>
@@ -223,6 +347,25 @@ export function ShipperDashboardPage() {
                     )}
                 </>
             )}
+            {/* Fail Dialog */}
+            <Dialog open={!!selectedOrderForFail} onOpenChange={(open) => !open && setSelectedOrderForFail(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Báo cáo giao hàng thất bại</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <Input
+                            placeholder="Lý do thất bại (Vd: Khách không nghe máy, Sai địa chỉ...)"
+                            value={failReason}
+                            onChange={(e) => setFailReason(e.target.value)}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setSelectedOrderForFail(null)}>Hủy</Button>
+                        <Button variant="danger" onClick={handleDeliverFail} disabled={!failReason}>Xác nhận thất bại</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

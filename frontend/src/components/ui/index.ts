@@ -1,6 +1,6 @@
 export { Alert } from "./Alert";
 export { Button } from "./Button";
-export { Card } from "./Card";
+export * from "./Card";
 export { FormInput } from "./FormInput";
 export { FormSelect } from "./FormSelect";
 export { LoadingSpinner } from "./LoadingSpinner";
@@ -14,4 +14,6 @@ export { Badge } from "./Badge";
 export { Input } from "./Input";
 export { Label } from "./Label";
 export { Table } from "./Table";
+export * from "./Tabs";
 export * from "./Dialog";
+export { Separator } from "./Separator";

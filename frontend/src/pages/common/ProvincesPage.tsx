@@ -157,13 +157,11 @@ export function ProvincesPage() {
             setError(response.message || "Không thể tải danh sách tỉnh thành");
           }
         }
-      } catch (err: any) {
-        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
-          console.log("Province request canceled");
+      } catch (err: unknown) {
+        if ((err as any).name === "CanceledError" || (err as any).code === "ERR_CANCELED") {
           return;
         }
         setError("Tải dữ liệu tỉnh thành thất bại");
-        console.error(err);
       } finally {
         if (abortControllerRef.current === controller) {
           setIsLoading(false);
@@ -203,12 +201,10 @@ export function ProvincesPage() {
         } else {
           console.error(response.message || "Không thể tải danh sách phường xã");
         }
-      } catch (err: any) {
-        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
-          console.log("Ward request canceled");
+      } catch (err: unknown) {
+        if ((err as any).name === "CanceledError" || (err as any).code === "ERR_CANCELED") {
           return;
         }
-        console.error("Lỗi khi tải danh sách phường xã", err);
       } finally {
         if (wardAbortControllerRef.current === controller) {
           setIsLoadingWards(false);
@@ -239,7 +235,7 @@ export function ProvincesPage() {
       loadProvincesData(0, searchTerm);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, loadProvincesData]);
 
   // Load Wards on page/size change
   useEffect(() => {

@@ -37,4 +37,19 @@ public class PageResponse<T> {
 
     @Schema(description = "Whether there is a previous page")
     private boolean hasPrevious;
+
+
+    public static <T> PageResponse<T> of(org.springframework.data.domain.Page<T> page) {
+        return PageResponse.<T>builder()
+                .content(page.getContent())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .first(page.isFirst())
+                .last(page.isLast())
+                .hasNext(page.hasNext())
+                .hasPrevious(page.hasPrevious())
+                .build();
+    }
 }

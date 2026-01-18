@@ -124,17 +124,25 @@ public class HubAdminServiceImpl implements IHubAdminService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<OfficeResponse> getProvinceOfficesByRegion(String search, Pageable pageable, Account currentAccount) {
-        Employee currentEmployee = getCurrentEmployee(currentAccount);
-        Integer regionId = currentEmployee.getOffice().getRegion().getId();
-
+        Page<Office> officePage;
         List<OfficeType> provinceOfficeTypes = List.of(OfficeType.PROVINCE_WAREHOUSE, OfficeType.PROVINCE_POST);
-        Page<Office> officePage = officeRepository.findByRegionIdAndOfficeTypeInWithSearch(
-                regionId, provinceOfficeTypes, search, pageable);
+
+        if (currentAccount.getRole() == Role.SYSTEM_ADMIN) {
+            // SYSTEM_ADMIN sees all province offices
+            officePage = officeRepository.findAllByOfficeTypeInWithSearch(
+                    provinceOfficeTypes, search, pageable);
+        } else {
+            // HUB_ADMIN sees only offices in their region
+            Employee currentEmployee = getCurrentEmployee(currentAccount);
+            Integer regionId = currentEmployee.getOffice().getRegion().getId();
+            officePage = officeRepository.findByRegionIdAndOfficeTypeInWithSearch(
+                    regionId, provinceOfficeTypes, search, pageable);
+            
+            log.info("Fetched page {} of province offices for region {} with search '{}' (total: {})", 
+                    pageable.getPageNumber(), regionId, search, officePage.getTotalElements());
+        }
 
         Page<OfficeResponse> responsePage = officePage.map(this::mapToOfficeResponse);
-        log.info("Fetched page {} of province offices for region {} with search '{}' (total: {})", 
-                pageable.getPageNumber(), regionId, search, officePage.getTotalElements());
-
         return mapToPageResponse(responsePage);
     }
 

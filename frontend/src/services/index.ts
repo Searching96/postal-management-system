@@ -5,3 +5,7 @@ export * from "./dashboardService";
 export * from "./hubAdminService";
 export * from "./provinceAdminService";
 export * from "./wardManagerService";
+export * from "./orderService";
+export * from "./batchService";
+export * from "./uploadService";
+export * from "./ShipperService";

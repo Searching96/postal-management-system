@@ -1,3 +1,9 @@
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
 export const getRoleLabel = (role: string): string => {
     const roles: Record<string, string> = {
         SYSTEM_ADMIN: "Quản trị hệ thống",
@@ -12,6 +18,7 @@ export const getRoleLabel = (role: string): string => {
         PO_STAFF: "Giao dịch viên",
         WH_STAFF: "Nhân viên Kho",
         STAFF: "Nhân viên",
+        SHIPPER: "Bưu tá",
         CUSTOMER: "Khách hàng",
     };
 

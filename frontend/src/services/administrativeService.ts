@@ -102,4 +102,15 @@ export const administrativeService = {
     );
     return response.data;
   },
+
+  getOfficeByWardCode: async (
+    wardCode: string,
+    signal?: AbortSignal
+  ): Promise<ApiResponse<OfficeResponse>> => {
+    const response = await api.get<ApiResponse<OfficeResponse>>(
+      `/administrative/wards/${wardCode}/office`,
+      { signal }
+    );
+    return response.data;
+  },
 };

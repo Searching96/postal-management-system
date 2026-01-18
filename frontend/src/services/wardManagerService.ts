@@ -5,6 +5,7 @@ import type {
   CreateWardStaffRequest,
   CreateWardManagerEmployeeRequest,
   PageResponse,
+  UpdateStaffRequest,
 } from "../models";
 
 export const wardManagerService = {
@@ -28,8 +29,27 @@ export const wardManagerService = {
     return response.data;
   },
 
-  getEmployees: async (params?: { page?: number; size?: number }): Promise<ApiResponse<PageResponse<EmployeeResponse>>> => {
+  getEmployees: async (params?: {
+    page?: number;
+    size?: number;
+    search?: string;
+  }): Promise<ApiResponse<PageResponse<EmployeeResponse>>> => {
     const response = await api.get<ApiResponse<PageResponse<EmployeeResponse>>>("/ward-manager/employees", { params });
     return response.data;
-  }
+  },
+
+  getEmployeeById: async (staffId: string): Promise<ApiResponse<EmployeeResponse>> => {
+    const response = await api.get<ApiResponse<EmployeeResponse>>(`/ward-manager/employees/${staffId}`);
+    return response.data;
+  },
+
+  updateEmployee: async (staffId: string, data: UpdateStaffRequest): Promise<ApiResponse<EmployeeResponse>> => {
+    const response = await api.put<ApiResponse<EmployeeResponse>>(`/ward-manager/employees/${staffId}`, data);
+    return response.data;
+  },
+
+  deleteEmployee: async (staffId: string): Promise<ApiResponse<void>> => {
+    const response = await api.delete<ApiResponse<void>>(`/ward-manager/employees/${staffId}`);
+    return response.data;
+  },
 };

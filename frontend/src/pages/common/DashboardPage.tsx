@@ -13,7 +13,8 @@ import {
   HelpCircle,
   BarChart3,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  MessageSquare
 } from "lucide-react";
 import { PageHeader, Card } from "../../components/ui";
 import { getRoleLabel } from "../../lib/utils";
@@ -29,6 +30,9 @@ export function DashboardPage() {
   const isProvinceAdmin = role.includes("PROVINCE_ADMIN");
   const isWardManager = role.includes("WARD_MANAGER");
   const isPOStaff = role === "PO_STAFF";
+  const isWHStaff = role === "WH_STAFF";
+  const isShipper = role === "SHIPPER";
+  const isStaff = isPOStaff || isWHStaff;
 
   // --- STATE FOR STATS ---
   const [statsData, setStatsData] = useState<Record<string, string>>({});
@@ -50,9 +54,9 @@ export function DashboardPage() {
             import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "DELIVERED", size: 1 })),
             import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "CREATED", size: 1 }))
           ]);
-          newData["shipping"] = shipping?.totalElements?.toString() || "0";
-          newData["completed"] = completed?.totalElements?.toString() || "0";
-          newData["pending"] = pending?.totalElements?.toString() || "0";
+          newData["shipping"] = shipping?.totalElements.toString() || "0";
+          newData["completed"] = completed?.totalElements.toString() || "0";
+          newData["pending"] = pending?.totalElements.toString() || "0";
 
           // Estimate total spend? currently no endpoint, leave as placeholder or calculate later
         }
@@ -84,6 +88,28 @@ export function DashboardPage() {
           newData["staffCount"] = staffs.data.totalElements.toString();
         }
 
+        if (isStaff) {
+          const [orders, batches] = await Promise.all([
+            import("../../services/orderService").then(m => m.orderService.getOrders({ size: 1 })),
+            isWHStaff
+              ? import("../../services/batchService").then(m => m.batchService.getBatches({ size: 1 }))
+              : Promise.resolve(null)
+          ]);
+          newData["unitOrders"] = orders.totalElements.toString();
+          newData["unitBatches"] = batches && "data" in batches ? batches.data.totalElements.toString() : "0";
+        }
+
+        if (isShipper) {
+          const res = await import("../../services/orderService").then(m => m.orderService.getShipperAssignedOrders({ size: 1 }));
+          newData["assignedOrders"] = res.totalElements.toString();
+        }
+
+        // Common: Unread messages
+        const unreadRes = await import("../../services/messageService").then(m => m.messageService.getRecentContacts()).catch(() => null);
+        const contacts = unreadRes && "data" in unreadRes ? unreadRes.data : [];
+        const totalUnread = Array.isArray(contacts) ? contacts.reduce((acc: number, c: any) => acc + (c.unreadCount || 0), 0) : 0;
+        newData["unreadMessages"] = totalUnread.toString();
+
         setStatsData(newData);
       } catch (e) {
         console.error("Failed to fetch dashboard stats", e);
@@ -91,7 +117,7 @@ export function DashboardPage() {
     };
 
     fetchStats();
-  }, [role, isCustomer, isSystemAdmin, isHubAdmin, isWardManager, isProvinceAdmin, isPOStaff]);
+  }, [role, isCustomer, isSystemAdmin, isHubAdmin, isWardManager, isProvinceAdmin, isPOStaff, isWHStaff, isStaff]);
 
   // --- STATS CONFIGURATION ---
   const getStats = () => {
@@ -122,6 +148,21 @@ export function DashboardPage() {
         { label: "Bưu cục quản lý", value: statsData["officeCount"] || "—", icon: Building2, color: "bg-green-500" },
         { label: "Hiệu suất xử lý", value: "—", icon: TrendingUp, color: "bg-yellow-500" },
         { label: "Thông báo mới", value: "0", icon: ClipboardList, color: "bg-purple-500" },
+      ];
+    }
+
+    if (isStaff) {
+      return [
+        { label: "Đơn hàng tại đơn vị", value: statsData["unitOrders"] || "0", icon: Package, color: "bg-blue-500" },
+        { label: "Kiện hàng xử lý", value: statsData["unitBatches"] || "0", icon: ClipboardList, color: "bg-green-500" },
+        { label: "Thông báo", value: statsData["unreadMessages"] || "0", icon: HelpCircle, color: "bg-purple-500" },
+      ];
+    }
+
+    if (isShipper) {
+      return [
+        { label: "Đơn hàng được giao", value: statsData["assignedOrders"] || "0", icon: Package, color: "bg-blue-500" },
+        { label: "Thông báo", value: statsData["unreadMessages"] || "0", icon: MessageSquare, color: "bg-purple-500" },
       ];
     }
 
@@ -186,6 +227,16 @@ export function DashboardPage() {
         icon: UserCheck,
         color: "text-green-600",
         to: "/admin/ward"
+      });
+    }
+
+    if (isShipper) {
+      actions.push({
+        title: "Đơn hàng của tôi",
+        desc: "Xem và xử lý các đơn hàng được giao",
+        icon: Truck,
+        color: "text-blue-600",
+        to: "/shipper"
       });
     }
 

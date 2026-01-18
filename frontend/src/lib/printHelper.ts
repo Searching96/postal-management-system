@@ -164,14 +164,10 @@ export const generateStickerContent = (order: any) => {
         font-weight: bold;
         margin: 8px 0;
       }
-      .barcode {
+      .tracking-wrapper {
         text-align: center;
-        font-family: 'Courier New', monospace;
-        font-size: 20px;
-        margin: 8px 0;
-        letter-spacing: 2px;
-        border: 1px solid #000;
-        padding: 5px;
+        margin: 15px 0;
+        min-height: 20px;
       }
       .section {
         margin: 6px 0;
@@ -188,7 +184,7 @@ export const generateStickerContent = (order: any) => {
     <div class="sticker">
       <div class="header">POSTAL SERVICE</div>
       <div class="tracking">${order.trackingNumber}</div>
-      <div class="barcode">||||| ||||| |||||</div>
+      <div class="tracking-wrapper"></div>
       
       <div class="section">
         <div class="label">Từ:</div>

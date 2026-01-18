@@ -60,4 +60,11 @@ public interface IAdministrativeService {
      * @return list of post offices
      */
     List<OfficeResponse> getPostOfficesByProvince(String provinceCode);
+
+    /**
+     * Get the post office assigned to a specific ward
+     * @param wardCode the ward code
+     * @return the assigned post office or null if not found
+     */
+    OfficeResponse getOfficeByWardCode(String wardCode);
 }
