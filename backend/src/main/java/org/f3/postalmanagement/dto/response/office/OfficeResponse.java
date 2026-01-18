@@ -46,4 +46,13 @@ public class OfficeResponse {
 
     @Schema(description = "Capacity")
     private Integer capacity;
+
+    @Schema(description = "Is accepting orders manually")
+    private Boolean isAcceptingOrders;
+
+    @Schema(description = "Working hours")
+    private String workingHours;
+
+    @Schema(description = "Is currently open")
+    private Boolean isOpen;
 }

@@ -49,7 +49,7 @@ public class BatchController {
     // ==================== BATCH CREATION ====================
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Create a new batch",
             description = "Create a new batch package for a specific destination. Orders can then be added to this batch.",
@@ -69,7 +69,7 @@ public class BatchController {
     }
 
     @PostMapping("/auto-batch")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Auto-batch orders",
             description = "Automatically group orders by destination and consolidate into optimized batches. " +
@@ -92,7 +92,7 @@ public class BatchController {
     // ==================== BATCH OPERATIONS ====================
 
     @PostMapping("/add-orders")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Add orders to a batch",
             description = "Manually add one or more orders to an existing batch. Orders must have the same destination as the batch.",
@@ -112,7 +112,7 @@ public class BatchController {
     }
 
     @DeleteMapping("/{batchId}/orders/{orderId}")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Remove order from batch",
             description = "Remove a specific order from a batch. Only works for OPEN or PROCESSING batches.",
@@ -132,7 +132,7 @@ public class BatchController {
     }
 
     @PostMapping("/{batchId}/seal")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Seal a batch",
             description = "Seal a batch to prevent further order additions. Batch is ready for transit after sealing.",
@@ -151,7 +151,7 @@ public class BatchController {
     }
 
     @PostMapping("/{batchId}/dispatch")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Dispatch batch for transit",
             description = "Mark a sealed batch as in transit to its destination.",
@@ -170,7 +170,7 @@ public class BatchController {
     }
 
     @PostMapping("/{batchId}/arrive")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Mark batch as arrived",
             description = "Mark a batch as arrived at the destination office. Only destination office staff can do this.",
@@ -190,7 +190,7 @@ public class BatchController {
     }
 
     @PostMapping("/{batchId}/distribute")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Distribute batch orders",
             description = "Unpack a batch and distribute its orders for individual processing. " +
@@ -211,7 +211,7 @@ public class BatchController {
     }
 
     @PostMapping("/{batchId}/cancel")
-    @PreAuthorize("hasAnyRole('PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Cancel a batch",
             description = "Cancel a batch and release all orders back to unbatched state. " +

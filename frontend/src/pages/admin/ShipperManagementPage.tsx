@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AxiosError } from "axios";
 import { useForm } from "react-hook-form";
 import { Plus, Search, Pencil, Trash2, Phone, Mail } from "lucide-react";
 import {
@@ -43,7 +44,7 @@ export function ShipperManagementPage() {
             }
         } catch (error) {
             console.error("Failed to fetch shippers", error);
-            toast.error("Không thể tải danh sách shipper");
+            toast.error("Không thể tải danh sách bưu tá");
         } finally {
             setIsLoading(false);
         }
@@ -57,12 +58,13 @@ export function ShipperManagementPage() {
     const handleCreate = async (data: CreateShipperRequest) => {
         try {
             await shipperService.createShipper(data);
-            toast.success("Thêm shipper thành công");
+            toast.success("Thêm bưu tá thành công");
             setIsCreateOpen(false);
             fetchShippers();
         } catch (error) {
             console.error(error);
-            toast.error("Thêm shipper thất bại");
+            const err = error as AxiosError<{ message: string }>;
+            toast.error(err.response?.data?.message || "Thêm bưu tá thất bại");
         }
     };
 
@@ -71,12 +73,13 @@ export function ShipperManagementPage() {
         if (!selectedShipper) return;
         try {
             await shipperService.updateShipper(selectedShipper.employeeId, data);
-            toast.success("Cập nhật shipper thành công");
+            toast.success("Cập nhật bưu tá thành công");
             setIsEditOpen(false);
             fetchShippers();
         } catch (error) {
             console.error(error);
-            toast.error("Cập nhật thất bại");
+            const err = error as AxiosError<{ message: string }>;
+            toast.error(err.response?.data?.message || "Cập nhật thất bại");
         }
     }
 
@@ -85,32 +88,33 @@ export function ShipperManagementPage() {
         if (!selectedShipper) return;
         try {
             await shipperService.deleteShipper(selectedShipper.employeeId);
-            toast.success("Xóa shipper thành công");
+            toast.success("Xóa bưu tá thành công");
             setIsDeleteOpen(false);
             fetchShippers();
         } catch (error) {
             console.error(error);
-            toast.error("Xóa shipper thất bại");
+            const err = error as AxiosError<{ message: string }>;
+            toast.error(err.response?.data?.message || "Xóa bưu tá thất bại");
         }
     };
 
     return (
         <div className="space-y-6">
-            <PageHeader title="Quản lý Shipper" description="Danh sách và phân công nhân viên giao nhận" />
+            <PageHeader title="Quản lý Bưu tá" description="Danh sách và phân công nhân viên giao nhận" />
 
             {/* Toolbar */}
             <div className="flex justify-between items-center gap-4">
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                        placeholder="Tìm kiếm shipper..."
+                        placeholder="Tìm kiếm bưu tá..."
                         className="pl-9"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
                 <Button onClick={() => setIsCreateOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> Thêm Shipper
+                    <Plus className="mr-2 h-4 w-4" /> Thêm Bưu tá
                 </Button>
             </div>
 
@@ -219,7 +223,7 @@ export function ShipperManagementPage() {
                         <DialogTitle>Xác nhận xóa</DialogTitle>
                     </DialogHeader>
                     <div className="py-4">
-                        Bạn có chắc chắn muốn xóa shipper <strong>{selectedShipper?.fullName}</strong>?
+                        Bạn có chắc chắn muốn xóa bưu tá <strong>{selectedShipper?.fullName}</strong>?
                         Hành động này không thể hoàn tác.
                     </div>
                     <DialogFooter>
@@ -249,7 +253,7 @@ function CreateShipperDialog({ open, onOpenChange, onSubmit }: { open: boolean, 
         try {
             const res = await shipperService.getAvailableOffices();
             if (res.success) {
-                setOffices(res.data.map((o: any) => ({ id: o.officeId, name: o.name })));
+                setOffices(res.data.map((o: any) => ({ id: o.officeId, name: o.officeName })));
             }
         } catch (error) {
             console.error("Failed to fetch offices", error);
@@ -267,7 +271,7 @@ function CreateShipperDialog({ open, onOpenChange, onSubmit }: { open: boolean, 
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Thêm Shipper Mới</DialogTitle>
+                    <DialogTitle>Thêm Bưu tá Mới</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit(submitHandler)}>
                     <div className="space-y-4 px-6 pb-4">
@@ -281,7 +285,7 @@ function CreateShipperDialog({ open, onOpenChange, onSubmit }: { open: boolean, 
                         </div>
                         <div className="space-y-2">
                             <Label>Email</Label>
-                            <Input {...register("email", { required: true })} type="email" placeholder="shipper@example.com" />
+                            <Input {...register("email", { required: true })} type="email" placeholder="beata@example.com" />
                         </div>
                         <div className="space-y-2">
                             <Label>Mật khẩu</Label>
@@ -324,7 +328,7 @@ function EditShipperDialog({ open, onOpenChange, shipper, onSubmit }: { open: bo
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Cập nhật Shipper</DialogTitle>
+                    <DialogTitle>Cập nhật Bưu tá</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit(onSubmit)}>
                     <div className="space-y-4 px-6 pb-4">

@@ -12,7 +12,7 @@ export interface CreateShipperRequest {
 // Office info returned from ward-office pairs
 interface OfficeInfo {
     officeId: string;
-    name: string;
+    officeName: string;
     type?: string;
 }
 

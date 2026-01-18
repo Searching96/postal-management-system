@@ -115,7 +115,7 @@ export const CustomerPickupPage = () => {
         <div className="space-y-6">
             <PageHeader
                 title="Tạo Yêu Cầu Gửi Hàng"
-                description="Tạo đơn hàng online và shipper sẽ đến lấy hàng tận nơi"
+                description="Tạo đơn hàng online và bưu tá sẽ đến lấy hàng tận nơi"
             />
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-6">

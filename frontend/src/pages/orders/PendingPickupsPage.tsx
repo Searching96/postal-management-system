@@ -44,10 +44,10 @@ export function PendingPickupsPage() {
         setIsLoading(true);
         try {
             const res = await orderService.getPendingPickupOrders({ page, size: pageSize });
-            if (res && res.success) {
-                setOrders(res.data.content);
-                setTotalPages(res.data.totalPages);
-                setTotalElements(res.data.totalElements);
+            if (res && res.content) {
+                setOrders(res.content);
+                setTotalPages(res.totalPages);
+                setTotalElements(res.totalElements);
             }
         } catch (err) {
             console.error(err);
@@ -74,7 +74,7 @@ export function PendingPickupsPage() {
                     }
                 } catch (err) {
                     console.error(err);
-                    toast.error("Không thể tải danh sách shipper");
+                    toast.error("Không thể tải danh sách bưu tá");
                 } finally {
                     setIsLoadingShippers(false);
                 }
@@ -97,11 +97,10 @@ export function PendingPickupsPage() {
         setIsAssigning(true);
         try {
             await orderService.assignShipperToPickup({
-                orderId: selectedOrder.orderId || selectedOrder.id,
-                shipperId: selectedShipperId,
-                notes: assignmentNote
+                orderId: (selectedOrder.orderId || selectedOrder.id)!,
+                shipperId: selectedShipperId
             });
-            toast.success("Đã phân công shipper thành công");
+            toast.success("Đã phân công bưu tá thành công");
             setIsDialogOpen(false);
             fetchOrders(); // Refresh list
         } catch (err) {
@@ -116,7 +115,7 @@ export function PendingPickupsPage() {
         <div className="space-y-6">
             <PageHeader
                 title="Quản lý Yêu cầu Lấy hàng"
-                description="Phân công shipper cho các đơn hàng chờ lấy từ khách hàng"
+                description="Phân công bưu tá cho các đơn hàng chờ lấy từ khách hàng"
             />
 
             <Card className="p-0 overflow-hidden">
@@ -196,7 +195,7 @@ export function PendingPickupsPage() {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Phân công Shipper</DialogTitle>
+                        <DialogTitle>Phân công Bưu tá</DialogTitle>
                     </DialogHeader>
 
                     <div className="space-y-4 py-4">
@@ -207,7 +206,7 @@ export function PendingPickupsPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Chọn Shipper</label>
+                            <label className="text-sm font-medium text-gray-700">Chọn Bưu tá</label>
                             {isLoadingShippers ? (
                                 <div className="text-sm text-gray-500 flex items-center gap-2">
                                     <LoadingSpinner size="sm" /> Đang tải danh sách...
@@ -218,13 +217,13 @@ export function PendingPickupsPage() {
                                     value={selectedShipperId}
                                     onChange={(val) => setSelectedShipperId(val as string)}
                                     options={[
-                                        { value: "", label: "-- Chọn Shipper --" },
+                                        { value: "", label: "-- Chọn Bưu tá --" },
                                         ...shippers.map(s => ({
                                             value: s.employeeId,
                                             label: `${s.fullName} (${s.phoneNumber})`
                                         }))
                                     ]}
-                                    error={!selectedShipperId && isAssigning ? "Vui lòng chọn shipper" : ""}
+                                    error={!selectedShipperId && isAssigning ? "Vui lòng chọn bưu tá" : ""}
                                 />
                             )}
                         </div>

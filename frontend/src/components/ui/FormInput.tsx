@@ -1,5 +1,5 @@
 import { LucideIcon } from "lucide-react";
-import { InputHTMLAttributes } from "react";
+import { InputHTMLAttributes, forwardRef } from "react";
 
 interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -8,14 +8,14 @@ interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
   suffix?: React.ReactNode;
 }
 
-export function FormInput({
+export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(({
   label,
   icon: Icon,
   error,
   suffix,
   className = "",
   ...props
-}: FormInputProps) {
+}, ref) => {
   return (
     <div className="space-y-1">
       <label className="block text-sm font-bold text-gray-700 ml-1">{label}</label>
@@ -24,6 +24,7 @@ export function FormInput({
           <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
         )}
         <input
+          ref={ref}
           {...props}
           className={`
             block w-full transition-all text-sm
@@ -45,4 +46,6 @@ export function FormInput({
       {error && <p className="text-xs font-medium text-red-500 mt-1 ml-1">{error}</p>}
     </div>
   );
-}
+});
+
+FormInput.displayName = "FormInput";

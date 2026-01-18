@@ -39,7 +39,7 @@ export function BatchDetailsPage() {
             }
         } catch (error) {
             console.error(error);
-            toast.error("Không thể tải thông tin lô hàng");
+            toast.error("Không thể tải thông tin kiện hàng");
         } finally {
             setIsLoading(false);
         }
@@ -66,7 +66,7 @@ export function BatchDetailsPage() {
     };
 
     if (isLoading) return <div className="flex justify-center p-20"><LoadingSpinner size="lg" /></div>;
-    if (!batch) return <div className="text-center p-20">Lô hàng không tồn tại</div>;
+    if (!batch) return <div className="text-center p-20">Kiện hàng không tồn tại</div>;
 
     return (
         <div className="space-y-6">
@@ -92,13 +92,13 @@ export function BatchDetailsPage() {
                                 variant="outline"
                                 className="text-red-600 border-red-200 hover:bg-red-50"
                                 disabled={isActionLoading}
-                                onClick={() => handleAction(() => batchService.cancelBatch(batch!.id), "Đã hủy lô hàng")}
+                                onClick={() => handleAction(() => batchService.cancelBatch(batch!.id), "Đã hủy kiện hàng")}
                             >
-                                <XCircle className="w-4 h-4 mr-2" /> Hủy lô
+                                <XCircle className="w-4 h-4 mr-2" /> Hủy kiện
                             </Button>
                             <Button
                                 disabled={isActionLoading}
-                                onClick={() => handleAction(() => batchService.sealBatch(batch!.id), "Đã niêm phong lô hàng")}
+                                onClick={() => handleAction(() => batchService.sealBatch(batch!.id), "Đã niêm phong kiện hàng")}
                             >
                                 <Layers className="w-4 h-4 mr-2" /> Niêm phong
                             </Button>
@@ -154,7 +154,7 @@ export function BatchDetailsPage() {
                 </Card>
 
                 <Card className="p-5 space-y-4">
-                    <h3 className="font-semibold text-gray-900 border-b pb-2">Thông số lô</h3>
+                    <h3 className="font-semibold text-gray-900 border-b pb-2">Thông số kiện</h3>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <p className="text-xs text-gray-500 flex items-center gap-1 uppercase font-bold">
@@ -180,18 +180,18 @@ export function BatchDetailsPage() {
                 <Card className="p-5 space-y-4">
                     <h3 className="font-semibold text-gray-900 border-b pb-2">Lưu ý</h3>
                     <div className="p-3 bg-blue-50 text-blue-800 text-sm rounded-md border border-blue-100">
-                        {batch.status === "OPEN" && "Lô hàng đang mở, bạn có thể thêm hoặc bớt đơn hàng trước khi niêm phong."}
-                        {batch.status === "SEALED" && "Lô hàng đã được niêm phong và sẵn sàng để vận chuyển."}
-                        {batch.status === "IN_TRANSIT" && "Lô hàng đang trên đường vận chuyển tới điểm đến."}
-                        {batch.status === "ARRIVED" && "Lô hàng đã tới bưu cục đích. Vui lòng xác nhận dỡ hàng."}
-                        {batch.status === "DISTRIBUTED" && "Lô hàng đã được dỡ và các đơn hàng đã được phân phối thành công."}
+                        {batch.status === "OPEN" && "Kiện hàng đang mở, bạn có thể thêm hoặc bớt đơn hàng trước khi niêm phong."}
+                        {batch.status === "SEALED" && "Kiện hàng đã được niêm phong và sẵn sàng để vận chuyển."}
+                        {batch.status === "IN_TRANSIT" && "Kiện hàng đang trên đường vận chuyển tới điểm đến."}
+                        {batch.status === "ARRIVED" && "Kiện hàng đã tới bưu cục đích. Vui lòng xác nhận dỡ hàng."}
+                        {batch.status === "DISTRIBUTED" && "Kiện hàng đã được dỡ và các đơn hàng đã được phân phối thành công."}
                     </div>
                 </Card>
             </div>
 
             <Card className="overflow-hidden">
                 <div className="bg-gray-50 px-6 py-3 border-b flex justify-between items-center">
-                    <h3 className="font-semibold">Danh sách đơn hàng trong lô</h3>
+                    <h3 className="font-semibold">Danh sách đơn hàng trong kiện</h3>
                     <Badge variant="secondary">{batch.orderCount} Đơn hàng</Badge>
                 </div>
                 <Table>
@@ -221,7 +221,7 @@ export function BatchDetailsPage() {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={5} className="text-center py-10 text-gray-400">Không có đơn hàng nào trong lô này</td>
+                                <td colSpan={5} className="text-center py-10 text-gray-400">Không có đơn hàng nào trong kiện này</td>
                             </tr>
                         )}
                     </tbody>

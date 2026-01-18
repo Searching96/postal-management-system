@@ -110,6 +110,10 @@ export function AddressSelector({
         }
     }, [selectedProvince]);
 
+    // Track last emitted values to prevent loops
+    const lastEmittedAddress = useRef("");
+    const lastEmittedWard = useRef("");
+
     // Bubbling up changes
     useEffect(() => {
         const provinceObj = provinces.find(p => p.code === selectedProvince);
@@ -122,8 +126,18 @@ export function AddressSelector({
         ].filter(Boolean);
 
         const fullAddress = parts.join(", ");
-        onAddressChange(fullAddress);
-    }, [selectedProvince, selectedWard, street, provinces, wards]);
+
+        // Only emit if changed
+        if (fullAddress !== lastEmittedAddress.current) {
+            lastEmittedAddress.current = fullAddress;
+            onAddressChange(fullAddress);
+        }
+
+        if (onWardChange && selectedWard !== lastEmittedWard.current) {
+            lastEmittedWard.current = selectedWard;
+            onWardChange(selectedWard);
+        }
+    }, [selectedProvince, selectedWard, street, provinces, wards, onAddressChange, onWardChange]);
 
     return (
         <div className="space-y-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
@@ -158,7 +172,6 @@ export function AddressSelector({
                     disabled={!selectedProvince || isLoadingWards}
                     onChange={(val) => {
                         setSelectedWard(val as string);
-                        if (onWardChange) onWardChange(val as string);
                     }}
                     options={[
                         {

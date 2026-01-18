@@ -1,18 +1,20 @@
-
+import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
 import { orderService } from "../../services/orderService";
 import { Card, Button, Badge } from "../../components/ui";
 import { formatCurrency, formatDateTime } from "../../lib/utils";
-import { handlePrintReceipt, handlePrintSticker } from "../../lib/printHelper";
-import { Loader2, Printer, Receipt, Package, MapPin, Calendar, CreditCard, ArrowLeft } from "lucide-react";
+import { handlePrintReceipt } from "../../lib/printHelper";
+import { Loader2, Printer, Receipt, Package, MapPin, Calendar, CreditCard, ArrowLeft, CheckCircle, XCircle, Download } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "../../lib/AuthContext";
 
 export function OrderDetailsPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(false);
 
     useEffect(() => {
         if (!id) return;
@@ -23,13 +25,160 @@ export function OrderDetailsPage() {
         try {
             setLoading(true);
             const res = await orderService.getOrderById(id!);
-            setOrder(res.data || res);
+            setOrder(res);
         } catch (error) {
             console.error(error);
             toast.error("Không thể tải thông tin đơn hàng");
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleAcceptOrder = async () => {
+        if (!order) return;
+        try {
+            setActionLoading(true);
+            const res = await orderService.acceptOrder(order.orderId);
+            toast.success(res.message);
+            loadOrder();
+        } catch (error) {
+            toast.error("Không thể chấp nhận đơn hàng");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleReceiveOrder = async () => {
+        if (!order) return;
+        try {
+            setActionLoading(true);
+            const res = await orderService.receiveIncomingOrders({ orderIds: [order.orderId] });
+            toast.success(res.message);
+            loadOrder();
+        } catch (error) {
+            toast.error("Không thể xác nhận nhận hàng");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleMarkDelivered = async () => {
+        if (!order) return;
+        try {
+            setActionLoading(true);
+            const res = await orderService.markOrderDelivered(order.orderId);
+            toast.success(res.message);
+            loadOrder();
+        } catch (error) {
+            toast.error("Lỗi khi xác nhận giao hàng");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleMarkDeliveryFailed = async () => {
+        if (!order) return;
+        const note = window.prompt("Nhập lý do giao hàng thất bại:");
+        if (note === null) return;
+        if (!note.trim()) {
+            toast.error("Vui lòng nhập lý do");
+            return;
+        }
+
+        try {
+            setActionLoading(true);
+            const res = await orderService.markOrderDeliveryFailed(order.orderId, note);
+            toast.success(res.message);
+            loadOrder();
+        } catch (error) {
+            toast.error("Lỗi khi cập nhật trạng thái");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case "COMPLETED":
+            case "DELIVERED": return "success";
+            case "CANCELLED":
+            case "DELIVERY_FAILED": return "destructive";
+            case "RETURNED": return "warning";
+            case "DELIVERING":
+            case "OUT_FOR_DELIVERY": return "primary";
+            case "SHIPPING":
+            case "IN_TRANSIT_TO_HUB":
+            case "IN_TRANSIT_TO_OFFICE": return "info";
+            case "ACCEPTED":
+            case "AT_ORIGIN_OFFICE":
+            case "AT_HUB":
+            case "AT_DESTINATION_OFFICE": return "primary";
+            default: return "default";
+        }
+    };
+
+    const getStatusLabel = (status: string) => {
+        const labels: Record<string, string> = {
+            CREATED: "Mới tạo",
+            ACCEPTED: "Đang xử lý",
+            SHIPPING: "Đang vận chuyển",
+            DELIVERING: "Đang giao",
+            COMPLETED: "Hoàn thành",
+            DELIVERED: "Đã giao thành công",
+            CANCELLED: "Đã hủy",
+            RETURNED: "Đã trả lại",
+            PENDING_PICKUP: "Chờ bưu tá lấy hàng",
+            PICKED_UP: "Đã lấy hàng",
+            AT_ORIGIN_OFFICE: "Tại bưu cục gửi",
+            IN_TRANSIT_TO_HUB: "Đang chuyển đến kho",
+            AT_HUB: "Tại kho tập kết",
+            IN_TRANSIT_TO_OFFICE: "Đang chuyển đến bưu cục phát",
+            AT_DESTINATION_OFFICE: "Tại bưu cục phát",
+            OUT_FOR_DELIVERY: "Đang giao hàng",
+            DELIVERY_FAILED: "Giao hàng thất bại"
+        };
+        return labels[status] || status;
+    };
+
+    const renderActionButtons = () => {
+        if (!order || !user) return null;
+
+        const role = user.role;
+        const buttons = [];
+
+        // Staff Actions
+        if (["PO_STAFF", "PO_WARD_MANAGER", "PO_PROVINCE_ADMIN"].includes(role)) {
+            if (["CREATED", "PENDING_PICKUP", "PICKED_UP"].includes(order.status)) {
+                buttons.push(
+                    <Button key="accept" onClick={handleAcceptOrder} disabled={actionLoading} className="bg-green-600 hover:bg-green-700">
+                        <CheckCircle className="mr-2 h-4 w-4" /> Chấp nhận đơn
+                    </Button>
+                );
+            }
+            if (order.status === "IN_TRANSIT_TO_OFFICE") {
+                buttons.push(
+                    <Button key="receive" onClick={handleReceiveOrder} disabled={actionLoading} className="bg-blue-600 hover:bg-blue-700">
+                        <Download className="mr-2 h-4 w-4" /> Xác nhận đến
+                    </Button>
+                );
+            }
+        }
+
+        // Shipper Actions
+        if (role === "SHIPPER" && order.status === "OUT_FOR_DELIVERY") {
+            buttons.push(
+                <Button key="deliver" onClick={handleMarkDelivered} disabled={actionLoading} className="bg-green-600 hover:bg-green-700">
+                    <CheckCircle className="mr-2 h-4 w-4" /> Giao thành công
+                </Button>
+            );
+            buttons.push(
+                <Button key="fail" variant="danger" onClick={handleMarkDeliveryFailed} disabled={actionLoading}>
+                    <XCircle className="mr-2 h-4 w-4" /> Báo giao lỗi
+                </Button>
+            );
+        }
+
+        return buttons;
     };
 
     if (loading) return (
@@ -45,21 +194,13 @@ export function OrderDetailsPage() {
         </div>
     );
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case "COMPLETED": return "success";
-            case "CANCELLED": return "destructive";
-            case "RETURNED": return "warning";
-            case "DELIVERING": return "info";
-            case "SHIPPING": return "info";
-            case "ACCEPTED": return "primary";
-            default: return "default";
-        }
+    const handlePrintLabel = () => {
+        window.print();
     };
 
     return (
         <div className="space-y-6 max-w-6xl mx-auto pb-10">
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 no-print">
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" className="p-2" onClick={() => navigate(-1)}>
                         <ArrowLeft className="h-5 w-5" />
@@ -68,7 +209,7 @@ export function OrderDetailsPage() {
                         <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
                             {order.trackingNumber}
                             <Badge variant={getStatusColor(order.status)} className="text-sm">
-                                {order.status}
+                                {getStatusLabel(order.status)}
                             </Badge>
                         </h1>
                         <p className="text-gray-500 text-sm mt-1">
@@ -77,11 +218,12 @@ export function OrderDetailsPage() {
                     </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                    {renderActionButtons()}
                     <Button variant="outline" onClick={() => handlePrintReceipt(order)}>
                         <Receipt className="mr-2 h-4 w-4" /> In Hóa Đơn
                     </Button>
-                    <Button variant="outline" onClick={() => handlePrintSticker(order)}>
+                    <Button variant="outline" onClick={handlePrintLabel}>
                         <Printer className="mr-2 h-4 w-4" /> In Tem Dán
                     </Button>
                 </div>
@@ -163,7 +305,7 @@ export function OrderDetailsPage() {
                                         <div className={`absolute -left-[21px] top-1 w-4 h-4 rounded-full border-2 border-white ${i === 0 ? 'bg-primary-500 ring-2 ring-primary-100' : 'bg-gray-300'}`}></div>
                                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">
                                             <div>
-                                                <div className="font-bold text-gray-900">{item.status}</div>
+                                                <div className="font-bold text-gray-900">{getStatusLabel(item.status)}</div>
                                                 <div className="text-sm text-gray-600 mt-1">{item.description}</div>
                                                 {item.location && <div className="text-xs text-gray-500 mt-1 flex items-center"><MapPin className="h-3 w-3 mr-1" /> {item.location}</div>}
                                             </div>
@@ -226,7 +368,7 @@ export function OrderDetailsPage() {
                                 <span className="font-medium text-primary-900">{order.createdByEmployeeName || "N/A"}</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-primary-600">Shipper (Lấy)</span>
+                                <span className="text-primary-600">Bưu tá (Lấy)</span>
                                 <span className="font-medium text-primary-900">{order.assignedShipperName || "Chưa phân công"}</span>
                             </div>
                         </div>

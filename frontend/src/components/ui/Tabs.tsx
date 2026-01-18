@@ -5,17 +5,17 @@ const TabsContext = React.createContext<{
     onValueChange: (value: string) => void;
 } | null>(null);
 
-export function Tabs({ value, onValueChange, children }: { value: string; onValueChange: (value: string) => void; children: React.ReactNode }) {
+export function Tabs({ value, onValueChange, children, className }: { value: string; onValueChange: (value: string) => void; children: React.ReactNode, className?: string }) {
     return (
         <TabsContext.Provider value={{ value, onValueChange }}>
-            <div className="w-full">{children}</div>
+            <div className={`w-full ${className || ''}`}>{children}</div>
         </TabsContext.Provider>
     );
 }
 
-export function TabsList({ children }: { children: React.ReactNode }) {
+export function TabsList({ children, className }: { children: React.ReactNode, className?: string }) {
     return (
-        <div className="inline-flex h-10 items-center justify-center rounded-md bg-gray-100 p-1 text-gray-500 mb-4">
+        <div className={`inline-flex h-10 items-center justify-center rounded-md bg-gray-100 p-1 text-gray-500 mb-4 ${className || ''}`}>
             {children}
         </div>
     );

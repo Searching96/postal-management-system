@@ -38,8 +38,8 @@ export function TrackOrderPage() {
 
         try {
             const result = await orderService.trackOrder(trackingNumber.trim());
-            if (result.success) {
-                setOrder(result.data);
+            if (result) {
+                setOrder(result);
             }
         } catch (err: unknown) {
             const status = (err as { response?: { status?: number } }).response?.status;
@@ -80,6 +80,7 @@ export function TrackOrderPage() {
         };
         const labels: Record<string, string> = {
             CREATED: "Mới tạo",
+            ACCEPTED: "Đang xử lý",
             PENDING_PICKUP: "Chờ lấy hàng",
             PICKED_UP: "Đã lấy hàng",
             IN_TRANSIT_TO_HUB: "Đang vận chuyển",
@@ -242,6 +243,19 @@ export function TrackOrderPage() {
                                 <p className="text-sm text-gray-600">{order.receiverAddress}</p>
                             </div>
                         </div>
+
+                        {/* Live Tracking Button */}
+                        {order.status === "OUT_FOR_DELIVERY" && (
+                            <div className="pt-6 mt-6 border-t border-gray-100 flex justify-center">
+                                <Button
+                                    className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto animate-pulse"
+                                    onClick={() => window.open(`/tracking/${order.orderId || order.id!}/live`, '_blank')}
+                                >
+                                    <MapPin className="h-4 w-4 mr-2" />
+                                    Xem vị trí bưu tá
+                                </Button>
+                            </div>
+                        )}
 
                         {/* Timestamps */}
                         <div className="flex items-center gap-4 pt-6 mt-6 border-t border-gray-100 text-sm text-gray-500">

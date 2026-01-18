@@ -33,7 +33,7 @@ public class ShipperController {
     private final IShipperService shipperService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER')")
+    @PreAuthorize("hasAnyRole('HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'PO_WARD_MANAGER')")
     @Operation(
             summary = "Create a new shipper",
             description = "Create a new shipper for a warehouse. HUB_ADMIN can create for any warehouse in their region, " +
@@ -55,7 +55,7 @@ public class ShipperController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER')")
+    @PreAuthorize("hasAnyRole('HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'PO_WARD_MANAGER', 'PO_STAFF')")
     @Operation(
             summary = "Get all shippers",
             description = "Get all shippers within the user's jurisdiction with pagination and optional search. " +
@@ -83,7 +83,7 @@ public class ShipperController {
     }
 
     @GetMapping("/{shipperId}")
-    @PreAuthorize("hasAnyRole('HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER')")
+    @PreAuthorize("hasAnyRole('HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'PO_WARD_MANAGER', 'PO_STAFF')")
     @Operation(
             summary = "Get a shipper by ID",
             description = "Get a specific shipper within the user's jurisdiction."
@@ -104,7 +104,7 @@ public class ShipperController {
     }
 
     @PutMapping("/{shipperId}")
-    @PreAuthorize("hasAnyRole('HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER')")
+    @PreAuthorize("hasAnyRole('HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'PO_WARD_MANAGER')")
     @Operation(
             summary = "Update a shipper",
             description = "Update a shipper within the user's jurisdiction."
@@ -126,7 +126,7 @@ public class ShipperController {
     }
 
     @DeleteMapping("/{shipperId}")
-    @PreAuthorize("hasAnyRole('HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER')")
+    @PreAuthorize("hasAnyRole('HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'PO_WARD_MANAGER')")
     @Operation(
             summary = "Delete a shipper",
             description = "Soft delete a shipper within the user's jurisdiction."

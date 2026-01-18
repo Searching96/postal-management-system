@@ -21,8 +21,9 @@ import {
   Lock as LockIcon,
   CheckCircle2,
   XCircle,
+  ChevronLeft,
   ChevronRight,
-  ChevronLeft
+  Settings
 } from "lucide-react";
 import {
   PageHeader,
@@ -39,11 +40,17 @@ import {
 import { PaginationControls } from "../../components/ui";
 import { getRoleLabel } from "../../lib/utils";
 import { EmployeeListTable } from "./EmployeeListTable";
+import { OfficeSettingsCard } from "../../components/office/OfficeSettingsCard";
 
 export function ProvinceAdminPage() {
   const [activeTab, setActiveTab] = useState<"offices" | "wards" | "employees">("offices");
   const [offices, setOffices] = useState<WardOfficePairResponse[]>([]);
   const [wardStatus, setWardStatus] = useState<WardAssignmentInfo[]>([]);
+
+  // Settings Modal State
+  const [settingsOfficeId, setSettingsOfficeId] = useState<string | null>(null);
+
+
   const [wardPage, setWardPage] = useState(0);
   const [wardPageSize, setWardPageSize] = useState(12);
   const [wardTotalPages, setWardTotalPages] = useState(0);
@@ -79,6 +86,8 @@ export function ProvinceAdminPage() {
     message: string;
     action: () => Promise<void>;
   }>({ title: "", message: "", action: async () => { } });
+
+
 
   useEffect(() => {
     const updateItemsPerPage = () => {
@@ -328,7 +337,7 @@ export function ProvinceAdminPage() {
         fetchData();
       } else {
         // Handle duplicate email errors
-        let errors: Record<string, string> = {};
+        const errors: Record<string, string> = {};
         if (response.message?.includes("Post office email already exists")) {
           errors.postOfficeEmail = response.message;
         }
@@ -348,7 +357,7 @@ export function ProvinceAdminPage() {
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string; errorCode?: string; data?: Record<string, string> } } };
       const errorData = axiosErr.response?.data;
-      let errors: Record<string, string> = {};
+      const errors: Record<string, string> = {};
       if (errorData?.message?.includes("Post office email already exists")) {
         errors.postOfficeEmail = errorData.message;
       }
@@ -542,14 +551,25 @@ export function ProvinceAdminPage() {
 
                       <div className="p-5 space-y-4 bg-gray-50/30">
                         {/* Post Office Block */}
-                        <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-100 shadow-sm group-hover:border-primary-200 transition-colors">
+                        <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-100 shadow-sm group-hover:border-primary-200 transition-colors relative">
                           <div className="p-2 bg-primary-50 rounded-lg group-hover:bg-primary-100 transition-colors">
                             <MapPin className="w-4 h-4 text-primary-600" />
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Bưu cục</p>
                             <h4 className="text-sm font-bold text-gray-900 truncate">{pair.postOffice.officeName}</h4>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-gray-400 hover:text-primary-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSettingsOfficeId(pair.postOffice.officeId);
+                            }}
+                          >
+                            <Settings className="w-4 h-4" />
+                          </Button>
                         </div>
 
                         {/* Warehouse Block */}
@@ -1208,6 +1228,18 @@ export function ProvinceAdminPage() {
         message={confirmConfig.message}
         isLoading={isLoading}
       />
+
+      {/* SETTINGS MODAL */}
+      <Modal
+        isOpen={!!settingsOfficeId}
+        onClose={() => setSettingsOfficeId(null)}
+        title="Quản lý Trạng thái"
+      >
+        <OfficeSettingsCard
+          officeId={settingsOfficeId || undefined}
+          onClose={() => setSettingsOfficeId(null)}
+        />
+      </Modal>
     </div >
   );
 }

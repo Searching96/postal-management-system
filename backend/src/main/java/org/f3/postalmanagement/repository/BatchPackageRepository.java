@@ -108,4 +108,22 @@ public interface BatchPackageRepository extends JpaRepository<BatchPackage, UUID
            "o.status IN ('AT_ORIGIN_OFFICE', 'SORTED_AT_ORIGIN') " +
            "ORDER BY o.destinationOffice.officeName")
     List<org.f3.postalmanagement.entity.unit.Office> findDestinationsWithUnbatchedOrders(@Param("officeId") UUID officeId);
+
+    /**
+     * Find batches in transit that originate from or are destined to a specific hub.
+     * Used for calculating rerouting impact.
+     */
+    @Query("SELECT b FROM BatchPackage b WHERE " +
+           "b.status = 'IN_TRANSIT' AND " +
+           "(b.originOffice.id = :hubId OR b.destinationOffice.id = :hubId)")
+    List<BatchPackage> findInTransitBatchesInvolvingHub(@Param("hubId") UUID hubId);
+
+    /**
+     * Find sealed or in-transit batches between specific hubs.
+     */
+    @Query("SELECT b FROM BatchPackage b WHERE " +
+           "b.status IN ('SEALED', 'IN_TRANSIT') AND " +
+           "b.originOffice.id = :fromHubId AND b.destinationOffice.id = :toHubId")
+    List<BatchPackage> findActiveBatchesBetweenHubs(@Param("fromHubId") UUID fromHubId, 
+                                                    @Param("toHubId") UUID toHubId);
 }

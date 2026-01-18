@@ -1,18 +1,21 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
     Truck,
-    Box,
     User,
-    CheckCircle,
-    ArrowRight,
-    ArrowLeft,
-    Loader2,
+    CheckCircle2,
     Printer,
-    Receipt
+    Receipt,
+    Loader2,
+    Search,
+    Phone,
+    MapPin,
+    Package as PackageIcon
 } from "lucide-react";
 import {
     Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
     Button,
     Input,
     Label,
@@ -23,817 +26,587 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-    FormSelect
+    FormSelect,
+    Separator,
+    FormInput
 } from "../../components/ui";
 import { toast } from "sonner";
-import { orderService } from "../../services/orderService";
+import { orderService, PriceCalculationResponse, Order } from "../../services/orderService";
 import { formatCurrency } from "../../lib/utils";
 import { handlePrintReceipt, handlePrintSticker } from "../../lib/printHelper";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
-type Step = "INFO" | "PACKAGE" | "SERVICE" | "CONFIRM";
+const phoneRegex = /(84|0)+([0-9]{9})\b/;
+
+const createOrderSchema = z.object({
+    senderName: z.string().min(1, "Họ tên người gửi là bắt buộc"),
+    senderPhone: z.string()
+        .min(10, "Số điện thoại phải có ít nhất 10 số")
+        .regex(phoneRegex, "Số điện thoại không hợp lệ (VD: 0912345678)"),
+    senderAddress: z.string().min(1, "Địa chỉ người gửi là bắt buộc"),
+    receiverName: z.string().min(1, "Họ tên người nhận là bắt buộc"),
+    receiverPhone: z.string()
+        .min(10, "Số điện thoại phải có ít nhất 10 số")
+        .regex(phoneRegex, "Số điện thoại không hợp lệ (VD: 0912345678)"),
+    receiverAddress: z.string().min(1, "Địa chỉ người nhận là bắt buộc"),
+    destinationWardCode: z.string().min(1, "Vui lòng chọn phường/xã"),
+    originWardCode: z.string().optional(),
+    packageType: z.string(),
+    packageDescription: z.string().optional(),
+    weightKg: z.coerce.number().min(0.01, "Trọng lượng phải lớn hơn 0"),
+    lengthCm: z.coerce.number().min(0, "Không được âm"),
+    widthCm: z.coerce.number().min(0, "Không được âm"),
+    heightCm: z.coerce.number().min(0, "Không được âm"),
+    serviceType: z.string(),
+    codAmount: z.coerce.number().min(0),
+    declaredValue: z.coerce.number().min(0),
+    addInsurance: z.boolean(),
+});
+
+type CreateOrderFormValues = z.infer<typeof createOrderSchema>;
 
 export function CreateOrderPage() {
-    const navigate = useNavigate();
-    const [currentStep, setCurrentStep] = useState<Step>("INFO");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCalculating, setIsCalculating] = useState(false);
-
-    // Print Dialog State
     const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-    const [createdOrder, setCreatedOrder] = useState<any>(null);
+    const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
+    const [calculationResult, setCalculationResult] = useState<PriceCalculationResponse | null>(null);
 
-    // Form Data
-    const [formData, setFormData] = useState({
-        // Sender
-        senderName: "",
-        senderPhone: "",
-        senderAddress: "",
-        // Receiver
-        receiverName: "",
-        receiverPhone: "",
-        receiverAddress: "",
-        destinationWardCode: "",
-        // Package
-        packageType: "BOX", // BOX, DOCUMENT, FRAGILE
-        packageDescription: "",
-        weightKg: 0.5,
-        lengthCm: 10,
-        widthCm: 10,
-        heightCm: 10,
-        // Service
-        serviceType: "STANDARD", // STANDARD, EXPRESS, ECONOMY
-        codAmount: 0,
-        declaredValue: 0,
-        addInsurance: false,
-        deliveryInstructions: "",
-        internalNotes: ""
+    const form = useForm<CreateOrderFormValues>({
+        resolver: zodResolver(createOrderSchema) as any,
+        defaultValues: {
+            senderName: "",
+            senderPhone: "",
+            senderAddress: "",
+            receiverName: "",
+            receiverPhone: "",
+            receiverAddress: "",
+            destinationWardCode: "",
+            originWardCode: "",
+            packageType: "BOX",
+            packageDescription: "",
+            weightKg: 0.5,
+            lengthCm: 10,
+            widthCm: 10,
+            heightCm: 10,
+            serviceType: "STANDARD",
+            codAmount: 0,
+            declaredValue: 0,
+            addInsurance: false
+        }
     });
 
-    // Validation errors
-    const [errors, setErrors] = useState<Record<string, string>>({});
+    const { register, control, watch, setValue, getValues, formState: { errors } } = form;
 
-    // Calculated Price (The full API response)
-    const [calculationResult, setCalculationResult] = useState<any>(null);
+    // Watch fields for price calculation
+    const watchedValues = watch([
+        "destinationWardCode",
+        "originWardCode",
+        "weightKg",
+        "lengthCm",
+        "widthCm",
+        "heightCm",
+        "serviceType",
+        "addInsurance",
+        "declaredValue",
+        "packageType"
+    ]);
 
-    // Get service-specific info (totalAmount, estimatedDeliveryDays) from availableServices
-    const selectedServiceInfo = calculationResult?.availableServices?.find(
-        (s: any) => s.serviceType === formData.serviceType
-    );
 
-    // The fee breakdown (baseShippingFee, weightSurcharge, etc.) is always from the root object
-    // but totalAmount should come from the selected service if available
-    const currentPriceDetail = calculationResult ? {
-        ...calculationResult,
-        ...(selectedServiceInfo || {})
-    } : null;
 
-    const handleInputChange = (field: string, value: any) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-        // Clear error for this field when user types
-        if (errors[field]) {
-            setErrors(prev => ({ ...prev, [field]: "" }));
-        }
+    const handleSenderPhoneBlur = async () => {
+        const phone = getValues("senderPhone");
+        const name = getValues("senderName");
 
-        // Reset calculation ONLY if parameters affecting the QUOTE change.
-        // Changing 'serviceType' should NOT reset, because we (hopefully) have quotes for all services.
-        if (["weightKg", "lengthCm", "widthCm", "heightCm", "destinationWardCode", "addInsurance", "declaredValue"].includes(field)) {
-            setCalculationResult(null);
-        }
-    };
+        if (!phone || phone.length < 9) return;
+        if (name) return; // Already filled
 
-    // Vietnamese phone number regex: starts with 0, 9 or 10 digits after (10-11 digits total)
-    const isValidPhone = (phone: string) => /^0\d{9,10}$/.test(phone);
+        try {
+            const toastId = toast.loading("Đang tìm thông tin khách hàng...");
+            const res = await orderService.getOrdersBySenderPhone(phone, { page: 0, size: 1 });
+            toast.dismiss(toastId);
 
-    // Real-time validation on blur
-    const validateField = (field: string) => {
-        let error = "";
-        const value = formData[field as keyof typeof formData];
-
-        switch (field) {
-            case "senderName":
-                if (!String(value).trim()) error = "Vui lòng nhập tên người gửi";
-                else if (String(value).length > 255) error = "Tên người gửi không được quá 255 ký tự";
-                break;
-            case "senderPhone":
-                if (!String(value).trim()) error = "Vui lòng nhập số điện thoại";
-                else if (!isValidPhone(String(value))) error = "SĐT không hợp lệ (VD: 0901234567)";
-                break;
-            case "receiverName":
-                if (!String(value).trim()) error = "Vui lòng nhập tên người nhận";
-                else if (String(value).length > 255) error = "Tên người nhận không được quá 255 ký tự";
-                break;
-            case "receiverPhone":
-                if (!String(value).trim()) error = "Vui lòng nhập số điện thoại";
-                else if (!isValidPhone(String(value))) error = "SĐT không hợp lệ (VD: 0901234567)";
-                break;
-            case "weightKg":
-                const w = Number(value);
-                if (w < 0.01) error = "Trọng lượng tối thiểu 0.01 kg";
-                else if (w > 100) error = "Trọng lượng tối đa 100 kg";
-                break;
-            case "lengthCm":
-                const l = Number(value);
-                if (l < 0.1) error = "Chiều dài tối thiểu 0.1 cm";
-                else if (l > 300) error = "Chiều dài tối đa 300 cm";
-                break;
-            case "widthCm":
-                const wd = Number(value);
-                if (wd < 0.1) error = "Chiều rộng tối thiểu 0.1 cm";
-                else if (wd > 300) error = "Chiều rộng tối đa 300 cm";
-                break;
-            case "heightCm":
-                const h = Number(value);
-                if (h < 0.1) error = "Chiều cao tối thiểu 0.1 cm";
-                else if (h > 300) error = "Chiều cao tối đa 300 cm";
-                break;
-            case "packageDescription":
-                if (String(value).length > 500) error = "Mô tả không được quá 500 ký tự";
-                break;
-            case "codAmount":
-                if (Number(value) < 0) error = "Số tiền thu hộ không được âm";
-                break;
-            case "declaredValue":
-                if (Number(value) < 0) error = "Giá trị khai giá không được âm";
-                break;
-        }
-
-        if (error) {
-            setErrors(prev => ({ ...prev, [field]: error }));
+            if (res && res.content && res.content.length > 0) {
+                const lastOrder = res.content[0];
+                setValue("senderName", lastOrder.senderName);
+                setValue("senderAddress", lastOrder.senderAddress);
+                toast.success("Đã tìm thấy thông tin khách hàng!", { duration: 2000 });
+            }
+        } catch {
+            toast.dismiss();
         }
     };
 
     const calculatePrice = async () => {
-        if (!formData.destinationWardCode) {
-            toast.error("Vui lòng chọn phường/xã người nhận");
+        // Get fresh values from form state
+        const values = getValues();
+
+
+
+        if (!values.destinationWardCode) {
             return;
         }
 
         setIsCalculating(true);
         try {
             const payload = {
-                destinationWardCode: formData.destinationWardCode,
-                packageType: formData.packageType,
-                weightKg: formData.weightKg,
-                lengthCm: formData.lengthCm,
-                widthCm: formData.widthCm,
-                heightCm: formData.heightCm,
-                serviceType: formData.serviceType,
-                declaredValue: formData.declaredValue,
-                addInsurance: formData.addInsurance
+                originWardCode: values.originWardCode || undefined,
+                destinationWardCode: values.destinationWardCode,
+                packageType: values.packageType,
+                weightKg: Number(values.weightKg) || 0,
+                lengthCm: Number(values.lengthCm) || 0,
+                widthCm: Number(values.widthCm) || 0,
+                heightCm: Number(values.heightCm) || 0,
+                serviceType: values.serviceType,
+                declaredValue: Number(values.declaredValue) || 0,
+                codAmount: Number(values.codAmount) || 0,
+                addInsurance: Boolean(values.addInsurance),
+                packageDescription: values.packageDescription || undefined
             };
             const res = await orderService.calculatePrice(payload);
-            // Handle both wrapped {success, data} and unwrapped responses
-            const priceData = res.data ?? res;
-            if (priceData) {
-                setCalculationResult(priceData);
-                toast.success("Đã tính cước phí");
-            }
+            if (res) setCalculationResult(res);
         } catch (error) {
-            console.error("Calculation failed", error);
-            toast.error("Tính phí thất bại");
+            // console.error("Price calc error", error);
         } finally {
             setIsCalculating(false);
         }
     };
 
-    // Auto-calculate price when entering SERVICE step or when price-affecting fields change (debounced)
+    // Auto-calculate effect
     useEffect(() => {
-        if (currentStep !== "SERVICE" || !formData.destinationWardCode) return;
+        const [wardCode] = watchedValues;
+        if (!wardCode) {
+            setCalculationResult(null);
+            return;
+        }
 
         const timeoutId = setTimeout(() => {
-            if (!isCalculating) {
-                calculatePrice();
-            }
-        }, 500); // 500ms debounce
+            calculatePrice();
+        }, 800);
 
         return () => clearTimeout(timeoutId);
-    }, [currentStep, formData.serviceType, formData.declaredValue, formData.addInsurance]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [...watchedValues]);
 
-    const handleSubmit = async () => {
-        if (!currentPriceDetail) {
-            toast.error("Vui lòng tính cước phí trước khi tạo đơn");
-            return;
+    const onSubmit = async (data: CreateOrderFormValues) => {
+        if (!calculationResult && !isCalculating) {
+            await calculatePrice();
         }
 
         setIsSubmitting(true);
         try {
-            const res = await orderService.createOrder(formData);
-            // Handle both wrapped {success, data} and unwrapped responses
-            // The backend returns OrderResponse directly, so 'res' itself might be the order, or res.data
-            const rawData = (res.data ?? res) as any;
+            const res = await orderService.createOrder(data);
+            const rawData = res as Order;
             const orderData = {
                 ...rawData,
-                id: rawData.id || rawData.orderId,
-                lengthCm: formData.lengthCm,
-                widthCm: formData.widthCm,
-                heightCm: formData.heightCm,
-                packageDescription: formData.packageDescription
+                lengthCm: data.lengthCm,
+                widthCm: data.widthCm,
+                heightCm: data.heightCm
             };
 
-            if (orderData && orderData.id) {
-                toast.success("Tạo đơn hàng thành công!");
+            if (orderData.id || orderData.orderId) {
                 setCreatedOrder(orderData);
                 setShowSuccessDialog(true);
-            } else {
-                console.error("Order created but no ID found:", orderData);
-                toast.error("Tạo đơn hàng thành công nhưng không tìm thấy ID đơn hàng.");
+                toast.success("Tạo vận đơn thành công!");
             }
-        } catch (error) {
-            console.error("Creation failed", error);
-            toast.error("Tạo đơn hàng thất bại. Vui lòng thử lại.");
+        } catch {
+            toast.error("Tạo đơn thất bại");
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const nextStep = () => {
 
-        if (currentStep === "INFO") {
-            const newErrors: Record<string, string> = {};
 
-            if (!formData.senderName.trim()) {
-                newErrors.senderName = "Vui lòng nhập tên người gửi";
-            } else if (formData.senderName.length > 255) {
-                newErrors.senderName = "Tên người gửi không được quá 255 ký tự";
-            }
+    // Get active service Info
+    const currentServiceType = watch("serviceType");
+    const selectedServiceInfo = calculationResult?.availableServices?.find(
+        (s) => s.serviceType === currentServiceType
+    );
 
-            if (!formData.senderPhone.trim()) {
-                newErrors.senderPhone = "Vui lòng nhập số điện thoại";
-            } else if (!isValidPhone(formData.senderPhone)) {
-                newErrors.senderPhone = "SĐT không hợp lệ (VD: 0901234567)";
-            }
-
-            if (!formData.receiverName.trim()) {
-                newErrors.receiverName = "Vui lòng nhập tên người nhận";
-            } else if (formData.receiverName.length > 255) {
-                newErrors.receiverName = "Tên người nhận không được quá 255 ký tự";
-            }
-
-            if (!formData.receiverPhone.trim()) {
-                newErrors.receiverPhone = "Vui lòng nhập số điện thoại";
-            } else if (!isValidPhone(formData.receiverPhone)) {
-                newErrors.receiverPhone = "SĐT không hợp lệ (VD: 0901234567)";
-            }
-
-            if (!formData.destinationWardCode) {
-                newErrors.destinationWardCode = "Vui lòng chọn phường/xã";
-            }
-
-            if (Object.keys(newErrors).length > 0) {
-                setErrors(newErrors);
-                return;
-            }
-
-            setErrors({});
-            setCurrentStep("PACKAGE");
-        } else if (currentStep === "PACKAGE") {
-            const newErrors: Record<string, string> = {};
-            if (formData.weightKg < 0.01) newErrors.weightKg = "Trọng lượng tối thiểu 0.01 kg";
-            else if (formData.weightKg > 100) newErrors.weightKg = "Trọng lượng tối đa 100 kg";
-
-            if (formData.lengthCm < 0.1) newErrors.lengthCm = "Chiều dài tối thiểu 0.1 cm";
-            else if (formData.lengthCm > 300) newErrors.lengthCm = "Chiều dài tối đa 300 cm";
-
-            if (formData.widthCm < 0.1) newErrors.widthCm = "Chiều rộng tối thiểu 0.1 cm";
-            else if (formData.widthCm > 300) newErrors.widthCm = "Chiều rộng tối đa 300 cm";
-
-            if (formData.heightCm < 0.1) newErrors.heightCm = "Chiều cao tối thiểu 0.1 cm";
-            else if (formData.heightCm > 300) newErrors.heightCm = "Chiều cao tối đa 300 cm";
-
-            if (formData.packageDescription.length > 500) newErrors.packageDescription = "Mô tả không được quá 500 ký tự";
-
-            if (Object.keys(newErrors).length > 0) {
-                setErrors(newErrors);
-                toast.error("Vui lòng kiểm tra lại thông tin hàng hóa");
-                return;
-            }
-            setErrors({});
-            setCurrentStep("SERVICE");
-        } else if (currentStep === "SERVICE") {
-            const newErrors: Record<string, string> = {};
-            if (formData.codAmount < 0) newErrors.codAmount = "Số tiền thu hộ không được âm";
-            if (formData.declaredValue < 0) newErrors.declaredValue = "Giá trị khai giá không được âm";
-
-            if (Object.keys(newErrors).length > 0) {
-                setErrors(newErrors);
-                return;
-            }
-            setErrors({});
-
-            if (!calculationResult) {
-                calculatePrice().then(() => setCurrentStep("CONFIRM"));
-            } else {
-                setCurrentStep("CONFIRM");
-            }
-        }
-    };
-
-    const steps = [
-        { id: "INFO", label: "Thông tin", icon: User },
-        { id: "PACKAGE", label: "Hàng hóa", icon: Box },
-        { id: "SERVICE", label: "Dịch vụ", icon: Truck },
-        { id: "CONFIRM", label: "Xác nhận", icon: CheckCircle },
-    ];
+    // Merge for display. If selectedServiceInfo exists, use its totalAmount, otherwise use calculationResult default (if matches) or wait for user to select
+    // Actually, availableServices has the accurate price for each service.
+    // The main calculationResult might show fields, but availableServices is the source of truth for the options.
+    const displayTotal = selectedServiceInfo ? selectedServiceInfo.totalAmount : calculationResult?.totalAmount;
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
-            <PageHeader title="Tạo Vận Đơn Mới" description="Tạo đơn hàng gửi bưu kiện tại bưu cục" />
+        <div className="space-y-6">
+            <PageHeader title="Tạo Vận Đơn Mới" description="Nhập thông tin để tạo đơn hàng mới" />
 
-            {/* Stepper */}
-            <div className="flex items-center justify-between px-10 py-4 bg-white rounded-xl shadow-sm border border-gray-100">
-                {steps.map((step, index) => {
-                    const isActive = step.id === currentStep;
-                    const isCompleted = steps.findIndex(s => s.id === currentStep) > index;
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Main Input Column */}
+                    <div className="lg:col-span-2 space-y-6">
 
-                    return (
-                        <div key={step.id} className="flex flex-col items-center relative z-10 text-center">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-colors ${isActive ? "bg-primary-600 text-white shadow-md ring-4 ring-primary-50" :
-                                isCompleted ? "bg-green-500 text-white" : "bg-gray-100 text-gray-400"
-                                }`}>
-                                <step.icon size={18} />
-                            </div>
-                            <span className={`text-sm font-medium ${isActive ? "text-primary-700" : "text-gray-500"}`}>
-                                {step.label}
-                            </span>
-                        </div>
-                    );
-                })}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Main Form Area */}
-                <div className="md:col-span-2 space-y-6">
-                    <Card>
-                        <div className="p-6 space-y-6">
-                            {currentStep === "INFO" && (
-                                <div className="space-y-6">
-                                    <div className="space-y-4">
-                                        <h3 className="text-lg font-semibold flex items-center text-gray-800">
-                                            <User className="mr-2 text-primary-600" size={20} /> Người gửi
-                                        </h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label>Họ tên <span className="text-red-500">*</span></Label>
+                        {/* Sender & Receiver Card */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-base">
+                                    <User className="h-5 w-5 text-gray-500" />
+                                    Thông tin Người gửi & Người nhận
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {/* Sender */}
+                                <div className="space-y-3">
+                                    <h4 className="text-sm font-medium text-gray-500 uppercase flex items-center gap-2">
+                                        <MapPin size={16} /> Người gửi
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="relative">
+                                            <Label className="mb-1 block text-sm font-bold text-gray-700 ml-1">Số điện thoại</Label>
+                                            <div className="relative">
+                                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                                 <Input
-                                                    value={formData.senderName}
-                                                    onChange={e => handleInputChange("senderName", e.target.value)}
-                                                    onBlur={() => validateField("senderName")}
-                                                    placeholder="VD: Nguyễn Văn A"
-                                                    className={errors.senderName ? "border-red-500" : ""}
+                                                    {...register("senderPhone")}
+                                                    onBlur={(e) => {
+                                                        register("senderPhone").onBlur(e);
+                                                        handleSenderPhoneBlur();
+                                                    }}
+                                                    className={`pl-9 ${errors.senderPhone ? "border-red-500" : ""}`}
+                                                    placeholder="09..."
                                                 />
-                                                {errors.senderName && <p className="text-red-500 text-xs">{errors.senderName}</p>}
+                                                <button
+                                                    onClick={handleSenderPhoneBlur}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary-600"
+                                                    type="button"
+                                                    title="Tìm thông tin khách hàng cũ"
+                                                >
+                                                    <Search className="h-4 w-4" />
+                                                </button>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label>Số điện thoại <span className="text-red-500">*</span></Label>
-                                                <Input
-                                                    value={formData.senderPhone}
-                                                    onChange={e => handleInputChange("senderPhone", e.target.value)}
-                                                    onBlur={() => validateField("senderPhone")}
-                                                    placeholder="VD: 0901234567"
-                                                    className={errors.senderPhone ? "border-red-500" : ""}
-                                                />
-                                                {errors.senderPhone && <p className="text-red-500 text-xs">{errors.senderPhone}</p>}
-                                            </div>
-                                            <div className="sm:col-span-2">
-                                                <AddressSelector
-                                                    label="Địa chỉ gửi"
-                                                    required
-                                                    onAddressChange={(val) => handleInputChange("senderAddress", val)}
-                                                    initialValue={formData.senderAddress}
-                                                />
-                                            </div>
+                                            {errors.senderPhone && <p className="text-red-500 text-xs mt-1">{errors.senderPhone.message}</p>}
                                         </div>
-                                    </div>
-
-                                    <div className="border-t pt-4 space-y-4">
-                                        <h3 className="text-lg font-semibold flex items-center text-gray-800">
-                                            <User className="mr-2 text-blue-600" size={20} /> Người nhận
-                                        </h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label>Họ tên <span className="text-red-500">*</span></Label>
-                                                <Input
-                                                    value={formData.receiverName}
-                                                    onChange={e => handleInputChange("receiverName", e.target.value)}
-                                                    onBlur={() => validateField("receiverName")}
-                                                    placeholder="VD: Trần Thị B"
-                                                    className={errors.receiverName ? "border-red-500" : ""}
-                                                />
-                                                {errors.receiverName && <p className="text-red-500 text-xs">{errors.receiverName}</p>}
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Số điện thoại <span className="text-red-500">*</span></Label>
-                                                <Input
-                                                    value={formData.receiverPhone}
-                                                    onChange={e => handleInputChange("receiverPhone", e.target.value)}
-                                                    onBlur={() => validateField("receiverPhone")}
-                                                    placeholder="VD: 0912345678"
-                                                    className={errors.receiverPhone ? "border-red-500" : ""}
-                                                />
-                                                {errors.receiverPhone && <p className="text-red-500 text-xs">{errors.receiverPhone}</p>}
-                                            </div>
-
-                                            <div className="sm:col-span-2">
-                                                <AddressSelector
-                                                    label="Địa chỉ nhận"
-                                                    required
-                                                    onAddressChange={(val) => handleInputChange("receiverAddress", val)}
-                                                    onWardChange={(code) => handleInputChange("destinationWardCode", code)}
-                                                    initialValue={formData.receiverAddress}
-                                                />
-                                            </div>
+                                        <div>
+                                            <FormInput
+                                                label="Họ tên"
+                                                {...register("senderName")}
+                                                error={errors.senderName?.message}
+                                                placeholder="Nguyễn Văn A"
+                                                icon={User}
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <Controller
+                                                control={control}
+                                                name="senderAddress"
+                                                render={({ field }) => (
+                                                    <AddressSelector
+                                                        label="Địa chỉ gửi"
+                                                        initialValue={field.value}
+                                                        onAddressChange={field.onChange}
+                                                        onWardChange={(code) => setValue("originWardCode", code || "")}
+                                                    />
+                                                )}
+                                            />
+                                            {errors.senderAddress && <p className="text-red-500 text-xs mt-1">{errors.senderAddress.message}</p>}
                                         </div>
                                     </div>
                                 </div>
-                            )}
 
-                            {currentStep === "PACKAGE" && (
-                                <div className="space-y-6">
-                                    <h3 className="text-lg font-semibold flex items-center text-gray-800">
-                                        <Box className="mr-2 text-primary-600" size={20} /> Thông tin hàng hóa
-                                    </h3>
+                                <Separator />
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <FormSelect
-                                                label="Loại hàng hóa"
-                                                value={formData.packageType}
-                                                onChange={(val) => handleInputChange("packageType", val)}
-                                                options={[
-                                                    { value: "BOX", label: "Hộp/Thùng (Box)" },
-                                                    { value: "DOCUMENT", label: "Tài liệu (Document)" },
-                                                    { value: "FRAGILE", label: "Hàng dễ vỡ (Fragile)" },
-                                                    { value: "OVERSIZED", label: "Quá khổ (Oversized)" }
-                                                ]}
+                                {/* Receiver */}
+                                <div className="space-y-3">
+                                    <h4 className="text-sm font-medium text-gray-500 uppercase flex items-center gap-2">
+                                        <MapPin size={16} /> Người nhận
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <FormInput
+                                                label="Số điện thoại"
+                                                {...register("receiverPhone")}
+                                                error={errors.receiverPhone?.message}
+                                                placeholder="09..."
+                                                icon={Phone}
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label>Trọng lượng thực (kg) <span className="text-red-500">*</span></Label>
-                                            <Input
-                                                type="number"
-                                                min="0.1"
-                                                step="0.1"
-                                                value={formData.weightKg}
-                                                onChange={e => handleInputChange("weightKg", parseFloat(e.target.value))}
-                                                onBlur={() => validateField("weightKg")}
-                                                className={errors.weightKg ? "border-red-500" : ""}
+                                        <div>
+                                            <FormInput
+                                                label="Họ tên"
+                                                {...register("receiverName")}
+                                                error={errors.receiverName?.message}
+                                                placeholder="Trần Thị B"
+                                                icon={User}
                                             />
-                                            {errors.weightKg && <p className="text-red-500 text-xs">{errors.weightKg}</p>}
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <Controller
+                                                control={control}
+                                                name="receiverAddress"
+                                                render={({ field }) => (
+                                                    <AddressSelector
+                                                        label="Địa chỉ nhận"
+                                                        required
+                                                        initialValue={field.value}
+                                                        onAddressChange={(val) => {
+                                                            field.onChange(val);
+                                                        }}
+                                                        onWardChange={(wardCode) => {
+                                                            setValue("destinationWardCode", wardCode || "");
+                                                        }}
+                                                    />
+                                                )}
+                                            />
+                                            {errors.receiverAddress && <p className="text-red-500 text-xs mt-1">{errors.receiverAddress.message}</p>}
+                                            {errors.destinationWardCode && <p className="text-red-500 text-xs mt-1">{errors.destinationWardCode.message}</p>}
                                         </div>
                                     </div>
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                                    <div className="space-y-2">
-                                        <Label>Kích thước (cm) - Dài x Rộng x Cao</Label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <div className="space-y-1">
-                                                <Input
-                                                    type="number" placeholder="Dài"
-                                                    value={formData.lengthCm}
-                                                    onChange={e => handleInputChange("lengthCm", parseFloat(e.target.value))}
-                                                    onBlur={() => validateField("lengthCm")}
-                                                    className={errors.lengthCm ? "border-red-500" : ""}
+                        {/* Package Info Card */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-base">
+                                    <PackageIcon className="h-5 w-5 text-gray-500" />
+                                    Thông tin Kiện hàng
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Controller
+                                            control={control}
+                                            name="packageType"
+                                            render={({ field }) => (
+                                                <FormSelect
+                                                    label="Loại hàng"
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    options={[
+                                                        { value: "BOX", label: "Hộp/Thùng" },
+                                                        { value: "DOCUMENT", label: "Tài liệu" },
+                                                        { value: "FRAGILE", label: "Dễ vỡ" },
+                                                        { value: "OVERSIZED", label: "Quá khổ" },
+                                                    ]}
                                                 />
-                                                {errors.lengthCm && <p className="text-red-500 text-xs">{errors.lengthCm}</p>}
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Input
-                                                    type="number" placeholder="Rộng"
-                                                    value={formData.widthCm}
-                                                    onChange={e => handleInputChange("widthCm", parseFloat(e.target.value))}
-                                                    onBlur={() => validateField("widthCm")}
-                                                    className={errors.widthCm ? "border-red-500" : ""}
-                                                />
-                                                {errors.widthCm && <p className="text-red-500 text-xs">{errors.widthCm}</p>}
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Input
-                                                    type="number" placeholder="Cao"
-                                                    value={formData.heightCm}
-                                                    onChange={e => handleInputChange("heightCm", parseFloat(e.target.value))}
-                                                    onBlur={() => validateField("heightCm")}
-                                                    className={errors.heightCm ? "border-red-500" : ""}
-                                                />
-                                                {errors.heightCm && <p className="text-red-500 text-xs">{errors.heightCm}</p>}
-                                            </div>
-                                        </div>
-                                        <p className="text-xs text-gray-500">Kích thước dùng để tính trọng lượng quy đổi (D x R x C / 5000)</p>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label>Mô tả nội dung</Label>
-                                        <Input
-                                            value={formData.packageDescription}
-                                            onChange={e => handleInputChange("packageDescription", e.target.value)}
-                                            onBlur={() => validateField("packageDescription")}
-                                            placeholder="VD: Quần áo, sách vở..."
-                                            className={errors.packageDescription ? "border-red-500" : ""}
+                                            )}
                                         />
-                                        {errors.packageDescription && <p className="text-red-500 text-xs">{errors.packageDescription}</p>}
+                                    </div>
+                                    <div>
+                                        <FormInput
+                                            label="Trọng lượng (kg)"
+                                            type="number" step="0.1"
+                                            {...register("weightKg")}
+                                            error={errors.weightKg?.message}
+                                        />
                                     </div>
                                 </div>
-                            )}
+                                <div>
+                                    <Label className="text-sm font-bold text-gray-700 ml-1 block mb-1">Kích thước (cm)</Label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="relative">
+                                            <Input placeholder="Dài" type="number" className="pr-8 text-center" {...register("lengthCm")} />
+                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">cm</span>
+                                        </div>
+                                        <div className="relative">
+                                            <Input placeholder="Rộng" type="number" className="pr-8 text-center" {...register("widthCm")} />
+                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">cm</span>
+                                        </div>
+                                        <div className="relative">
+                                            <Input placeholder="Cao" type="number" className="pr-8 text-center" {...register("heightCm")} />
+                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">cm</span>
+                                        </div>
+                                    </div>
+                                    {errors.lengthCm && <p className="text-red-500 text-xs">{errors.lengthCm.message}</p>}
+                                </div>
+                                <div>
+                                    <FormInput
+                                        label="Mô tả nội dung"
+                                        {...register("packageDescription")}
+                                        placeholder="Vd: Quần áo, Sách..."
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
 
-                            {currentStep === "SERVICE" && (
-                                <div className="space-y-6">
-                                    <h3 className="text-lg font-semibold flex items-center text-gray-800">
-                                        <Truck className="mr-2 text-primary-600" size={20} /> Dịch vụ & Phụ phí
-                                    </h3>
+                    {/* Sidebar / Summary Column */}
+                    <div className="lg:col-span-1 space-y-6">
+                        {/* Services & Options */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-base">
+                                    <Truck className="h-5 w-5 text-gray-500" />
+                                    Dịch vụ & Tính phí
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-gray-700">Chọn dịch vụ</Label>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {[
+                                            { id: "STANDARD", label: "Chuẩn" },
+                                            { id: "EXPRESS", label: "Hỏa tốc" },
+                                            { id: "ECONOMY", label: "Tiết kiệm" }
+                                        ].map(s => {
+                                            const isActive = currentServiceType === s.id;
+                                            const serviceInfo = calculationResult?.availableServices?.find(as => as.serviceType === s.id);
 
-                                    <div className="space-y-2">
-                                        <Label>Dịch vụ vận chuyển</Label>
+                                            return (
+                                                <div
+                                                    key={s.id}
+                                                    onClick={() => setValue("serviceType", s.id)}
+                                                    className={`p-3 rounded-lg border cursor-pointer transition-all ${isActive ? "bg-primary-50 border-primary-500 text-primary-900 ring-1 ring-primary-500" : "hover:bg-gray-50"}`}
+                                                >
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="font-medium text-sm">{s.label}</span>
+                                                        {isActive && <CheckCircle2 className="h-4 w-4 text-primary-600" />}
+                                                    </div>
+                                                    <div className="flex justify-between items-end">
+                                                        <span className="text-xs text-gray-500">
+                                                            {serviceInfo ? (serviceInfo.slaDescription || `${serviceInfo.estimatedDeliveryDays} ngày`) : "--"}
+                                                        </span>
+                                                        <span className="font-bold text-sm">
+                                                            {serviceInfo ? formatCurrency(serviceInfo.totalAmount) : "---"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {errors.serviceType && <p className="text-red-500 text-xs">{errors.serviceType.message}</p>}
+                                </div>
 
-                                        {isCalculating && (
-                                            <div className="flex items-center justify-center p-4 text-gray-500">
-                                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                                <span>Đang tính cước phí...</span>
+                                <Separator />
+
+                                <div className="space-y-3">
+                                    <div>
+                                        <FormInput
+                                            label="Thu hộ (COD)"
+                                            type="number"
+                                            {...register("codAmount")}
+                                            suffix={<span className="text-gray-500 text-xs">VNĐ</span>}
+                                        />
+                                    </div>
+                                    <div>
+                                        <FormInput
+                                            label="Khai giá"
+                                            type="number"
+                                            {...register("declaredValue")}
+                                            suffix={<span className="text-gray-500 text-xs">VNĐ</span>}
+                                        />
+                                    </div>
+                                    <div className="flex items-center space-x-2 pt-2">
+                                        <Controller
+                                            control={control}
+                                            name="addInsurance"
+                                            render={({ field }) => (
+                                                <input
+                                                    type="checkbox"
+                                                    id="ins"
+                                                    checked={field.value}
+                                                    onChange={(e) => field.onChange(e.target.checked)}
+                                                    className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                                />
+                                            )}
+                                        />
+                                        <label htmlFor="ins" className="text-sm text-gray-700 cursor-pointer select-none">Bảo hiểm hàng hóa</label>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Total & Action */}
+                        <Card className="bg-slate-900 text-white border-slate-900 shadow-xl">
+                            <CardContent className="p-6 space-y-4">
+                                <div>
+                                    <p className="text-slate-400 text-sm">Tổng cước phí tạm tính</p>
+                                    {isCalculating ? (
+                                        <div className="h-8 w-24 bg-slate-800 animate-pulse rounded mt-1" />
+                                    ) : (
+                                        <p className="text-3xl font-bold">
+                                            {displayTotal ? formatCurrency(displayTotal) : "---"}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {selectedServiceInfo && calculationResult && (
+                                    <div className="space-y-1 text-xs text-slate-400 border-t border-slate-700/50 pt-2">
+                                        <div className="flex justify-between">
+                                            <span>Cước chính:</span>
+                                            <span>{formatCurrency(calculationResult.baseShippingFee)}</span>
+                                        </div>
+                                        {(calculationResult.insuranceFee > 0 || getValues("addInsurance")) && (
+                                            <div className="flex justify-between text-yellow-500">
+                                                <span>Phí bảo hiểm:</span>
+                                                <span>{formatCurrency(calculationResult.insuranceFee)}</span>
                                             </div>
                                         )}
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                            {[
-                                                { id: "STANDARD", label: "Chuẩn", desc: "3-4 ngày" },
-                                                { id: "EXPRESS", label: "Hỏa tốc", desc: "1-2 ngày" },
-                                                { id: "ECONOMY", label: "Tiết kiệm", desc: "5-7 ngày" }
-                                            ].map(s => {
-                                                // Find estimate for this service if available
-                                                const est = calculationResult?.availableServices?.find((x: any) => x.serviceType === s.id);
-
-                                                return (
-                                                    <Button
-                                                        key={s.id}
-                                                        variant="ghost"
-                                                        className={`p-3 h-auto rounded-lg border text-left transition-all flex-col items-start ${formData.serviceType === s.id
-                                                            ? "border-primary-600 bg-primary-50 ring-1 ring-primary-600"
-                                                            : "border-gray-200 hover:border-primary-300"
-                                                            }`}
-                                                        onClick={() => handleInputChange("serviceType", s.id)}
-                                                    >
-                                                        <div className="font-medium text-sm text-gray-900">{s.label}</div>
-                                                        <div className="text-xs text-gray-500 mb-1">{s.desc}</div>
-                                                        {est && (
-                                                            <div className="mt-2 pt-2 border-t border-gray-200/50 w-full">
-                                                                <div className="text-lg font-bold text-primary-700">{formatCurrency(est.totalAmount)}</div>
-                                                                <div className="text-[10px] text-gray-500">Giao: {new Date(est.estimatedDeliveryDate).toLocaleDateString('vi-VN')}</div>
-                                                            </div>
-                                                        )}
-                                                    </Button>
-                                                );
-                                            })}
+                                        <div className="flex justify-between">
+                                            <span>Phụ phí:</span>
+                                            <span>{formatCurrency((calculationResult.weightSurcharge || 0) + (calculationResult.distanceSurcharge || 0))}</span>
                                         </div>
                                     </div>
+                                )}
 
-                                    {/* Breakdown of Currently Selected Service */}
-                                    {currentPriceDetail && (
-                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm space-y-2 animate-in fade-in zoom-in duration-300">
-                                            <h4 className="font-semibold text-gray-900 border-b pb-2 mb-2">Chi tiết cước ({currentPriceDetail.serviceName || formData.serviceType})</h4>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Phí cơ bản:</span>
-                                                <span className="font-medium">{formatCurrency(currentPriceDetail.baseShippingFee)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Phụ phí trọng lượng:</span>
-                                                <span className="font-medium">{formatCurrency(currentPriceDetail.weightSurcharge)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Phụ phí khoảng cách:</span>
-                                                <span className="font-medium">{formatCurrency(currentPriceDetail.distanceSurcharge)}</span>
-                                            </div>
-                                            {currentPriceDetail.insuranceFee > 0 && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Bảo hiểm:</span>
-                                                    <span className="font-medium">{formatCurrency(currentPriceDetail.insuranceFee)}</span>
-                                                </div>
-                                            )}
-                                            <div className="flex justify-between pt-2 border-t font-bold text-primary-700 text-base">
-                                                <span>Tổng cộng:</span>
-                                                <span>{formatCurrency(currentPriceDetail.totalAmount)}</span>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-4">
-                                        <div className="space-y-2">
-                                            <Label>Thu hộ (COD)</Label>
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                value={formData.codAmount}
-                                                onChange={e => handleInputChange("codAmount", parseFloat(e.target.value))}
-                                                onBlur={() => validateField("codAmount")}
-                                                className={errors.codAmount ? "border-red-500" : ""}
-                                            />
-                                            {errors.codAmount && <p className="text-red-500 text-xs">{errors.codAmount}</p>}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Giá trị khai giá</Label>
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                value={formData.declaredValue}
-                                                onChange={e => handleInputChange("declaredValue", parseFloat(e.target.value))}
-                                                onBlur={() => validateField("declaredValue")}
-                                                className={errors.declaredValue ? "border-red-500" : ""}
-                                            />
-                                            {errors.declaredValue && <p className="text-red-500 text-xs">{errors.declaredValue}</p>}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
-                                        <input
-                                            type="checkbox"
-                                            id="insurance"
-                                            className="h-4 w-4 text-primary-600 rounded border-gray-300"
-                                            checked={formData.addInsurance}
-                                            onChange={e => handleInputChange("addInsurance", e.target.checked)}
-                                        />
-                                        <label htmlFor="insurance" className="text-sm font-medium text-gray-700 cursor-pointer">
-                                            Bảo hiểm hàng hóa (1% giá trị khai giá)
-                                        </label>
-                                    </div>
-                                </div>
-                            )}
-
-                            {currentStep === "CONFIRM" && (
-                                <div className="space-y-6">
-                                    <div className="bg-green-50 p-6 rounded-xl border border-green-100 text-center">
-                                        <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-2" />
-                                        <h3 className="text-xl font-bold text-gray-900">Xác nhận đơn hàng</h3>
-                                        <p className="text-gray-600">Vui lòng kiểm tra kỹ thông tin trước khi tạo</p>
-                                    </div>
-
-                                    {currentPriceDetail && (
-                                        <div className="bg-white p-4 rounded-lg border shadow-sm space-y-3">
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-gray-500">Cước chính:</span>
-                                                <span className="font-medium">{formatCurrency(currentPriceDetail.baseShippingFee)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-gray-500">Phụ phí trọng lượng:</span>
-                                                <span className="font-medium">{formatCurrency(currentPriceDetail.weightSurcharge)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-gray-500">Phụ phí vùng xa:</span>
-                                                <span className="font-medium">{formatCurrency(currentPriceDetail.distanceSurcharge)}</span>
-                                            </div>
-                                            {currentPriceDetail.insuranceFee > 0 && (
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-500">Phí bảo hiểm:</span>
-                                                    <span className="font-medium">{formatCurrency(currentPriceDetail.insuranceFee)}</span>
-                                                </div>
-                                            )}
-                                            <div className="border-t pt-2 flex justify-between font-bold text-lg text-primary-700">
-                                                <span>Tổng cước:</span>
-                                                <span>{formatCurrency(currentPriceDetail.totalAmount)}</span>
-                                            </div>
-                                            <div className="text-xs text-right text-gray-500 mt-1">
-                                                Thời gian giao dự kiến: {currentPriceDetail.estimatedDeliveryDays} ngày
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-4 rounded-lg">
-                                        <div>
-                                            <span className="font-medium block text-gray-500">Người gửi:</span>
-                                            <p>{formData.senderName} - {formData.senderPhone}</p>
-                                        </div>
-                                        <div>
-                                            <span className="font-medium block text-gray-500">Người nhận:</span>
-                                            <p>{formData.receiverName} - {formData.receiverPhone}</p>
-                                        </div>
-                                        <div className="col-span-2">
-                                            <span className="font-medium block text-gray-500">Địa chỉ nhận:</span>
-                                            <p>{formData.receiverAddress}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </Card>
+                                <Button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="w-full bg-green-500 hover:bg-green-600 text-white font-bold h-12 text-lg shadow-lg shadow-green-900/20"
+                                >
+                                    {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
+                                    Tạo Vận Đơn
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
+            </form>
 
-                {/* Sidebar Summary (Visible on all steps) */}
-                <div className="md:col-span-1">
-                    <Card className="sticky top-6">
-                        <div className="p-4 space-y-4">
-                            <h4 className="font-semibold text-gray-900 border-b pb-2">Tóm tắt đơn hàng</h4>
-
-                            <div className="space-y-3 text-sm">
-                                <div>
-                                    <span className="text-gray-500 block text-xs">Dịch vụ</span>
-                                    <span className="font-medium text-primary-700 font-mono">
-                                        {formData.serviceType}
-                                    </span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <span className="text-gray-500 block text-xs">Trọng lượng</span>
-                                        <span className="font-medium">{formData.weightKg} kg</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500 block text-xs">Loại hàng</span>
-                                        <span className="font-medium">{formData.packageType}</span>
-                                    </div>
-                                </div>
-
-                                {currentPriceDetail && (
-                                    <div className="bg-primary-50 p-3 rounded-lg mt-4">
-                                        <span className="text-xs text-primary-600 font-semibold uppercase block mb-1">Tổng phí tạm tính</span>
-                                        <span className="text-xl font-bold text-primary-700">
-                                            {formatCurrency(currentPriceDetail.totalAmount)}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="pt-4 space-y-2">
-                                {currentStep !== "INFO" && (
-                                    <Button
-                                        variant="outline"
-                                        className="w-full"
-                                        onClick={() => {
-                                            if (currentStep === "CONFIRM") setCurrentStep("SERVICE");
-                                            else if (currentStep === "SERVICE") setCurrentStep("PACKAGE");
-                                            else if (currentStep === "PACKAGE") setCurrentStep("INFO");
-                                        }}
-                                    >
-                                        <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại
-                                    </Button>
-                                )}
-
-                                {currentStep !== "CONFIRM" ? (
-                                    <Button className="w-full" onClick={nextStep}>
-                                        Tiếp theo <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        className="w-full bg-green-600 hover:bg-green-700"
-                                        onClick={handleSubmit}
-                                        isLoading={isSubmitting}
-                                    >
-                                        Tạo Đơn Hàng <CheckCircle className="ml-2 h-4 w-4" />
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-            </div>
-
+            {/* Success Dialog */}
             <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <CheckCircle className="h-5 w-5 text-green-500" />
-                            Tạo đơn hàng thành công
+                        <DialogTitle className="text-green-600 flex items-center gap-2">
+                            <CheckCircle2 className="h-6 w-6" /> Tạo thành công
                         </DialogTitle>
                         <DialogDescription>
-                            Mã vận đơn: <span className="font-mono font-semibold text-primary-600">{createdOrder?.trackingNumber}</span>
+                            Mã vận đơn: <span className="font-bold text-black text-lg">{createdOrder?.trackingNumber}</span>
                         </DialogDescription>
                     </DialogHeader>
-
-                    <div className="flex flex-col gap-3 p-6 pt-0">
-                        <Button
-                            onClick={() => createdOrder && handlePrintReceipt(createdOrder)}
-                            className="justify-start gap-2 w-full"
-                            variant="outline"
-                        >
-                            <Receipt className="h-4 w-4" />
-                            In hóa đơn khách hàng
-                        </Button>
-
-                        <Button
-                            onClick={() => createdOrder && handlePrintSticker(createdOrder)}
-                            className="justify-start gap-2 w-full"
-                            variant="outline"
-                        >
-                            <Printer className="h-4 w-4" />
-                            In tem dán kiện hàng
-                        </Button>
-
-                        <div className="flex gap-2 mt-2">
-                            <Button
-                                onClick={() => {
-                                    if (createdOrder) {
-                                        handlePrintReceipt(createdOrder);
-                                        handlePrintSticker(createdOrder);
-                                    }
-                                }}
-                                className="flex-1"
-                            >
-                                In cả hai
+                    <div className="px-6 pb-6 space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button variant="outline" onClick={() => createdOrder && handlePrintReceipt(createdOrder)}>
+                                <Receipt className="mr-2 h-4 w-4" /> In Hóa Đơn
                             </Button>
-
-                            <Button
-                                onClick={() => {
-                                    setShowSuccessDialog(false);
-                                    navigate(`/orders/${createdOrder?.id}`);
-                                }}
-                                variant="secondary"
-                                className="flex-1"
-                            >
-                                Đóng & Xem chi tiết
+                            <Button variant="primary" onClick={() => createdOrder && handlePrintSticker(createdOrder)}>
+                                <Printer className="mr-2 h-4 w-4" /> In Tem Dán
                             </Button>
                         </div>
+                        <Button
+                            variant="secondary"
+                            className="w-full"
+                            onClick={() => {
+                                setShowSuccessDialog(false);
+                                setCreatedOrder(null);
+                                form.reset({
+                                    senderName: getValues("senderName"),
+                                    senderPhone: getValues("senderPhone"),
+                                    senderAddress: getValues("senderAddress"),
+                                    receiverName: "",
+                                    receiverPhone: "",
+                                    receiverAddress: "",
+                                    destinationWardCode: "",
+                                    packageType: "BOX",
+                                    packageDescription: "",
+                                    weightKg: 0.5,
+                                    lengthCm: 10,
+                                    widthCm: 10,
+                                    heightCm: 10,
+                                    serviceType: "STANDARD",
+                                    codAmount: 0,
+                                    declaredValue: 0,
+                                    addInsurance: false
+                                });
+                            }}
+                        >
+                            Đóng & Tạo đơn mới
+                        </Button>
                     </div>
                 </DialogContent>
             </Dialog>

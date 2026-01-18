@@ -53,8 +53,8 @@ export function HubAdminPage() {
     const fetchStats = async () => {
       try {
         // Fetch orders to show activity in the hub
-        const orders = await import("../../services/orderService").then(m => m.orderService.getOrders({ size: 1 })).catch(() => ({ data: { totalElements: 0 } }));
-        setStats(prev => ({ ...prev, orderCount: orders.data.totalElements.toString() }));
+        const orders = await import("../../services/orderService").then(m => m.orderService.getOrders({ size: 1 })).catch(() => ({ totalElements: 0 }));
+        setStats(prev => ({ ...prev, orderCount: (orders as any).totalElements.toString() }));
       } catch (e) { console.error(e); }
     };
     fetchStats();

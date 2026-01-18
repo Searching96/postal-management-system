@@ -75,4 +75,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
     Page<Employee> findByProvinceCodeWithSearch(@Param("provinceCode") String provinceCode,
                                                 @Param("search") String search,
                                                 Pageable pageable);
+    @Query("SELECT e FROM Employee e WHERE LOWER(e.phoneNumber) LIKE LOWER(CONCAT('%', :phone, '%'))")
+    Page<Employee> findByPhoneNumberContaining(@Param("phone") String phone, Pageable pageable);
 }

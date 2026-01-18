@@ -37,7 +37,7 @@ export function BatchListPage() {
             }
         } catch (error) {
             console.error(error);
-            toast.error("Không thể tải danh sách lô hàng");
+            toast.error("Không thể tải danh sách kiện hàng");
         } finally {
             setIsLoading(false);
         }
@@ -51,23 +51,23 @@ export function BatchListPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-start">
                 <PageHeader
-                    title="Quản lý Lô hàng (Batch)"
+                    title="Quản lý Kiện hàng"
                     description="Quản lý việc gom đơn và đóng gói vận chuyển giữa các bưu cục"
                 />
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => toast.info("Tính năng Tự động gom đơn đang phát triển")}>
-                        <Plus className="mr-2 h-4 w-4" /> Tự động gom đơn
+                    <Button variant="outline" onClick={() => toast.info("Tính năng Tự động gom kiện đang phát triển")}>
+                        <Plus className="mr-2 h-4 w-4" /> Tự động gom kiện
                     </Button>
-                    <Button onClick={() => toast.info("Tính năng Tạo lô hàng đang phát triển")}>
-                        <Plus className="mr-2 h-4 w-4" /> Tạo lô hàng mới
+                    <Button onClick={() => toast.info("Tính năng Tạo kiện hàng đang phát triển")}>
+                        <Plus className="mr-2 h-4 w-4" /> Tạo kiện hàng mới
                     </Button>
                 </div>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
-                    <TabsTrigger value="outgoing">Lô hàng gửi đi</TabsTrigger>
-                    <TabsTrigger value="incoming">Lô hàng đang đến</TabsTrigger>
+                    <TabsTrigger value="outgoing">Kiện hàng gửi đi</TabsTrigger>
+                    <TabsTrigger value="incoming">Kiện hàng đang đến</TabsTrigger>
                 </TabsList>
 
                 <div className="mt-6 space-y-4">
@@ -75,7 +75,7 @@ export function BatchListPage() {
                         <div className="relative flex-1 max-w-sm">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Tìm theo mã lô hàng..."
+                                placeholder="Tìm theo mã kiện hàng..."
                                 className="pl-9"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -90,7 +90,7 @@ export function BatchListPage() {
                         <Table>
                             <thead>
                                 <tr>
-                                    <th className="text-left py-3 px-4">Mã lô hàng</th>
+                                    <th className="text-left py-3 px-4">Mã kiện hàng</th>
                                     <th className="text-left py-3 px-4">
                                         {activeTab === "outgoing" ? "Điểm đến" : "Điểm đi"}
                                     </th>
@@ -104,7 +104,7 @@ export function BatchListPage() {
                                 {isLoading ? (
                                     <tr><td colSpan={6} className="text-center py-12 text-gray-500">Đang tải dữ liệu...</td></tr>
                                 ) : batches.length === 0 ? (
-                                    <tr><td colSpan={6} className="text-center py-12 text-gray-500">Không tìm thấy lô hàng nào</td></tr>
+                                    <tr><td colSpan={6} className="text-center py-12 text-gray-500">Không tìm thấy kiện hàng nào</td></tr>
                                 ) : (
                                     batches.map((batch) => (
                                         <tr key={batch.id} className="border-t hover:bg-gray-50 transition-colors">

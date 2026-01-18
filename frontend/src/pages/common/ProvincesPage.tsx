@@ -235,7 +235,7 @@ export function ProvincesPage() {
       loadProvincesData(0, searchTerm);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, loadProvincesData]);
 
   // Load Wards on page/size change
   useEffect(() => {

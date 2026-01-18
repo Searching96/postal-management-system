@@ -49,4 +49,10 @@ public class Office extends BaseEntity {
 
     @Column(name="capacity")
     private Integer capacity;
+
+    @Column(name = "is_accepting_orders", nullable = false)
+    private Boolean isAcceptingOrders = true;
+
+    @Column(name = "working_hours", nullable = false)
+    private String workingHours = "07:00-17:00";
 }

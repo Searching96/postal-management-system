@@ -12,10 +12,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.f3.postalmanagement.dto.request.order.AssignShipperRequest;
 import org.f3.postalmanagement.dto.request.order.CalculatePriceRequest;
+import org.f3.postalmanagement.dto.request.order.AssignDeliveryRequest;
+import org.f3.postalmanagement.dto.request.order.ReceiveIncomingRequest;
 import org.f3.postalmanagement.dto.request.order.CreateOrderRequest;
 import org.f3.postalmanagement.dto.request.order.CustomerCreateOrderRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.order.OrderResponse;
+import org.f3.postalmanagement.dto.response.order.GroupOrderResponse;
 import org.f3.postalmanagement.dto.response.order.PriceCalculationResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.service.IOrderService;
@@ -307,6 +310,82 @@ public class OrderController {
             @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
         OrderResponse response = orderService.markOrderPickedUp(orderId, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{orderId}/accept")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Accept order at the office",
+            description = "Staff marks a walk-in or pickup order as accepted at the office, starting the processing phase.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<OrderResponse> acceptOrder(
+            @Parameter(description = "Order ID") @PathVariable UUID orderId,
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
+    ) {
+        OrderResponse response = orderService.acceptOrder(orderId, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/assign-delivery")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Assign orders to shipper for delivery",
+            description = "Bulk assign orders arrived at destination office to a shipper for last-mile delivery.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<GroupOrderResponse> assignOrdersToShipper(
+            @Valid @RequestBody AssignDeliveryRequest request,
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
+    ) {
+        GroupOrderResponse response = orderService.assignOrdersToShipper(request, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/receive-incoming")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Acknowledge receipt of incoming orders",
+            description = "Staff confirms that orders in transit to this office have arrived.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<GroupOrderResponse> receiveOrders(
+            @Valid @RequestBody ReceiveIncomingRequest request,
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
+    ) {
+        GroupOrderResponse response = orderService.receiveOrders(request, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{orderId}/deliver")
+    @PreAuthorize("hasRole('SHIPPER')")
+    @Operation(
+            summary = "Mark order as delivered",
+            description = "Shipper confirms successful delivery to the recipient.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<OrderResponse> markOrderDelivered(
+            @Parameter(description = "Order ID") @PathVariable UUID orderId,
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
+    ) {
+        OrderResponse response = orderService.markOrderDelivered(orderId, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{orderId}/fail-delivery")
+    @PreAuthorize("hasRole('SHIPPER')")
+    @Operation(
+            summary = "Mark order as delivery failed",
+            description = "Shipper records a failed delivery attempt with a reason.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<OrderResponse> markOrderDeliveryFailed(
+            @Parameter(description = "Order ID") @PathVariable UUID orderId,
+            @RequestParam String note,
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
+    ) {
+        OrderResponse response = orderService.markOrderDeliveryFailed(orderId, note, currentAccount);
         return ResponseEntity.ok(response);
     }
 }

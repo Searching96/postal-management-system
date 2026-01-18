@@ -9,14 +9,17 @@ import org.f3.postalmanagement.dto.response.administrative.ProvinceResponse;
 import org.f3.postalmanagement.dto.response.administrative.RegionResponse;
 import org.f3.postalmanagement.dto.response.administrative.WardResponse;
 import org.f3.postalmanagement.dto.response.office.OfficeResponse;
+import org.f3.postalmanagement.dto.response.route.RouteResponse;
 import org.f3.postalmanagement.entity.ApiResponse;
 import org.f3.postalmanagement.service.IAdministrativeService;
+import org.f3.postalmanagement.service.IRouteService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/administrative")
@@ -25,6 +28,7 @@ import java.util.List;
 public class AdministrativeController {
 
     private final IAdministrativeService administrativeService;
+    private final IRouteService routeService;
 
     @GetMapping("/regions")
     @Operation(
@@ -195,4 +199,28 @@ public class AdministrativeController {
                         .build()
         );
     }
+
+    @GetMapping("/route/calculate")
+    @Operation(
+            summary = "Calculate package transfer route",
+            description = "Calculate the predefined transfer route for a package from origin office to destination ward. " +
+                    "Returns ordered list of stops including hubs and warehouses."
+    )
+    public ResponseEntity<ApiResponse<RouteResponse>> calculateRoute(
+            @Parameter(description = "Origin office UUID", required = true)
+            @RequestParam UUID originOfficeId,
+            @Parameter(description = "Destination ward code", required = true)
+            @RequestParam String destinationWardCode
+    ) {
+        RouteResponse route = routeService.calculatePackageRoute(originOfficeId, destinationWardCode);
+        
+        return ResponseEntity.ok(
+                ApiResponse.<RouteResponse>builder()
+                        .success(true)
+                        .message("Route calculated successfully")
+                        .data(route)
+                        .build()
+        );
+    }
 }
+
