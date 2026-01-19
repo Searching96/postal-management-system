@@ -71,72 +71,85 @@ VEHICLES = {
 # -----------------------------
 # 2. BUNDLE SPECIFICATIONS  
 # -----------------------------
-# Thiết kế bundle để tối ưu sắp xếp cho cả 3 loại xe:
+# NGUYÊN TẮC THIẾT KẾ BUNDLE:
+# =========================
+# Bundle được đóng 1 LẦN DUY NHẤT tại điểm tập kết (Ward level)
+# và giữ nguyên xuyên suốt quá trình vận chuyển qua các cấp.
 #
-# Nguyên tắc thiết kế:
-#   - SMALL: 600x400 (tiêu chuẩn Euro pallet fraction 1/4)
-#   - MEDIUM: 800x600 (tiêu chuẩn Euro pallet fraction 1/2)
-#   - LARGE: 1200x800 (tiêu chuẩn Euro pallet đầy đủ)
+# CONSTRAINT QUAN TRỌNG:
+#   - Bundle phải vừa với xe NHỎ NHẤT (xe tập kết: 1400mm height)
+#   - Max bundle total height = bundle_height + pallet_height < 1400mm
+#   - Floor dimensions phải khớp tốt với CẢ 3 loại xe
 #
-# Phân tích khả năng xếp theo floor space:
-#   - Xe tập kết (2700x1500): 
-#       + SMALL (600x400): 4x3 = 12 bundles/layer
-#       + MEDIUM (800x600): 3x2 = 6 bundles/layer
-#       + LARGE (1200x800): 2x1 = 2 bundles/layer
+# THIẾT KẾ FLOOR (L x W) theo Euro pallet standards:
+#   - SMALL: 600x400 (1/4 Euro pallet) - cho bưu phẩm nhỏ
+#   - MEDIUM: 800x500 (tối ưu cho 3 xe) - cho bưu phẩm trung bình
+#   - LARGE: 1000x800 (điều chỉnh từ Euro pallet) - cho bưu phẩm lớn
 #
-#   - Xe liên tỉnh (4200x1900):
-#       + SMALL (600x400): 7x4 = 28 bundles/layer
-#       + MEDIUM (800x600): 5x3 = 15 bundles/layer  
-#       + LARGE (1200x800): 3x2 = 6 bundles/layer
+# THIẾT KẾ HEIGHT (đảm bảo total < 1400mm xe nhỏ nhất):
+#   - SMALL: 550mm + 100mm pallet = 650mm → 2 layers trong mọi xe
+#   - MEDIUM: 600mm + 100mm pallet = 700mm → 2 layers trong xe nhỏ
+#   - LARGE: 650mm + 100mm pallet = 750mm → 1-2 layers tùy xe
 #
-#   - Xe liên miền (6200x2400):
-#       + SMALL (600x400): 10x6 = 60 bundles/layer
-#       + MEDIUM (800x600): 7x4 = 28 bundles/layer
-#       + LARGE (1200x800): 5x3 = 15 bundles/layer
+# PHÂN TÍCH KHẢ NĂNG XẾP:
+#   Xe tập kết (2700x1500x1400):
+#       + SMALL (600x400x650): 4x3=12/layer × 2 layers = 24 bundles
+#       + MEDIUM (800x500x700): 3x3=9/layer × 2 layers = 18 bundles
+#       + LARGE (1000x800x750): 2x1=2/layer × 1 layer = 2 bundles
+#
+#   Xe liên tỉnh (4200x1900x1800):
+#       + SMALL: 7x4=28/layer × 2 layers = 56 bundles
+#       + MEDIUM: 5x3=15/layer × 2 layers = 30 bundles
+#       + LARGE: 4x2=8/layer × 2 layers = 16 bundles
+#
+#   Xe liên miền (6200x2400x2400):
+#       + SMALL: 10x6=60/layer × 3 layers = 180 bundles
+#       + MEDIUM: 7x4=28/layer × 3 layers = 84 bundles
+#       + LARGE: 6x3=18/layer × 3 layers = 54 bundles
 
 BUNDLES = {
-    # Bundle nhỏ - cho hàng lẻ, bưu kiện nhỏ
-    # Kích thước dựa trên 1/4 Euro pallet
+    # Bundle nhỏ - cho thư từ, phụ kiện nhỏ, mỹ phẩm
+    # Floor: 1/4 Euro pallet, Height tối ưu cho stacking
     "SMALL": {
         "name": "Bundle Nhỏ (Small Parcel Bundle)",
-        "description": "Gom các bưu kiện nhỏ, hàng lẻ",
+        "description": "Gom bưu phẩm XS, S - thư từ, phụ kiện nhỏ",
         "dimensions": {
             "length": 600,    # mm
             "width": 400,     # mm
-            "height": 500,    # mm - chiều cao tối đa cho phép
+            "height": 550,    # mm - cho phép 2 layers trong mọi xe
         },
-        "max_weight_kg": 50,
-        "pallet_height": 100,  # Chiều cao pallet/đế bundle
+        "max_weight_kg": 60,
+        "pallet_height": 100,  # Total: 650mm
         "color": "#FFC107"     # Amber
     },
     
-    # Bundle trung - cho hàng tiêu chuẩn
-    # Kích thước dựa trên 1/2 Euro pallet
+    # Bundle trung - cho quần áo, giày dép, đồ gia dụng nhỏ
+    # Floor tối ưu: 800x500 khớp tốt với cả 3 xe
     "MEDIUM": {
         "name": "Bundle Trung (Standard Bundle)",
-        "description": "Gom các kiện hàng tiêu chuẩn",
+        "description": "Gom bưu phẩm M, L - quần áo, gia dụng nhỏ",
         "dimensions": {
             "length": 800,    # mm
-            "width": 600,     # mm
-            "height": 700,    # mm
+            "width": 500,     # mm - điều chỉnh từ 600 để khớp xe tốt hơn
+            "height": 600,    # mm
         },
-        "max_weight_kg": 150,
-        "pallet_height": 120,
+        "max_weight_kg": 120,
+        "pallet_height": 100,  # Total: 700mm
         "color": "#FF9800"     # Orange
     },
     
-    # Bundle lớn - cho hàng cồng kềnh, hàng nặng
-    # Kích thước dựa trên Euro pallet tiêu chuẩn (1200x800)
+    # Bundle lớn - cho điện tử, nội thất nhỏ
+    # Floor: Điều chỉnh để tối ưu cho cả 3 xe
     "LARGE": {
         "name": "Bundle Lớn (Bulk Bundle)",
-        "description": "Gom hàng cồng kềnh, kiện lớn",
+        "description": "Gom bưu phẩm XL, XXL - điện tử, nội thất",
         "dimensions": {
-            "length": 1200,   # mm
+            "length": 1000,   # mm - giảm từ 1200 để vừa xe nhỏ
             "width": 800,     # mm
-            "height": 1000,   # mm
+            "height": 650,    # mm - giảm để đảm bảo vừa xe nhỏ
         },
-        "max_weight_kg": 400,
-        "pallet_height": 150,
+        "max_weight_kg": 300,
+        "pallet_height": 100,  # Total: 750mm
         "color": "#FF5722"     # Deep Orange
     }
 }
@@ -145,36 +158,47 @@ BUNDLES = {
 # 3. PARCEL SIZE CATEGORIES
 # -----------------------------
 # Phân loại kích thước bưu phẩm để tự động chọn bundle phù hợp
+# Kích thước parcel phải <= bundle dimensions để đảm bảo fit
+#
+# MAPPING: Parcel Size → Bundle Type
+#   XS, S → SMALL bundle (600x400x550)
+#   M, L → MEDIUM bundle (800x500x600)
+#   XL, XXL → LARGE bundle (1000x800x650)
 
 PARCEL_SIZES = {
-    "XS": {  # Extra Small - Thư từ, tài liệu
-        "max_dimensions": (300, 200, 100),
-        "max_weight_kg": 2,
+    # Parcels phải fit vào bundle tương ứng
+    # SMALL bundle: 600x400x550 → parcels XS, S
+    # MEDIUM bundle: 800x500x600 → parcels M, L  
+    # LARGE bundle: 1000x800x650 → parcels XL, XXL
+    
+    "XS": {  # Extra Small - Thư từ, tài liệu, phong bì
+        "max_dimensions": (250, 180, 50),   # Fit nhiều trong SMALL bundle
+        "max_weight_kg": 1,
         "preferred_bundle": "SMALL"
     },
-    "S": {   # Small - Điện thoại, phụ kiện nhỏ
-        "max_dimensions": (400, 300, 200),
-        "max_weight_kg": 5,
+    "S": {   # Small - Điện thoại, mỹ phẩm, phụ kiện nhỏ
+        "max_dimensions": (350, 250, 150),  # ~8-12 items/SMALL bundle
+        "max_weight_kg": 3,
         "preferred_bundle": "SMALL"
     },
-    "M": {   # Medium - Giày dép, quần áo
-        "max_dimensions": (500, 400, 300),
-        "max_weight_kg": 15,
+    "M": {   # Medium - Giày dép, quần áo, sách
+        "max_dimensions": (450, 350, 250),  # ~4-6 items/MEDIUM bundle
+        "max_weight_kg": 10,
         "preferred_bundle": "MEDIUM"
     },
-    "L": {   # Large - Đồ gia dụng nhỏ
-        "max_dimensions": (600, 500, 400),
-        "max_weight_kg": 30,
+    "L": {   # Large - Đồ gia dụng nhỏ, túi xách
+        "max_dimensions": (550, 400, 350),  # ~2-4 items/MEDIUM bundle
+        "max_weight_kg": 20,
         "preferred_bundle": "MEDIUM"
     },
-    "XL": {  # Extra Large - Đồ điện tử, nội thất nhỏ
-        "max_dimensions": (800, 600, 500),
-        "max_weight_kg": 50,
+    "XL": {  # Extra Large - Đồ điện tử, monitor, lò vi sóng
+        "max_dimensions": (700, 550, 450),  # ~2-3 items/LARGE bundle
+        "max_weight_kg": 35,
         "preferred_bundle": "LARGE"
     },
-    "XXL": { # Bulky - Nội thất, đồ cồng kềnh
-        "max_dimensions": (1000, 800, 600),
-        "max_weight_kg": 100,
+    "XXL": { # Bulky - Tivi nhỏ, máy in, đồ nội thất nhỏ
+        "max_dimensions": (900, 700, 550),  # 1-2 items/LARGE bundle
+        "max_weight_kg": 60,
         "preferred_bundle": "LARGE"
     }
 }
@@ -633,10 +657,14 @@ def run_packing(items: List[Box], vehicle_type: str = "INTER_REGION", auto_bundl
         b.packer.occupied_volume = item.volume
         bundles.append(b)
     
-    # Sắp xếp items theo diện tích (lớn trước)
-    loose_items.sort(key=lambda x: x.l * x.w, reverse=True)
+    # Sắp xếp items theo diện tích (lớn trước) - giúp bin packing hiệu quả hơn
+    loose_items.sort(key=lambda x: x.l * x.w * x.h, reverse=True)
     
-    # Gom items vào bundles
+    # TARGET_FILL_RATE: Khi bundle đạt tỷ lệ này, tạo bundle mới
+    # Điều này giúp tránh việc cố nhồi quá nhiều vào 1 bundle (gây fragmentation)
+    TARGET_FILL_RATE = 0.65  # 65% - realistic target
+    
+    # Gom items vào bundles với chiến lược mới
     for item in loose_items:
         # Xác định bundle type phù hợp
         parcel_size = classify_parcel(item.l, item.w, item.h)
@@ -644,20 +672,36 @@ def run_packing(items: List[Box], vehicle_type: str = "INTER_REGION", auto_bundl
         
         placed = False
         
-        # Thử xếp vào bundle cùng loại đã có
-        for b in bundles:
-            if b.bundle_type == preferred_bundle:
-                if b.add_item(item):
-                    placed = True
-                    break
+        # Thử xếp vào bundle cùng loại đã có (ưu tiên bundle chưa đầy)
+        candidate_bundles = [b for b in bundles if b.bundle_type == preferred_bundle and b.fill_rate < TARGET_FILL_RATE]
+        candidate_bundles.sort(key=lambda b: b.fill_rate, reverse=True)  # Ưu tiên bundle gần đầy
         
-        # Nếu không xếp được, thử các bundle loại khác
+        for b in candidate_bundles:
+            if b.add_item(item):
+                placed = True
+                break
+        
+        # Nếu không xếp được vào bundle ưu tiên, thử các bundle khác cùng type
         if not placed:
             for b in bundles:
-                if b.bundle_type in ["SMALL", "MEDIUM", "LARGE"]:
+                if b.bundle_type == preferred_bundle and b.fill_rate < 0.95:  # Chừa 5% margin
                     if b.add_item(item):
                         placed = True
                         break
+        
+        # Thử xếp vào bundle loại khác (lớn hơn)
+        if not placed:
+            bundle_order = ["SMALL", "MEDIUM", "LARGE"]
+            start_idx = bundle_order.index(preferred_bundle) if preferred_bundle in bundle_order else 0
+            
+            for bt in bundle_order[start_idx:]:
+                for b in bundles:
+                    if b.bundle_type == bt and b.fill_rate < 0.95:
+                        if b.add_item(item):
+                            placed = True
+                            break
+                if placed:
+                    break
         
         # Tạo bundle mới nếu cần
         if not placed:
@@ -683,11 +727,18 @@ def run_packing(items: List[Box], vehicle_type: str = "INTER_REGION", auto_bundl
     for bt, count in bundle_counters.items():
         actual = len([b for b in bundles if b.bundle_type == bt])
         if actual > 0:
-            print(f"      - {bt}: {actual} bundles")
+            avg_fill = sum(b.fill_rate for b in bundles if b.bundle_type == bt) / actual * 100
+            print(f"      - {bt}: {actual} bundles (avg fill: {avg_fill:.1f}%)")
     oversized_count = len([b for b in bundles if b.bundle_type == "OVERSIZED"])
     if oversized_count > 0:
         print(f"      - OVERSIZED: {oversized_count} bundles")
     print(f"   => Total: {len(bundles)} bundles created")
+    
+    # Tính bundle fill rate tổng
+    total_items_volume = sum(item.volume for item in items)
+    total_bundle_capacity = sum(b.dim_l * b.dim_w * b.dim_h for b in bundles)
+    avg_bundle_fill = (total_items_volume / total_bundle_capacity * 100) if total_bundle_capacity > 0 else 0
+    print(f"   📈 Average Bundle Fill Rate: {avg_bundle_fill:.1f}%")
 
     print(f"\n🚛 PHASE 2: Loading bundles into {vehicle['name']}...")
     container_packer = PackerEngine(container)
@@ -725,11 +776,23 @@ def run_packing(items: List[Box], vehicle_type: str = "INTER_REGION", auto_bundl
     # Tính các metrics
     container_volume = container.volume
     container_floor = container.l * container.w
-    loaded_bundles_volume = sum(container_packer.occupied_volume for _ in [0])  # Volume của bundles (box)
-    loaded_bundles_floor = sum(p.box.l * p.box.w for p in container_packer.placements)
-    volume_efficiency = (packed_volume / container_volume) * 100  # Volume items thực
-    volume_efficiency_bundle = (container_packer.occupied_volume / container_volume) * 100  # Volume bundles
-    floor_efficiency = (loaded_bundles_floor / container_floor) * 100
+    
+    # Volume của items thực tế đã load
+    loaded_items_volume = sum(
+        next(b for b in bundles if b.id == p.box.id).current_volume 
+        for p in container_packer.placements
+    )
+    
+    # Volume của bundles (boxes) đã load
+    loaded_bundles_volume = container_packer.occupied_volume
+    
+    # Floor utilization: Chỉ tính layer đầu tiên (z=0)
+    floor_placements = [p for p in container_packer.placements if p.z == 0]
+    floor_area_used = sum(p.box.l * p.box.w for p in floor_placements)
+    
+    volume_efficiency = (loaded_items_volume / container_volume) * 100  # Volume items thực
+    volume_efficiency_bundle = (loaded_bundles_volume / container_volume) * 100  # Volume bundles
+    floor_efficiency = min((floor_area_used / container_floor) * 100, 100)  # Cap at 100%
     weight_utilization = (total_weight_kg / vehicle['capacity_kg']) * 100
     
     # Báo cáo cuối cùng
@@ -753,10 +816,11 @@ def run_packing(items: List[Box], vehicle_type: str = "INTER_REGION", auto_bundl
             print(f"   {bt:12s}: {stats['count']:3d} bundles, Volume: {stats['volume']/1000000:8.2f} L")
     print()
     print(f"✅ Efficiency Metrics:")
-    print(f"   Volume (Items):   {volume_efficiency:6.2f}% - thể tích thực tế items")
+    print(f"   Volume (Items):   {volume_efficiency:6.2f}% - thể tích thực tế items trong xe")
     print(f"   Volume (Bundles): {volume_efficiency_bundle:6.2f}% - thể tích bundles (bao gồm khoảng trống)")
-    print(f"   Floor Space:      {floor_efficiency:6.2f}% - diện tích sàn sử dụng")
+    print(f"   Floor Space:      {floor_efficiency:6.2f}% - diện tích sàn layer đầu")
     print(f"   Weight:           {weight_utilization:6.2f}% - {total_weight_kg:.1f}/{vehicle['capacity_kg']} kg")
+    print(f"   Bundle Fill Rate: {avg_bundle_fill:6.2f}% - hiệu quả sử dụng không gian bundle")
     print("="*70)
     
     # Tạo báo cáo HTML
@@ -767,94 +831,158 @@ def run_packing(items: List[Box], vehicle_type: str = "INTER_REGION", auto_bundl
         "bundles": bundles,
         "loaded_count": loaded_count,
         "failed_bundles": failed_bundles,
-        "efficiency": packed_volume / container.volume * 100,
+        "efficiency": volume_efficiency,
+        "bundle_fill_rate": avg_bundle_fill,
+        "floor_efficiency": floor_efficiency,
         "container_placements": container_packer.placements
     }
+
+def generate_realistic_parcels(count: int, seed: int = 42) -> List[Box]:
+    """
+    Tạo dataset bưu phẩm thực tế với kích thước phù hợp để fill bundles tốt.
+    
+    Nguyên tắc:
+    - Parcels phải có kích thước sát với fraction của bundle dimensions
+    - Để đạt 70%+ fill rate, parcels cần "khớp" với nhau khi xếp
+    - Phân bố kích thước theo thực tế ngành bưu chính VN
+    """
+    random.seed(seed)
+    items = []
+    
+    # Phân bố theo thực tế:
+    # - 25% XS: Thư từ, tài liệu (rất mỏng, dễ xếp chồng)
+    # - 30% S: Điện thoại, phụ kiện, sách
+    # - 25% M: Giày dép, quần áo, hộp trung
+    # - 12% L: Đồ gia dụng nhỏ
+    # - 6% XL: Đồ điện tử lớn
+    # - 2% XXL: Nội thất, hàng cồng kềnh
+    
+    dist = {
+        'XS': int(count * 0.25),
+        'S': int(count * 0.30),
+        'M': int(count * 0.25),
+        'L': int(count * 0.12),
+        'XL': int(count * 0.06),
+        'XXL': int(count * 0.02)
+    }
+    
+    # Điều chỉnh để tổng = count
+    total = sum(dist.values())
+    dist['S'] += count - total
+    
+    colors = {
+        'XS': '#E3F2FD', 'S': '#BBDEFB', 'M': '#90CAF9',
+        'L': '#64B5F6', 'XL': '#42A5F5', 'XXL': '#1E88E5'
+    }
+    
+    # XS parcels - Thư từ, tài liệu, envelopes
+    # Kích thước: 150-300 x 100-200 x 10-50mm (rất mỏng!)
+    for _ in range(dist['XS']):
+        l = random.choice([150, 200, 250, 300])  # Chuẩn khổ giấy
+        w = random.choice([100, 150, 200])
+        h = random.randint(10, 50)  # Rất mỏng - nhiều cái xếp chồng được
+        items.append(Box(l, w, h, id=len(items), color=colors['XS']))
+    
+    # S parcels - Điện thoại, phụ kiện nhỏ, sách
+    # Kích thước: khớp với 1/4 hoặc 1/6 bundle SMALL
+    for _ in range(dist['S']):
+        # 600/2=300, 600/3=200; 400/2=200, 400/4=100
+        l = random.choice([150, 200, 300])
+        w = random.choice([100, 133, 200])
+        h = random.choice([80, 100, 125, 166])  # 500/6, 500/5, 500/4, 500/3
+        items.append(Box(l, w, h, id=len(items), color=colors['S']))
+    
+    # M parcels - Giày dép, quần áo
+    # Kích thước: khớp với 1/2 hoặc 1/4 bundle SMALL hoặc MEDIUM
+    for _ in range(dist['M']):
+        l = random.choice([200, 300, 400])  # 800/4, 800/3~, 800/2
+        w = random.choice([150, 200, 300])  # 600/4, 600/3, 600/2
+        h = random.choice([100, 140, 175, 233])  # 700/7, 700/5, 700/4, 700/3
+        items.append(Box(l, w, h, id=len(items), color=colors['M']))
+    
+    # L parcels - Đồ gia dụng nhỏ
+    # Kích thước: khớp với 1/2 bundle MEDIUM
+    for _ in range(dist['L']):
+        l = random.choice([400, 500, 600])  # 1200/3, ~, 1200/2
+        w = random.choice([300, 400])  # 800/2~, 800/2
+        h = random.choice([200, 250, 333])  # 1000/5, 1000/4, 1000/3
+        items.append(Box(l, w, h, id=len(items), color=colors['L']))
+    
+    # XL parcels - Đồ điện tử lớn (TV box, máy giặt mini)
+    # Kích thước: gần bằng 1 bundle MEDIUM hoặc 1/2 LARGE
+    for _ in range(dist['XL']):
+        l = random.choice([600, 800])
+        w = random.choice([400, 500, 600])
+        h = random.choice([300, 400, 500])
+        items.append(Box(l, w, h, id=len(items), color=colors['XL']))
+    
+    # XXL parcels - Nội thất, hàng cồng kềnh
+    # Kích thước: gần bằng 1 bundle LARGE
+    for _ in range(dist['XXL']):
+        l = random.choice([800, 1000, 1200])
+        w = random.choice([600, 800])
+        h = random.choice([500, 700, 800])
+        items.append(Box(l, w, h, id=len(items), color=colors['XXL']))
+    
+    random.shuffle(items)  # Xáo trộn để thực tế hơn
+    
+    print(f"📦 Total Parcels Generated: {len(items)}")
+    for size, cnt in dist.items():
+        desc = {'XS': 'thư từ', 'S': 'phụ kiện', 'M': 'quần áo', 
+                'L': 'gia dụng', 'XL': 'điện tử', 'XXL': 'nội thất'}
+        print(f"   - {size} ({desc[size]}): {cnt}")
+    
+    return items
+
 
 if __name__ == "__main__":
     # In phân tích vehicle-bundle trước
     print_vehicle_bundle_analysis()
     
-    # Tạo dataset mô phỏng bưu phẩm thực tế
-    items = []
-    colors = ['#EF5350', '#AB47BC', '#5C6BC0', '#29B6F6', '#66BB6A', '#FFA726', '#8D6E63']
-    
     print("\n🔄 Generating Realistic Postal Parcel Dataset...")
     
-    # 1. XS parcels - Thư từ, tài liệu (30%)
-    for i in range(180):
-        l = random.randint(15, 30) * 10  # 150-300mm
-        w = random.randint(10, 20) * 10  # 100-200mm
-        h = random.randint(2, 10) * 10   # 20-100mm
-        items.append(Box(l, w, h, id=len(items), color='#E3F2FD'))
+    # Tạo dataset với số lượng khác nhau cho từng loại xe
+    # Xe tập kết: ~100-150 parcels (thu gom từ ward nhỏ)
+    # Xe liên tỉnh: ~300-500 parcels (gom từ nhiều ward)
+    # Xe liên miền: ~800-1500 parcels (gom từ nhiều province)
     
-    # 2. S parcels - Điện thoại, phụ kiện (25%)
-    for i in range(150):
-        l = random.randint(25, 40) * 10  # 250-400mm
-        w = random.randint(15, 30) * 10  # 150-300mm
-        h = random.randint(10, 20) * 10  # 100-200mm
-        items.append(Box(l, w, h, id=len(items), color='#BBDEFB'))
+    all_items = generate_realistic_parcels(1500, seed=42)
     
-    # 3. M parcels - Giày dép, quần áo (20%)
-    for i in range(120):
-        l = random.randint(35, 50) * 10  # 350-500mm
-        w = random.randint(25, 40) * 10  # 250-400mm
-        h = random.randint(15, 30) * 10  # 150-300mm
-        items.append(Box(l, w, h, id=len(items), color='#90CAF9'))
-    
-    # 4. L parcels - Đồ gia dụng nhỏ (15%)
-    for i in range(90):
-        l = random.randint(45, 60) * 10  # 450-600mm
-        w = random.randint(35, 50) * 10  # 350-500mm
-        h = random.randint(25, 40) * 10  # 250-400mm
-        items.append(Box(l, w, h, id=len(items), color='#64B5F6'))
-    
-    # 5. XL parcels - Đồ điện tử (7%)
-    for i in range(42):
-        l = random.randint(55, 80) * 10  # 550-800mm
-        w = random.randint(45, 60) * 10  # 450-600mm
-        h = random.randint(35, 50) * 10  # 350-500mm
-        items.append(Box(l, w, h, id=len(items), color='#42A5F5'))
-    
-    # 6. XXL parcels - Nội thất nhỏ (3%)
-    for i in range(18):
-        l = random.randint(70, 100) * 10  # 700-1000mm
-        w = random.randint(50, 80) * 10   # 500-800mm
-        h = random.randint(40, 60) * 10   # 400-600mm
-        items.append(Box(l, w, h, id=len(items), color='#1E88E5'))
-    
-    print(f"📦 Total Parcels Generated: {len(items)}")
-    print(f"   - XS (thư từ): 180")
-    print(f"   - S (phụ kiện): 150")
-    print(f"   - M (quần áo): 120")
-    print(f"   - L (gia dụng): 90")
-    print(f"   - XL (điện tử): 42")
-    print(f"   - XXL (nội thất): 18")
-    
-    # Test cho 3 loại xe với datasets phù hợp
+    # Test cho 3 loại xe với datasets phù hợp quy mô
     print("\n" + "="*70)
     print("🚛 TEST 1: COLLECTION TRUCK - Xe tập kết (Ward → District Hub)")
     print("="*70)
-    print("Dataset: 80 parcels (mostly XS, S, M - hàng nhỏ)\n")
-    result1 = run_packing(items[:80], vehicle_type="COLLECTION")
+    print("Scenario: Thu gom 120 bưu phẩm từ 1 ward\n")
+    result1 = run_packing(all_items[:120], vehicle_type="COLLECTION")
     
     print("\n" + "="*70)
     print("🚛 TEST 2: INTER-DISTRICT TRUCK - Xe liên tỉnh (District → Province Hub)")
     print("="*70)
-    print("Dataset: 250 parcels (mixed sizes)\n")
-    result2 = run_packing(items[:250], vehicle_type="INTER_DISTRICT")
+    print("Scenario: Vận chuyển 400 bưu phẩm từ district hub\n")
+    result2 = run_packing(all_items[:400], vehicle_type="INTER_DISTRICT")
     
     print("\n" + "="*70)
     print("🚛 TEST 3: INTER-REGION TRUCK - Xe liên miền (Province → Regional Hub)")
     print("="*70)
-    print("Dataset: 600 parcels (all sizes)\n")
-    result3 = run_packing(items, vehicle_type="INTER_REGION")
+    print("Scenario: Vận chuyển 1200 bưu phẩm từ province hub\n")
+    result3 = run_packing(all_items[:1200], vehicle_type="INTER_REGION")
     
     # Tóm tắt so sánh
     print("\n" + "="*70)
     print("📊 COMPARISON SUMMARY")
     print("="*70)
-    print(f"Xe tập kết:    {result1['loaded_count']:3d} bundles, {result1['efficiency']:5.1f}% volume efficiency")
-    print(f"Xe liên tỉnh:  {result2['loaded_count']:3d} bundles, {result2['efficiency']:5.1f}% volume efficiency")
-    print(f"Xe liên miền:  {result3['loaded_count']:3d} bundles, {result3['efficiency']:5.1f}% volume efficiency")
+    print(f"{'Vehicle':<20} {'Bundles':>10} {'Loaded':>10} {'Volume Eff.':>12} {'Bundle Fill':>12}")
+    print("-"*70)
+    
+    for name, result in [("Xe tập kết", result1), ("Xe liên tỉnh", result2), ("Xe liên miền", result3)]:
+        bundles = result['bundles']
+        loaded = result['loaded_count']
+        eff = result['efficiency']
+        
+        # Tính average bundle fill rate
+        total_fill = sum(b.fill_rate for b in bundles if b.fill_rate > 0)
+        avg_fill = (total_fill / len(bundles) * 100) if bundles else 0
+        
+        print(f"{name:<20} {len(bundles):>10} {loaded:>10} {eff:>11.1f}% {avg_fill:>11.1f}%")
+    
     print("="*70)
