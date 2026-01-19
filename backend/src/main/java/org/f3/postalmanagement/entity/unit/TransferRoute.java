@@ -8,12 +8,20 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 /**
- * Represents a predefined transfer route between two HUBs.
- * Used to determine the path packages travel from source to destination hub.
+ * Represents a transfer route in the hierarchy.
+ * Can be:
+ * 1. PROVINCE_TO_HUB: From province warehouse to hub (new)
+ * 2. HUB_TO_HUB: Between hubs (existing)
+ *
+ * Example:
+ * - PROVINCE_TO_HUB: DA NANG Warehouse → DA NANG HUB
+ * - HUB_TO_HUB: DA NANG HUB → HO CHI MINH HUB
  */
 @Entity
-@Table(name = "transfer_routes", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"from_hub_id", "to_hub_id"})
+@Table(name = "transfer_routes", indexes = {
+    @Index(name = "idx_transfer_from_to", columnList = "from_hub_id, to_hub_id"),
+    @Index(name = "idx_transfer_type", columnList = "route_type"),
+    @Index(name = "idx_transfer_province", columnList = "province_warehouse_id")
 })
 @Getter
 @Setter
@@ -22,8 +30,17 @@ import org.hibernate.annotations.SQLRestriction;
 public class TransferRoute extends BaseEntity {
 
     /**
-     * Source hub for this route segment.
-     * Must be an office with OfficeType.HUB
+     * Type of route: PROVINCE_TO_HUB or HUB_TO_HUB
+     * Default: HUB_TO_HUB for backward compatibility
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "route_type", nullable = false)
+    private org.f3.postalmanagement.enums.RouteType routeType = org.f3.postalmanagement.enums.RouteType.HUB_TO_HUB;
+
+    /**
+     * Source hub/warehouse for this route segment.
+     * For PROVINCE_TO_HUB: PROVINCE_WAREHOUSE office
+     * For HUB_TO_HUB: HUB office
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "from_hub_id", nullable = false)
@@ -38,7 +55,15 @@ public class TransferRoute extends BaseEntity {
     private Office toHub;
 
     /**
-     * Distance between hubs in kilometers (optional, for optimization).
+     * For PROVINCE_TO_HUB routes: the province warehouse this route serves.
+     * For HUB_TO_HUB routes: null
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "province_warehouse_id")
+    private Office provinceWarehouse;
+
+    /**
+     * Distance between hubs/warehouses in kilometers (optional, for optimization).
      */
     @Column(name = "distance_km")
     private Integer distanceKm;
@@ -60,4 +85,18 @@ public class TransferRoute extends BaseEntity {
      */
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    /**
+     * Helper: Check if this is a province-to-hub route.
+     */
+    public boolean isProvinceToHubRoute() {
+        return routeType == org.f3.postalmanagement.enums.RouteType.PROVINCE_TO_HUB;
+    }
+
+    /**
+     * Helper: Check if this is a hub-to-hub route.
+     */
+    public boolean isHubToHubRoute() {
+        return routeType == org.f3.postalmanagement.enums.RouteType.HUB_TO_HUB;
+    }
 }

@@ -257,10 +257,35 @@ public class Order extends BaseEntity {
 
     /**
      * The batch package this order belongs to (for consolidated shipping)
+     * Note: Deprecated in favor of consolidation_route_id (kept for backward compatibility)
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "batch_package_id")
     private BatchPackage batchPackage;
+
+    // ==================== HIERARCHICAL CONSOLIDATION ====================
+
+    /**
+     * The consolidation route this order is assigned to (WARD → PROVINCE level).
+     * Fixed assignment at order creation time based on origin ward.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_consolidation_route_id")
+    private org.f3.postalmanagement.entity.unit.ConsolidationRoute assignedConsolidationRoute;
+
+    /**
+     * When was this order consolidated at the province warehouse?
+     * Set when order moves from consolidation route to province warehouse.
+     */
+    @Column(name = "consolidated_at")
+    private LocalDateTime consolidatedAt;
+
+    /**
+     * When was this order transferred from province to hub?
+     * Set when order moves from province warehouse to hub via transfer route.
+     */
+    @Column(name = "transferred_to_hub_at")
+    private LocalDateTime transferredToHubAt;
 
     // ==================== NOTES ====================
 

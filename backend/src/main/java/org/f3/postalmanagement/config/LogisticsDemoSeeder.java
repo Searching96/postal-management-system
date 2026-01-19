@@ -217,6 +217,7 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         
         return officeRepository.findByOfficeName(name).orElseGet(() -> {
             Office hub = new Office();
+            hub.setOfficeCode("HUB-DEMO-" + provinceCode);
             hub.setOfficeName(name);
             hub.setOfficeAddressLine1(address);
             hub.setOfficeType(OfficeType.HUB);
@@ -233,6 +234,7 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
     private Office ensurePostOffice(String officeName, String address, Ward ward, Office parent) {
         return officeRepository.findByOfficeName(officeName).orElseGet(() -> {
             Office office = new Office();
+            office.setOfficeCode("PO-DEMO-" + ward.getCode());
             office.setOfficeName(officeName);
             office.setOfficeAddressLine1(address);
             office.setWard(ward);

@@ -276,7 +276,8 @@ public class BatchServiceImpl implements IBatchService {
         }
 
         removeOrderFromBatchInternal(batch, order);
-        
+        order.setStatus(OrderStatus.AT_ORIGIN_OFFICE);
+
         batchPackageRepository.save(batch);
         orderRepository.save(order);
 
@@ -311,6 +312,7 @@ public class BatchServiceImpl implements IBatchService {
         }
 
         batch = batchPackageRepository.save(batch);
+        orderRepository.saveAll(batch.getOrders());
         log.info("Sealed batch {} with {} orders", batch.getBatchCode(), batch.getCurrentOrderCount());
 
         return mapToBatchResponse(batch, false);
@@ -338,7 +340,8 @@ public class BatchServiceImpl implements IBatchService {
         }
 
         batch = batchPackageRepository.save(batch);
-        log.info("Batch {} departed for {}", batch.getBatchCode(), 
+        orderRepository.saveAll(batch.getOrders());
+        log.info("Batch {} departed for {}", batch.getBatchCode(),
                 batch.getDestinationOffice().getOfficeName());
 
         return mapToBatchResponse(batch, false);
@@ -370,7 +373,8 @@ public class BatchServiceImpl implements IBatchService {
         }
 
         batch = batchPackageRepository.save(batch);
-        log.info("Batch {} arrived at {}", batch.getBatchCode(), 
+        orderRepository.saveAll(batch.getOrders());
+        log.info("Batch {} arrived at {}", batch.getBatchCode(),
                 batch.getDestinationOffice().getOfficeName());
 
         return mapToBatchResponse(batch, false);
@@ -393,12 +397,14 @@ public class BatchServiceImpl implements IBatchService {
 
         batch.setStatus(BatchStatus.DISTRIBUTED);
 
-        // Remove orders from batch (they are now individual again)
+        // Remove orders from batch and mark as out for delivery
         for (Order order : batch.getOrders()) {
             order.setBatchPackage(null);
+            order.setStatus(OrderStatus.OUT_FOR_DELIVERY);
         }
 
         batch = batchPackageRepository.save(batch);
+        orderRepository.saveAll(batch.getOrders());
         log.info("Batch {} distributed at {}", batch.getBatchCode(),
                 batch.getDestinationOffice().getOfficeName());
 
@@ -414,7 +420,7 @@ public class BatchServiceImpl implements IBatchService {
 
         validateBatchAccess(batch, employee, true);
 
-        if (batch.getStatus() == BatchStatus.IN_TRANSIT || 
+        if (batch.getStatus() == BatchStatus.IN_TRANSIT ||
             batch.getStatus() == BatchStatus.ARRIVED ||
             batch.getStatus() == BatchStatus.DISTRIBUTED) {
             throw new BadRequestException("Cannot cancel a batch that is already in transit or delivered");
@@ -432,6 +438,7 @@ public class BatchServiceImpl implements IBatchService {
         batch.setCurrentVolumeCm3(BigDecimal.ZERO);
 
         batch = batchPackageRepository.save(batch);
+        orderRepository.saveAll(batch.getOrders());
         log.info("Cancelled batch {}", batch.getBatchCode());
 
         return mapToBatchResponse(batch, false);

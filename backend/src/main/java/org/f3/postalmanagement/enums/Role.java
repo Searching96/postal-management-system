@@ -6,6 +6,7 @@ public enum Role {
 
     // Hub
     HUB_ADMIN,
+    NATIONAL_MANAGER,   // Manages HUB-level routes (inter-hub network)
 
     // Warehouse (WH)
     WH_PROVINCE_ADMIN,  // (Quản lý kho cấp tỉnh)

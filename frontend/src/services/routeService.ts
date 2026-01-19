@@ -1,5 +1,7 @@
 import api from '../lib/axios';
 
+export type RouteType = 'PROVINCE_TO_HUB' | 'HUB_TO_HUB';
+
 export interface TransferRoute {
     id: string;
     fromHubId: string;
@@ -13,6 +15,7 @@ export interface TransferRoute {
     priority: number;
     isActive: boolean;
     activeDisruption: DisruptionInfo | null;
+    routeType?: RouteType;
 }
 
 export interface DisruptionInfo {

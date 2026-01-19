@@ -23,11 +23,16 @@ import {
     type TransferRoute,
     type ReroutingImpact,
     type DisruptionType,
-    type DisruptionResponse
+    type DisruptionResponse,
+    type RouteType
 } from '../../services/routeService';
 import { RouteNetworkMap } from '../../components/admin/RouteNetworkMap';
 
-export function RouteManagementPage() {
+interface RouteManagementPageProps {
+    filterRouteType?: RouteType;
+}
+
+export function RouteManagementPage({ filterRouteType }: RouteManagementPageProps) {
     const [routes, setRoutes] = useState<TransferRoute[]>([]);
     const [activeDisruptions, setActiveDisruptions] = useState<DisruptionResponse[]>([]);
     const [loading, setLoading] = useState(true);
@@ -161,8 +166,13 @@ export function RouteManagementPage() {
         );
     }
 
-    const activeRoutes = routes.filter(r => r.isActive);
-    const disabledRoutes = routes.filter(r => !r.isActive);
+    // Filter routes by type if filterRouteType is provided
+    const filteredRoutes = filterRouteType
+        ? routes.filter(r => r.routeType === filterRouteType)
+        : routes;
+
+    const activeRoutes = filteredRoutes.filter(r => r.isActive);
+    const disabledRoutes = filteredRoutes.filter(r => !r.isActive);
 
     return (
         <div className="space-y-6">
@@ -230,7 +240,7 @@ export function RouteManagementPage() {
             {viewMode === 'graph' ? (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1">
                     <RouteNetworkMap
-                        routes={routes}
+                        routes={filteredRoutes}
                         onEdgeClick={handleEdgeClick}
                     />
                 </div>
@@ -259,7 +269,7 @@ export function RouteManagementPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {routes.map(route => (
+                                {filteredRoutes.map(route => (
                                     <tr key={route.id} className={!route.isActive ? 'bg-red-50' : 'hover:bg-gray-50'}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">

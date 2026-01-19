@@ -45,6 +45,11 @@ export function Layout() {
     primaryNav.push({ to: "/admin/routes", icon: Route, label: "Quản lý tuyến đường" });
   }
 
+  // Consolidation routes (WARD → PROVINCE) - PROVINCE_ADMIN and WARD_MANAGER only
+  if (role === "SYSTEM_ADMIN" || role === "PO_PROVINCE_ADMIN" || role === "WH_PROVINCE_ADMIN" || role === "PO_WARD_MANAGER" || role === "WH_WARD_MANAGER") {
+    primaryNav.push({ to: "/admin/consolidation-routes", icon: Route, label: "Tuyến tập kết" });
+  }
+
   if (role === "PO_PROVINCE_ADMIN" || role === "WH_PROVINCE_ADMIN") {
     primaryNav.push({
       to: "/admin/province",

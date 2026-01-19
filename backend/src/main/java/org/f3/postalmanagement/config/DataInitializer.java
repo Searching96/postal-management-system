@@ -121,6 +121,7 @@ public class DataInitializer implements CommandLineRunner {
             
             for (AdministrativeRegion region : regions) {
                 Office hub = new Office();
+                hub.setOfficeCode("HUB-" + String.format("%02d", region.getId()));
                 hub.setOfficeName("HUB " + region.getName());
                 hub.setOfficeEmail("hub" + region.getId() + "@f3postal.com");
                 hub.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + String.format("%08d", region.getId())));
@@ -163,6 +164,7 @@ public class DataInitializer implements CommandLineRunner {
             String warehouseEmail = "warehouse." + province.getCode() + "@f3postal.com";
             if (!officeRepository.existsByOfficeEmail(warehouseEmail)) {
                 Office warehouse = new Office();
+                warehouse.setOfficeCode("WH-" + province.getCode());
                 warehouse.setOfficeName("Kho " + province.getName());
                 warehouse.setOfficeEmail(warehouseEmail);
                 warehouse.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + province.getCode() + "0000"));
@@ -184,6 +186,7 @@ public class DataInitializer implements CommandLineRunner {
             String postOfficeEmail = "post." + province.getCode() + "@f3postal.com";
             if (!officeRepository.existsByOfficeEmail(postOfficeEmail)) {
                 Office postOffice = new Office();
+                postOffice.setOfficeCode("PO-" + province.getCode());
                 postOffice.setOfficeName("Bưu cục " + province.getName());
                 postOffice.setOfficeEmail(postOfficeEmail);
                 postOffice.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + province.getCode() + "1000"));
@@ -228,6 +231,7 @@ public class DataInitializer implements CommandLineRunner {
 
                 // Create Ward Warehouse
                 Office wardWh = new Office();
+                wardWh.setOfficeCode("WH-W1-" + provinceCode);
                 wardWh.setOfficeName("Kho Phường 1 " + province.getName());
                 wardWh.setOfficeEmail("wh.ward1." + provinceCode + "@f3postal.com");
                 wardWh.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + province.getCode() + "2000"));
@@ -245,6 +249,7 @@ public class DataInitializer implements CommandLineRunner {
 
                 // Create Ward Post Office
                 Office wardPo = new Office();
+                wardPo.setOfficeCode("PO-W1-" + provinceCode);
                 wardPo.setOfficeName("Bưu cục Phường 1 " + province.getName());
                 wardPo.setOfficeEmail("po.ward1." + provinceCode + "@f3postal.com");
                 wardPo.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + province.getCode() + "3000"));

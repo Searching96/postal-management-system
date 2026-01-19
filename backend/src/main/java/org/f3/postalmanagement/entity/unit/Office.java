@@ -19,6 +19,9 @@ import org.hibernate.annotations.SQLRestriction;
 @SQLRestriction("deleted_at IS NULL")
 public class Office extends BaseEntity {
 
+    @Column(name="office_code", nullable = false, unique = true)
+    private String officeCode;
+
     @Column(name="office_name", nullable = false)
     private String officeName;
 

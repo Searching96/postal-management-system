@@ -18,6 +18,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 
     Optional<Employee> findByAccount(Account account);
 
+    List<Employee> findByOfficeId(UUID officeId);
+
     @Query("SELECT e FROM Employee e WHERE e.office.id = :officeId AND " +
            "(:search IS NULL OR :search = '' OR " +
            "LOWER(e.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

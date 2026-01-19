@@ -10,6 +10,7 @@ import org.f3.postalmanagement.dto.response.route.ReroutingImpactResponse;
 import org.f3.postalmanagement.dto.response.route.TransferRouteResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.service.IReroutingService;
+import org.f3.postalmanagement.service.route.RouteAuthorizationValidator;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,6 +21,11 @@ import java.util.UUID;
 
 /**
  * Controller for managing transfer routes and handling disruptions.
+ *
+ * Authorization:
+ * - getAllRoutes: SYSTEM_ADMIN, HUB_ADMIN (read all, but UI should filter)
+ * - disableRoute: SYSTEM_ADMIN, NATIONAL_MANAGER (all routes), HUB_ADMIN (own routes only)
+ * - enableRoute: SYSTEM_ADMIN, NATIONAL_MANAGER (all routes), HUB_ADMIN (own routes only)
  */
 @RestController
 @RequestMapping("/api/routes")
@@ -28,56 +34,61 @@ import java.util.UUID;
 public class RouteManagementController {
 
     private final IReroutingService reroutingService;
+    private final RouteAuthorizationValidator authorizationValidator;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN', 'NATIONAL_MANAGER')")
     @Operation(summary = "Get all transfer routes", description = "Returns all hub-to-hub transfer routes with their current status")
     public ResponseEntity<List<TransferRouteResponse>> getAllRoutes() {
         return ResponseEntity.ok(reroutingService.getAllRoutes());
     }
 
     @GetMapping("/{routeId}")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN', 'NATIONAL_MANAGER')")
     @Operation(summary = "Get route by ID", description = "Returns details of a specific transfer route")
     public ResponseEntity<TransferRouteResponse> getRouteById(@PathVariable UUID routeId) {
         return ResponseEntity.ok(reroutingService.getRouteById(routeId));
     }
 
     @GetMapping("/{routeId}/impact")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN', 'NATIONAL_MANAGER')")
     @Operation(summary = "Preview disable impact", description = "Shows affected batches and orders if route is disabled")
     public ResponseEntity<ReroutingImpactResponse> previewDisableImpact(@PathVariable UUID routeId) {
         return ResponseEntity.ok(reroutingService.previewDisableImpact(routeId));
     }
 
     @PostMapping("/{routeId}/disable")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'NATIONAL_MANAGER', 'HUB_ADMIN')")
     @Operation(summary = "Disable a route", description = "Disables a route due to disruption and triggers rerouting for affected packages")
     public ResponseEntity<DisruptionResponse> disableRoute(
             @PathVariable UUID routeId,
             @Valid @RequestBody DisableRouteRequest request,
             @AuthenticationPrincipal(expression = "account") Account currentAccount) {
+        // Validate user has jurisdiction over this route
+        authorizationValidator.validateRouteManagementAccess(routeId, currentAccount);
         return ResponseEntity.ok(reroutingService.disableRoute(routeId, request, currentAccount));
     }
 
     @PostMapping("/{routeId}/enable")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'NATIONAL_MANAGER', 'HUB_ADMIN')")
     @Operation(summary = "Re-enable a route", description = "Re-activates a previously disabled route")
     public ResponseEntity<TransferRouteResponse> enableRoute(
             @PathVariable UUID routeId,
             @AuthenticationPrincipal(expression = "account") Account currentAccount) {
+        // Validate user has jurisdiction over this route
+        authorizationValidator.validateRouteManagementAccess(routeId, currentAccount);
         return ResponseEntity.ok(reroutingService.enableRoute(routeId, currentAccount));
     }
 
     @GetMapping("/disruptions")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN', 'NATIONAL_MANAGER')")
     @Operation(summary = "Get active disruptions", description = "Returns all currently active route disruptions")
     public ResponseEntity<List<DisruptionResponse>> getActiveDisruptions() {
         return ResponseEntity.ok(reroutingService.getActiveDisruptions());
     }
 
     @GetMapping("/{routeId}/disruptions/history")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN', 'NATIONAL_MANAGER')")
     @Operation(summary = "Get disruption history", description = "Returns disruption history for a specific route")
     public ResponseEntity<List<DisruptionResponse>> getDisruptionHistory(@PathVariable UUID routeId) {
         return ResponseEntity.ok(reroutingService.getDisruptionHistory(routeId));

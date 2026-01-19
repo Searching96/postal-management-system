@@ -22,6 +22,8 @@ export { OfficeSearchPage } from './offices/OfficeSearchPage';
 export { AssignDeliveryPage } from './orders/AssignDeliveryPage';
 
 export { default as RouteManagementPage } from './admin/RouteManagementPage';
+export { ConsolidationRouteManagementPage } from './admin/ConsolidationRouteManagementPage';
+export { UnifiedRouteManagementPage } from './admin/UnifiedRouteManagementPage';
 export { default as MessagesPage } from './common/MessagesPage';
 export { default as ShipperDashboardPage } from './shipper/ShipperDashboardPage';
 export { default as ShipperDeliveryPage } from './shipper/ShipperDeliveryPage';

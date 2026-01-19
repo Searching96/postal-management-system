@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.f3.postalmanagement.enums.DisruptionType;
+import org.f3.postalmanagement.enums.RouteType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -26,6 +27,7 @@ public class TransferRouteResponse {
     private Integer transitHours;
     private Integer priority;
     private Boolean isActive;
+    private RouteType routeType;
 
     // Disruption info (if currently disabled)
     private DisruptionInfo activeDisruption;

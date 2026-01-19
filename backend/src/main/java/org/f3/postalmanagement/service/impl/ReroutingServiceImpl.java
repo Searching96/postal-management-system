@@ -235,7 +235,8 @@ public class ReroutingServiceImpl implements IReroutingService {
                 .distanceKm(route.getDistanceKm())
                 .transitHours(route.getTransitHours())
                 .priority(route.getPriority())
-                .isActive(route.getIsActive());
+                .isActive(route.getIsActive())
+                .routeType(route.getRouteType());
 
         // Add active disruption info if route is disabled
         if (!route.getIsActive()) {

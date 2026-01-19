@@ -20,14 +20,15 @@ import {
   ShipperManagementPage,
   PendingPickupsPage,
   CustomerPickupPage,
-  RouteManagementPage,
   LiveTrackingPage,
   OfficeSearchPage,
   MessagesPage,
   AssignDeliveryPage,
   ShipperDeliveryPage,
   ShipperPickupPage,
-  DebugLoginPage
+  DebugLoginPage,
+  ConsolidationRouteManagementPage,
+  UnifiedRouteManagementPage
 } from "./pages";
 
 function App() {
@@ -59,10 +60,15 @@ function App() {
                 <Route path="/admin/system" element={<SystemAdminPage />} />
               </Route>
 
-              {/* Hub Admin & System Admin */}
+              {/* Hub Admin & System Admin - Transfer Routes */}
               <Route element={<RoleRoute allowedRoles={["SYSTEM_ADMIN", "HUB_ADMIN"]} />}>
                 <Route path="/admin/hub" element={<HubAdminPage />} />
-                <Route path="/admin/routes" element={<RouteManagementPage />} />
+                <Route path="/admin/routes" element={<UnifiedRouteManagementPage />} />
+              </Route>
+
+              {/* Consolidation Routes - WARD → PROVINCE (only PROVINCE_ADMIN creates, WARD can view) */}
+              <Route element={<RoleRoute allowedRoles={["SYSTEM_ADMIN", "PO_PROVINCE_ADMIN", "WH_PROVINCE_ADMIN", "PO_WARD_MANAGER", "WH_WARD_MANAGER"]} />}>
+                <Route path="/admin/consolidation-routes" element={<ConsolidationRouteManagementPage />} />
               </Route>
 
               {/* Province Admin */}

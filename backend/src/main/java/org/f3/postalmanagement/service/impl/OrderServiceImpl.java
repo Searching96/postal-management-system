@@ -446,7 +446,8 @@ public class OrderServiceImpl implements IOrderService {
         }
         Role role = account.getRole();
         if (role != Role.PO_STAFF && role != Role.PO_WARD_MANAGER && role != Role.PO_PROVINCE_ADMIN &&
-            role != Role.WH_STAFF && role != Role.WH_WARD_MANAGER && role != Role.WH_PROVINCE_ADMIN) {
+            role != Role.WH_STAFF && role != Role.WH_WARD_MANAGER && role != Role.WH_PROVINCE_ADMIN &&
+            role != Role.HUB_ADMIN && role != Role.SYSTEM_ADMIN) {
             throw new AccessDeniedException("Only authorized office staff can perform this action");
         }
     }

@@ -25,7 +25,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-// @EnableMethodSecurity // Temporarily disabled for debugging
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 

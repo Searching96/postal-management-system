@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -124,6 +125,23 @@ public interface BatchPackageRepository extends JpaRepository<BatchPackage, UUID
     @Query("SELECT b FROM BatchPackage b WHERE " +
            "b.status IN ('SEALED', 'IN_TRANSIT') AND " +
            "b.originOffice.id = :fromHubId AND b.destinationOffice.id = :toHubId")
-    List<BatchPackage> findActiveBatchesBetweenHubs(@Param("fromHubId") UUID fromHubId, 
+    List<BatchPackage> findActiveBatchesBetweenHubs(@Param("fromHubId") UUID fromHubId,
                                                     @Param("toHubId") UUID toHubId);
+
+    /**
+     * Find open batches created before a specific time (for auto-sealing).
+     */
+    @Query("SELECT b FROM BatchPackage b WHERE " +
+           "b.status = 'OPEN' AND b.createdAt < :threshold " +
+           "ORDER BY b.createdAt ASC")
+    List<BatchPackage> findByStatusAndCreatedAtBefore(@Param("status") BatchStatus status,
+                                                      @Param("threshold") LocalDateTime threshold);
+
+    /**
+     * Simplified version that only takes threshold (status is OPEN).
+     */
+    @Query("SELECT b FROM BatchPackage b WHERE " +
+           "b.status = 'OPEN' AND b.createdAt < :threshold " +
+           "ORDER BY b.createdAt ASC")
+    List<BatchPackage> findOpenBatchesOlderThan(@Param("threshold") LocalDateTime threshold);
 }
