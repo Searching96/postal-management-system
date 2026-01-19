@@ -159,10 +159,6 @@ CREATE TABLE IF NOT EXISTS parcels (
     
     -- Người gửi
     sender_id CHAR(36),
-    sender_name VARCHAR(100),        -- Lưu cứng text để không bị đổi khi customer update
-    sender_phone VARCHAR(20),
-    sender_address TEXT,
-    sender_ward_id CHAR(36),
     
     -- Người nhận
     receiver_name VARCHAR(100),
