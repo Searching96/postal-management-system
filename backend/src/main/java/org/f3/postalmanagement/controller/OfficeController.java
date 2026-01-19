@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.f3.postalmanagement.dto.request.office.OfficeStatusUpdateRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.office.OfficeResponse;
+import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.enums.OfficeType;
 import org.f3.postalmanagement.service.IOfficeService;
 import org.springframework.data.domain.Page;
@@ -13,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -49,7 +51,8 @@ public class OfficeController {
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN', 'PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN', 'PO_WARD_MANAGER', 'WH_WARD_MANAGER')")
     public ResponseEntity<OfficeResponse> updateOfficeStatus(
             @PathVariable UUID id,
-            @RequestBody @Valid OfficeStatusUpdateRequest request) {
-        return ResponseEntity.ok(officeService.updateOfficeStatus(id, request));
+            @RequestBody @Valid OfficeStatusUpdateRequest request,
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
+        return ResponseEntity.ok(officeService.updateOfficeStatus(id, request, currentAccount));
     }
 }

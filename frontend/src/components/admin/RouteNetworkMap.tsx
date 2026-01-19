@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { TransferRoute, getDisruptionTypeLabel } from '../../services/routeService';
 import { VietnamMap, MapMarker, MapPolyline } from '../common/VietnamMap';
-import { AlertTriangle, MapPin } from 'lucide-react';
+import { AlertTriangle, MapPin, Lock } from 'lucide-react';
+import { useAuth } from '../../lib/AuthContext';
+import type { EmployeeMeResponse } from '../../models/user';
 
 interface RouteNetworkMapProps {
     routes: TransferRoute[];
@@ -36,6 +38,17 @@ function getCoordinates(regionName: string, index: number): [number, number] {
 }
 
 export function RouteNetworkMap({ routes, onEdgeClick }: RouteNetworkMapProps) {
+    const { user } = useAuth();
+    const employeeUser = user as EmployeeMeResponse;
+    const isHubAdmin = employeeUser?.role === 'HUB_ADMIN';
+    const userHubId = employeeUser?.office?.id;
+
+    // Check if user can manage a route
+    const canManageRoute = (route: TransferRoute) => {
+        if (!isHubAdmin) return true; // SYSTEM_ADMIN, NATIONAL_MANAGER can manage all
+        // HUB_ADMIN can only manage routes involving their HUB
+        return route.fromHubId === userHubId || route.toHubId === userHubId;
+    };
 
     // Extract unique nodes (Hubs)
     const markers = useMemo<MapMarker[]>(() => {
@@ -92,10 +105,17 @@ export function RouteNetworkMap({ routes, onEdgeClick }: RouteNetworkMapProps) {
                 dashArray: route.isActive ? undefined : '5, 10',
                 onClick: () => onEdgeClick?.(route),
                 popupContent: (
-                    <div className="p-1 min-w-[220px]">
-                        <h4 className="font-bold text-gray-900 text-sm mb-1">{route.fromHubName} → {route.toHubName}</h4>
-                        <div className="text-xs font-medium text-primary-600 mb-2">
-                            {route.routeType === 'PROVINCE_TO_HUB' ? 'Tuyến Trung Chuyển (Tỉnh → Hub)' : 'Tuyến Liên Kho (Hub → Hub)'}
+                    <div className="p-1 min-w-[240px]">
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                                <h4 className="font-bold text-gray-900 text-sm mb-1">{route.fromHubName} → {route.toHubName}</h4>
+                                <div className="text-xs font-medium text-primary-600 mb-2">
+                                    {route.routeType === 'PROVINCE_TO_HUB' ? 'Tuyến Trung Chuyển (Tỉnh → Hub)' : 'Tuyến Liên Kho (Hub → Hub)'}
+                                </div>
+                            </div>
+                            {!canManageRoute(route) && (
+                                <Lock size={16} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                            )}
                         </div>
                         <div className="space-y-1 text-xs text-gray-600">
                             <div className="flex justify-between">
@@ -120,18 +140,28 @@ export function RouteNetworkMap({ routes, onEdgeClick }: RouteNetworkMapProps) {
                                     </p>
                                 </div>
                             )}
+                            {!canManageRoute(route) && (
+                                <div className="pt-2 border-t border-gray-100 mt-2">
+                                    <p className="text-gray-500 text-xs flex items-center gap-1">
+                                        <Lock size={12} />
+                                        Bạn không có quyền quản lý tuyến này
+                                    </p>
+                                </div>
+                            )}
                         </div>
-                        <button
-                            type="button"
-                            className="mt-2 text-center text-xs text-blue-600 italic cursor-pointer hover:underline bg-transparent border-none w-full focus:outline-none"
-                            onClick={(e) => {
-                                console.log('Popup text clicked for route:', route.id);
-                                e.preventDefault();
-                                onEdgeClick?.(route);
-                            }}
-                        >
-                            Click để {route.isActive ? 'xem tác động' : 'kích hoạt lại'}
-                        </button>
+                        {canManageRoute(route) && (
+                            <button
+                                type="button"
+                                className="mt-2 text-center text-xs text-blue-600 italic cursor-pointer hover:underline bg-transparent border-none w-full focus:outline-none"
+                                onClick={(e) => {
+                                    console.log('Popup text clicked for route:', route.id);
+                                    e.preventDefault();
+                                    onEdgeClick?.(route);
+                                }}
+                            >
+                                Click để {route.isActive ? 'xem tác động' : 'kích hoạt lại'}
+                            </button>
+                        )}
                     </div>
                 )
             };
@@ -142,18 +172,31 @@ export function RouteNetworkMap({ routes, onEdgeClick }: RouteNetworkMapProps) {
         <div className="relative border border-gray-200 rounded-xl overflow-hidden shadow-sm">
             {/* Legend - moved outside map container and increased z-index */}
             <div className="absolute top-4 right-4 z-[1000] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-slate-200 text-sm pointer-events-none">
-                <div className="flex items-center gap-2 mb-1.5">
-                    <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                    <span className="text-slate-700 font-medium">Tuyến hoạt động</span>
+                <div className="mb-3 pb-3 border-b border-slate-200">
+                    <div className="font-medium text-slate-900 mb-2">Tuyến Đường</div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                        <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                        <span className="text-slate-700">Hoạt động</span>
+                    </div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                        <span className="w-3 h-3 rounded-full bg-red-400"></span>
+                        <span className="text-slate-700">Gián đoạn</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <MapPin size={14} className="text-blue-500" />
+                        <span className="text-slate-700">Regional HUB</span>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2 mb-1.5">
-                    <span className="w-3 h-3 rounded-full bg-red-400"></span>
-                    <span className="text-slate-700 font-medium">Tuyến gián đoạn</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <MapPin size={14} className="text-blue-500" />
-                    <span className="text-slate-700 font-medium">Regional HUB</span>
-                </div>
+
+                {isHubAdmin && (
+                    <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded">
+                        <div className="flex items-center gap-1 mb-1">
+                            <Lock size={12} />
+                            <span className="font-medium">Quyền Truy Cập</span>
+                        </div>
+                        <p>Bạn chỉ có thể quản lý tuyến liên quan đến HUB của mình</p>
+                    </div>
+                )}
             </div>
 
             <VietnamMap

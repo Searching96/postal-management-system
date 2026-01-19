@@ -3,11 +3,13 @@ package org.f3.postalmanagement.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.f3.postalmanagement.dto.request.office.OfficeStatusUpdateRequest;
 import org.f3.postalmanagement.dto.response.office.OfficeResponse;
+import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.entity.unit.Office;
 import org.f3.postalmanagement.enums.OfficeType;
 import org.f3.postalmanagement.exception.NotFoundException;
 import org.f3.postalmanagement.repository.OfficeRepository;
 import org.f3.postalmanagement.service.IOfficeService;
+import org.f3.postalmanagement.service.office.OfficeHierarchyValidator;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ import java.util.UUID;
 public class OfficeServiceImpl implements IOfficeService {
 
     private final OfficeRepository officeRepository;
+    private final OfficeHierarchyValidator officeHierarchyValidator;
 
     @Override
     @Transactional(readOnly = true)
@@ -62,7 +65,10 @@ public class OfficeServiceImpl implements IOfficeService {
 
     @Override
     @Transactional
-    public OfficeResponse updateOfficeStatus(UUID id, OfficeStatusUpdateRequest request) {
+    public OfficeResponse updateOfficeStatus(UUID id, OfficeStatusUpdateRequest request, Account currentAccount) {
+        // Validate user authorization to update this office
+        officeHierarchyValidator.validateCanManageOffice(currentAccount, id);
+
         Office office = officeRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Office not found"));
 

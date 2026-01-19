@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Loader2 } from 'lucide-react';
+import { X, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import {
     ConsolidationRoute,
     CreateConsolidationRouteRequest,
     RouteLevel,
     RouteStop,
 } from '../../../models/consolidationRoute';
+import { useAuth } from '../../../lib/AuthContext';
+import type { EmployeeMeResponse } from '../../../models/user';
 
 interface CreateConsolidationRouteModalProps {
     isOpen: boolean;
@@ -28,6 +30,7 @@ export function CreateConsolidationRouteModal({
     warehouses = [],
     wards = [],
 }: CreateConsolidationRouteModalProps) {
+    const { user } = useAuth();
     const [formData, setFormData] = useState<CreateConsolidationRouteRequest>({
         name: '',
         provinceCode: '',
@@ -43,6 +46,26 @@ export function CreateConsolidationRouteModal({
     const [error, setError] = useState<string | null>(null);
     const [fetchingWards, setFetchingWards] = useState(false);
     const [availableWards, setAvailableWards] = useState<any[]>([]);
+
+    const employeeUser = user as EmployeeMeResponse;
+    const isProvinceAdmin = ['PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN'].includes(employeeUser?.role);
+    const isSystemAdmin = employeeUser?.role === 'SYSTEM_ADMIN';
+    const userProvinceCode = employeeUser?.office?.province?.code;
+
+    // Filter provinces based on role
+    const getAvailableProvinces = () => {
+        if (isProvinceAdmin && !isSystemAdmin) {
+            return provinces.filter(p => p.code === userProvinceCode);
+        }
+        return provinces;
+    };
+
+    // Auto-select user's province if they're a PROVINCE_ADMIN
+    useEffect(() => {
+        if (isProvinceAdmin && !isSystemAdmin && userProvinceCode && !formData.provinceCode) {
+            setFormData(prev => ({ ...prev, provinceCode: userProvinceCode }));
+        }
+    }, [isProvinceAdmin, isSystemAdmin, userProvinceCode, formData.provinceCode]);
 
     if (!isOpen) return null;
 
@@ -182,7 +205,14 @@ export function CreateConsolidationRouteModal({
             <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-gray-900">{getTitle()}</h2>
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-900">{getTitle()}</h2>
+                        {isProvinceAdmin && (
+                            <p className="text-xs text-amber-600 mt-1">
+                                ⓘ Bạn chỉ có thể quản lý tuyến trong tỉnh: <strong>{employeeUser?.office?.province?.name}</strong>
+                            </p>
+                        )}
+                    </div>
                     <button
                         onClick={onClose}
                         disabled={loading}
@@ -223,16 +253,21 @@ export function CreateConsolidationRouteModal({
                             <select
                                 value={formData.provinceCode}
                                 onChange={(e) => handleProvinceChange(e.target.value)}
-                                disabled={loading || fetchingWards}
+                                disabled={loading || fetchingWards || (isProvinceAdmin && !isSystemAdmin)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                             >
                                 <option value="">Chọn tỉnh...</option>
-                                {provinces.map((p) => (
+                                {getAvailableProvinces().map((p) => (
                                     <option key={p.code} value={p.code}>
                                         {p.name}
                                     </option>
                                 ))}
                             </select>
+                            {isProvinceAdmin && !isSystemAdmin && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    ⓘ Bạn chỉ có thể tạo tuyến cho tỉnh của mình
+                                </p>
+                            )}
                         </div>
                     )}
 

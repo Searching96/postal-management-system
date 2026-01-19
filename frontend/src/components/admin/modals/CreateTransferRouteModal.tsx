@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, AlertCircle } from 'lucide-react';
 import { createRoute, type RouteType, type CreateTransferRouteRequest } from '../../../services/routeService';
+import { useAuth } from '../../../lib/AuthContext';
+import type { EmployeeMeResponse } from '../../../models/user';
 
 interface Location {
     id: string;
@@ -24,6 +26,7 @@ export function CreateTransferRouteModal({
     filterRouteType = 'HUB_TO_HUB',
     availableLocations,
 }: CreateTransferRouteModalProps) {
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -35,14 +38,29 @@ export function CreateTransferRouteModal({
     const [priority, setPriority] = useState('1');
     const [isActive, setIsActive] = useState(true);
 
-    // Get filtered locations based on route type
+    const employeeUser = user as EmployeeMeResponse;
+    const isHubAdmin = employeeUser?.role === 'HUB_ADMIN';
+    const isSystemAdmin = employeeUser?.role === 'SYSTEM_ADMIN';
+    const isNationalManager = employeeUser?.role === 'NATIONAL_MANAGER';
+    const userHubId = employeeUser?.office?.id;
+
+    // Get filtered locations based on route type and user role
     const getFromLocations = (): Location[] => {
+        let locations: Location[] = [];
+
         if (filterRouteType === 'PROVINCE_TO_HUB') {
-            return availableLocations.filter(loc => loc.type === 'PROVINCE_WAREHOUSE');
+            locations = availableLocations.filter(loc => loc.type === 'PROVINCE_WAREHOUSE');
         } else {
             // HUB_TO_HUB
-            return availableLocations.filter(loc => loc.type === 'HUB' || loc.type === 'SYSTEM_HUB');
+            locations = availableLocations.filter(loc => loc.type === 'HUB' || loc.type === 'SYSTEM_HUB');
         }
+
+        // HUB_ADMIN can only create routes FROM their own HUB
+        if (isHubAdmin && !isSystemAdmin) {
+            locations = locations.filter(loc => loc.id === userHubId);
+        }
+
+        return locations;
     };
 
     const getToLocations = (): Location[] => {
@@ -131,6 +149,8 @@ export function CreateTransferRouteModal({
         return 'Tuyến Liên Kho (Hub ↔ Hub)';
     };
 
+    const showAuthWarning = isHubAdmin && getFromLocations().length === 0;
+
     return createPortal(
         <div className="fixed inset-0 z-[2000] flex items-center justify-center">
             <div
@@ -143,6 +163,11 @@ export function CreateTransferRouteModal({
                         <h2 className="text-lg font-bold text-gray-900">Tạo Tuyến Đường Mới</h2>
                         <p className="text-sm text-gray-500 mt-1">{getRouteTypeLabel()}</p>
                         <p className="text-xs text-blue-600 mt-1">✓ Tạo cả tuyến đi và về</p>
+                        {isHubAdmin && (
+                            <p className="text-xs text-amber-600 mt-1">
+                                ⓘ HUB_ADMIN chỉ có thể tạo tuyến từ HUB của mình
+                            </p>
+                        )}
                     </div>
                     <button
                         onClick={onClose}
@@ -151,6 +176,16 @@ export function CreateTransferRouteModal({
                         <X size={20} />
                     </button>
                 </div>
+
+                {showAuthWarning && (
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2">
+                        <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div className="text-amber-700 text-sm">
+                            <p className="font-medium">Không có quyền</p>
+                            <p>Bạn chỉ có thể quản lý tuyến từ HUB của mình: <strong>{employeeUser?.office?.name}</strong></p>
+                        </div>
+                    </div>
+                )}
 
                 {error && (
                     <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">

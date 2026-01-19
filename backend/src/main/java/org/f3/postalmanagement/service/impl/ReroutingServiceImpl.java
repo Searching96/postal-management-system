@@ -21,6 +21,7 @@ import org.f3.postalmanagement.repository.RouteDisruptionRepository;
 import org.f3.postalmanagement.repository.TransferRouteRepository;
 import org.f3.postalmanagement.service.IReroutingService;
 import org.f3.postalmanagement.service.IRouteService;
+import org.f3.postalmanagement.service.route.RouteAuthorizationValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,7 @@ public class ReroutingServiceImpl implements IReroutingService {
     private final BatchPackageRepository batchPackageRepository;
     private final OfficeRepository officeRepository;
     private final IRouteService routeService;
+    private final RouteAuthorizationValidator routeAuthorizationValidator;
 
     @Override
     @Transactional
@@ -59,6 +61,14 @@ public class ReroutingServiceImpl implements IReroutingService {
         if (toHub.getOfficeType() != OfficeType.HUB) {
             throw new BadRequestException("To office must be a hub");
         }
+
+        // Validate user authorization to create this route
+        routeAuthorizationValidator.validateCreateTransferRoute(
+                currentAccount,
+                request.getFromHubId(),
+                request.getToHubId(),
+                request.getProvinceWarehouseId()
+        );
 
         // Create new route (forward direction)
         TransferRoute route = new TransferRoute();

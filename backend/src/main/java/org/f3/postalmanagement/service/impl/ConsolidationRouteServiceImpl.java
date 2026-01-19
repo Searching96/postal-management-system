@@ -21,6 +21,7 @@ import org.f3.postalmanagement.repository.OfficeRepository;
 import org.f3.postalmanagement.repository.OrderRepository;
 import org.f3.postalmanagement.repository.ProvinceRepository;
 import org.f3.postalmanagement.service.IConsolidationRouteService;
+import org.f3.postalmanagement.service.consolidation.ConsolidationRouteAuthorizationValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +45,7 @@ public class ConsolidationRouteServiceImpl implements IConsolidationRouteService
     private final OrderRepository orderRepository;
     private final OfficeRepository officeRepository;
     private final ProvinceRepository provinceRepository;
+    private final ConsolidationRouteAuthorizationValidator consolidationRouteAuthorizationValidator;
 
     // ==================== ROUTE MANAGEMENT ====================
 
@@ -51,6 +53,13 @@ public class ConsolidationRouteServiceImpl implements IConsolidationRouteService
     public ConsolidationRouteResponse createConsolidationRoute(
             CreateConsolidationRouteRequest request,
             Account currentAccount) {
+
+        // Validate user authorization to create consolidation route
+        consolidationRouteAuthorizationValidator.validateCreateConsolidationRoute(
+                currentAccount,
+                request.getProvinceCode(),
+                request.getDestinationWarehouseId()
+        );
 
         // Validate province exists
         Province province = provinceRepository.findByCode(request.getProvinceCode())
@@ -123,6 +132,12 @@ public class ConsolidationRouteServiceImpl implements IConsolidationRouteService
             CreateConsolidationRouteRequest request,
             Account currentAccount) {
 
+        // Validate user authorization to update consolidation route
+        consolidationRouteAuthorizationValidator.validateUpdateConsolidationRoute(
+                currentAccount,
+                routeId
+        );
+
         ConsolidationRoute route = consolidationRouteRepository.findById(routeId)
                 .orElseThrow(() -> new NotFoundException("Consolidation route not found"));
 
@@ -144,6 +159,12 @@ public class ConsolidationRouteServiceImpl implements IConsolidationRouteService
 
     @Override
     public ConsolidationRouteResponse setRouteActive(UUID routeId, boolean active, Account currentAccount) {
+        // Validate user authorization to change route status
+        consolidationRouteAuthorizationValidator.validateUpdateConsolidationRoute(
+                currentAccount,
+                routeId
+        );
+
         ConsolidationRoute route = consolidationRouteRepository.findById(routeId)
                 .orElseThrow(() -> new NotFoundException("Consolidation route not found"));
 
@@ -156,6 +177,12 @@ public class ConsolidationRouteServiceImpl implements IConsolidationRouteService
 
     @Override
     public void deleteRoute(UUID routeId, Account currentAccount) {
+        // Validate user authorization to delete consolidation route
+        consolidationRouteAuthorizationValidator.validateDeleteConsolidationRoute(
+                currentAccount,
+                routeId
+        );
+
         ConsolidationRoute route = consolidationRouteRepository.findById(routeId)
                 .orElseThrow(() -> new NotFoundException("Consolidation route not found"));
 
@@ -315,6 +342,12 @@ public class ConsolidationRouteServiceImpl implements IConsolidationRouteService
 
     @Override
     public ConsolidationStatusResponse consolidateRoute(UUID routeId, Account currentAccount) {
+        // Validate user authorization to consolidate route
+        consolidationRouteAuthorizationValidator.validateUpdateConsolidationRoute(
+                currentAccount,
+                routeId
+        );
+
         ConsolidationRoute route = consolidationRouteRepository.findById(routeId)
                 .orElseThrow(() -> new NotFoundException("Consolidation route not found"));
 
