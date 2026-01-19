@@ -6,11 +6,14 @@ import org.f3.postalmanagement.dto.notification.NotificationMessage;
 import org.f3.postalmanagement.dto.request.order.AssignShipperRequest;
 import org.f3.postalmanagement.dto.request.order.CalculatePriceRequest;
 import org.f3.postalmanagement.dto.request.order.CreateCommentRequest;
+import org.f3.postalmanagement.dto.request.order.AssignDeliveryRequest;
+import org.f3.postalmanagement.dto.request.order.ReceiveIncomingRequest;
 import org.f3.postalmanagement.dto.request.order.CreateOrderRequest;
 import org.f3.postalmanagement.dto.request.order.CustomerCreateOrderRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.order.CommentResponse;
 import org.f3.postalmanagement.dto.response.order.OrderResponse;
+import org.f3.postalmanagement.dto.response.order.GroupOrderResponse;
 import org.f3.postalmanagement.dto.response.order.PriceCalculationResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.entity.actor.Customer;
@@ -376,18 +379,12 @@ public class OrderServiceImpl implements IOrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<OrderResponse> getOrdersByOffice(String search, Pageable pageable, Account currentAccount) {
-        if (currentAccount == null) {
-            log.warn("Security disabled: returning empty result for getOrdersByOffice");
-            Page<OrderResponse> emptyPage = Page.empty(pageable);
-            return mapToPageResponse(emptyPage);
-        }
-        
+    public PageResponse<OrderResponse> getOrdersByOffice(String search, OrderStatus status, Pageable pageable, Account currentAccount) {
         validateStaffRole(currentAccount);
         Employee currentEmployee = getCurrentEmployee(currentAccount);
         UUID officeId = currentEmployee.getOffice().getId();
         
-        Page<Order> orderPage = orderRepository.findByOriginOfficeIdWithSearch(officeId, search, pageable);
+        Page<Order> orderPage = orderRepository.findByOriginOfficeIdWithSearch(officeId, search, status, pageable);
         Page<OrderResponse> responsePage = orderPage.map(this::mapToOrderResponse);
         
         return mapToPageResponse(responsePage);
@@ -620,7 +617,7 @@ public class OrderServiceImpl implements IOrderService {
                 .map(h -> OrderResponse.StatusHistoryItem.builder()
                         .status(h.getStatus())
                         .description(h.getDescription() != null ? h.getDescription() : getStatusDescription(h.getStatus()))
-                        .location(h.getOffice() != null ? h.getOffice().getOfficeName() : h.getLocationDetails())
+                        .location(h.getOffice() != null ? h.getOffice().getOfficeAddress() : h.getLocationDetails())
                         .timestamp(h.getCreatedAt())
                         .build())
                 .toList();
@@ -1079,6 +1076,221 @@ public class OrderServiceImpl implements IOrderService {
                 .absaQualityAspect(comment.getAbsaQualityAspect())
                 .absaPriceAspect(comment.getAbsaPriceAspect())
                 .absaAnalyzedAt(comment.getAbsaAnalyzedAt())
+    @Override
+    @Transactional
+    public OrderResponse acceptOrder(UUID orderId, Account currentAccount) {
+        validateStaffRole(currentAccount);
+        Employee currentEmployee = getCurrentEmployee(currentAccount);
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+
+        // Can accept orders in CREATED or PENDING_PICKUP (if brought to office) or PICKED_UP
+        if (order.getStatus() != OrderStatus.CREATED && 
+            order.getStatus() != OrderStatus.PENDING_PICKUP && 
+            order.getStatus() != OrderStatus.PICKED_UP) {
+            throw new IllegalArgumentException("Order is in a status that cannot be accepted: " + order.getStatus());
+        }
+
+        OrderStatus previousStatus = order.getStatus();
+        order.setStatus(OrderStatus.AT_ORIGIN_OFFICE);
+        order.setCurrentOffice(currentEmployee.getOffice());
+        
+        Order savedOrder = orderRepository.save(order);
+
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setOrder(savedOrder);
+        history.setStatus(OrderStatus.AT_ORIGIN_OFFICE);
+        history.setPreviousStatus(previousStatus);
+        history.setOffice(currentEmployee.getOffice());
+        history.setEmployee(currentEmployee);
+        history.setDescription("Order accepted at " + currentEmployee.getOffice().getOfficeName());
+        statusHistoryRepository.save(history);
+
+        log.info("Order {} accepted by staff {}", order.getTrackingNumber(), currentEmployee.getFullName());
+
+        return mapToOrderResponse(savedOrder);
+    }
+
+    @Override
+    @Transactional
+    public GroupOrderResponse assignOrdersToShipper(AssignDeliveryRequest request, Account currentAccount) {
+        validateStaffRole(currentAccount);
+        Employee currentEmployee = getCurrentEmployee(currentAccount);
+
+        Employee shipper = employeeRepository.findById(request.getShipperId())
+                .orElseThrow(() -> new IllegalArgumentException("Shipper not found: " + request.getShipperId()));
+
+        if (shipper.getAccount().getRole() != Role.SHIPPER) {
+            throw new IllegalArgumentException("Target employee is not a shipper");
+        }
+
+        List<Order> orders = orderRepository.findAllById(request.getOrderIds());
+        List<OrderResponse> successfulOrders = new ArrayList<>();
+        int failureCount = 0;
+
+        for (Order order : orders) {
+            try {
+                // Must be at destination office
+                if (order.getStatus() != OrderStatus.AT_DESTINATION_OFFICE) {
+                    throw new IllegalArgumentException("Order " + order.getTrackingNumber() + " is not at destination office");
+                }
+
+                OrderStatus previousStatus = order.getStatus();
+                order.setStatus(OrderStatus.OUT_FOR_DELIVERY);
+                order.setAssignedShipper(shipper);
+                
+                Order savedOrder = orderRepository.save(order);
+
+                OrderStatusHistory history = new OrderStatusHistory();
+                history.setOrder(savedOrder);
+                history.setStatus(OrderStatus.OUT_FOR_DELIVERY);
+                history.setPreviousStatus(previousStatus);
+                history.setOffice(currentEmployee.getOffice());
+                history.setEmployee(currentEmployee);
+                history.setDescription("Shipper " + shipper.getFullName() + " assigned for final delivery");
+                statusHistoryRepository.save(history);
+
+                successfulOrders.add(mapToOrderResponse(savedOrder));
+            } catch (Exception e) {
+                log.error("Failed to assign order {}: {}", order.getTrackingNumber(), e.getMessage());
+                failureCount++;
+            }
+        }
+
+        return GroupOrderResponse.builder()
+                .successCount(successfulOrders.size())
+                .failureCount(failureCount + (request.getOrderIds().size() - orders.size()))
+                .message("Successfully assigned " + successfulOrders.size() + " orders for delivery")
+                .orders(successfulOrders)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse markOrderDelivered(UUID orderId, Account currentAccount) {
+        if (currentAccount.getRole() != Role.SHIPPER) {
+            throw new AccessDeniedException("Only shippers can mark orders as delivered");
+        }
+
+        Employee shipper = getCurrentEmployee(currentAccount);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+
+        if (order.getAssignedShipper() == null || !order.getAssignedShipper().getId().equals(shipper.getId())) {
+            throw new AccessDeniedException("You are not assigned to this order");
+        }
+
+        if (order.getStatus() != OrderStatus.OUT_FOR_DELIVERY) {
+            throw new IllegalArgumentException("Order is not out for delivery");
+        }
+
+        OrderStatus previousStatus = order.getStatus();
+        order.setStatus(OrderStatus.DELIVERED);
+        order.setActualDeliveryDate(LocalDateTime.now());
+        
+        Order savedOrder = orderRepository.save(order);
+
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setOrder(savedOrder);
+        history.setStatus(OrderStatus.DELIVERED);
+        history.setPreviousStatus(previousStatus);
+        history.setEmployee(shipper);
+        history.setDescription("Order successfully delivered by " + shipper.getFullName());
+        statusHistoryRepository.save(history);
+
+        log.info("Order {} marked as DELIVERED by shipper {}", order.getTrackingNumber(), shipper.getFullName());
+
+        return mapToOrderResponse(savedOrder);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse markOrderDeliveryFailed(UUID orderId, String note, Account currentAccount) {
+        if (currentAccount.getRole() != Role.SHIPPER) {
+            throw new AccessDeniedException("Only shippers can mark delivery failure");
+        }
+
+        Employee shipper = getCurrentEmployee(currentAccount);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+
+        if (order.getAssignedShipper() == null || !order.getAssignedShipper().getId().equals(shipper.getId())) {
+            throw new AccessDeniedException("You are not assigned to this order");
+        }
+
+        if (order.getStatus() != OrderStatus.OUT_FOR_DELIVERY) {
+            throw new IllegalArgumentException("Order is not out for delivery");
+        }
+
+        OrderStatus previousStatus = order.getStatus();
+        order.setStatus(OrderStatus.DELIVERY_FAILED);
+        order.setInternalNotes(order.getInternalNotes() != null 
+                ? order.getInternalNotes() + "\nDelivery Failed: " + note 
+                : "Delivery Failed: " + note);
+        
+        Order savedOrder = orderRepository.save(order);
+
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setOrder(savedOrder);
+        history.setStatus(OrderStatus.DELIVERY_FAILED);
+        history.setPreviousStatus(previousStatus);
+        history.setEmployee(shipper);
+        history.setDescription("Delivery failed: " + note);
+        statusHistoryRepository.save(history);
+
+        log.info("Order {} marked as DELIVERY_FAILED by shipper {}: {}", 
+                order.getTrackingNumber(), shipper.getFullName(), note);
+
+        return mapToOrderResponse(savedOrder);
+    }
+
+    @Override
+    @Transactional
+    public GroupOrderResponse receiveOrders(ReceiveIncomingRequest request, Account currentAccount) {
+        validateStaffRole(currentAccount);
+        Employee currentEmployee = getCurrentEmployee(currentAccount);
+        Office currentOffice = currentEmployee.getOffice();
+
+        List<Order> orders = orderRepository.findAllById(request.getOrderIds());
+        List<OrderResponse> successfulOrders = new ArrayList<>();
+        int failureCount = 0;
+
+        for (Order order : orders) {
+            try {
+                // Must be in transit to office
+                if (order.getStatus() != OrderStatus.IN_TRANSIT_TO_OFFICE) {
+                    throw new IllegalArgumentException("Order " + order.getTrackingNumber() + " is not in transit to office");
+                }
+
+                OrderStatus previousStatus = order.getStatus();
+                order.setStatus(OrderStatus.AT_DESTINATION_OFFICE);
+                order.setCurrentOffice(currentOffice);
+                order.setDestinationOffice(currentOffice); // Ensure destination office is set
+                
+                Order savedOrder = orderRepository.save(order);
+
+                OrderStatusHistory history = new OrderStatusHistory();
+                history.setOrder(savedOrder);
+                history.setStatus(OrderStatus.AT_DESTINATION_OFFICE);
+                history.setPreviousStatus(previousStatus);
+                history.setOffice(currentOffice);
+                history.setEmployee(currentEmployee);
+                history.setDescription("Order received at destination office: " + currentOffice.getOfficeName());
+                statusHistoryRepository.save(history);
+
+                successfulOrders.add(mapToOrderResponse(savedOrder));
+            } catch (Exception e) {
+                log.error("Failed to receive order {}: {}", order.getTrackingNumber(), e.getMessage());
+                failureCount++;
+            }
+        }
+
+        return GroupOrderResponse.builder()
+                .successCount(successfulOrders.size())
+                .failureCount(failureCount + (request.getOrderIds().size() - orders.size()))
+                .message("Successfully received " + successfulOrders.size() + " orders at " + currentOffice.getOfficeName())
+                .orders(successfulOrders)
                 .build();
     }
 }

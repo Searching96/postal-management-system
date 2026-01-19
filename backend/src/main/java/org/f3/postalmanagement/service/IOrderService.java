@@ -1,13 +1,17 @@
 package org.f3.postalmanagement.service;
 
 import org.f3.postalmanagement.dto.request.order.AssignShipperRequest;
+import org.f3.postalmanagement.enums.OrderStatus;
 import org.f3.postalmanagement.dto.request.order.CalculatePriceRequest;
 import org.f3.postalmanagement.dto.request.order.CreateCommentRequest;
+import org.f3.postalmanagement.dto.request.order.AssignDeliveryRequest;
+import org.f3.postalmanagement.dto.request.order.ReceiveIncomingRequest;
 import org.f3.postalmanagement.dto.request.order.CreateOrderRequest;
 import org.f3.postalmanagement.dto.request.order.CustomerCreateOrderRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.order.CommentResponse;
 import org.f3.postalmanagement.dto.response.order.OrderResponse;
+import org.f3.postalmanagement.dto.response.order.GroupOrderResponse;
 import org.f3.postalmanagement.dto.response.order.PriceCalculationResponse;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.springframework.data.domain.Pageable;
@@ -64,7 +68,7 @@ public interface IOrderService {
      * @param currentAccount the account of the staff making the request
      * @return paginated order list
      */
-    PageResponse<OrderResponse> getOrdersByOffice(String search, Pageable pageable, Account currentAccount);
+    PageResponse<OrderResponse> getOrdersByOffice(String search, OrderStatus status, Pageable pageable, Account currentAccount);
 
     /**
      * Get orders by sender phone number.
@@ -161,4 +165,51 @@ public interface IOrderService {
      * @return the comment, or null if no comment exists or not accessible
      */
     CommentResponse getOrderComment(UUID orderId, Account currentAccount);
+  
+    /**
+     * Accept a walk-in order or pickup order at the office.
+     *
+     * @param orderId the order ID
+     * @param currentAccount the staff's account
+     * @return the updated order
+     */
+    OrderResponse acceptOrder(UUID orderId, Account currentAccount);
+
+    /**
+     * Assign multiple orders to a shipper for delivery from the destination office.
+     *
+     * @param request the assignment request
+     * @param currentAccount the staff's account
+     * @return summary of the operation
+     */
+    GroupOrderResponse assignOrdersToShipper(AssignDeliveryRequest request, Account currentAccount);
+
+    /**
+     * Mark orders as received at the current office.
+     * Moves orders from IN_TRANSIT_TO_OFFICE to AT_DESTINATION_OFFICE.
+     *
+     * @param request the receive request
+     * @param currentAccount the staff's account
+     * @return summary of the operation
+     */
+    GroupOrderResponse receiveOrders(ReceiveIncomingRequest request, Account currentAccount);
+  
+    /**
+     * Mark an order as delivered by shipper.
+     *
+     * @param orderId the order ID
+     * @param currentAccount the shipper's account
+     * @return the updated order
+     */
+    OrderResponse markOrderDelivered(UUID orderId, Account currentAccount);
+
+    /**
+     * Mark an order as delivery failed by shipper.
+     *
+     * @param orderId the order ID
+     * @param note reason for failure
+     * @param currentAccount the shipper's account
+     * @return the updated order
+     */
+    OrderResponse markOrderDeliveryFailed(UUID orderId, String note, Account currentAccount);
 }

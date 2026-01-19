@@ -677,8 +677,13 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         Employee currentEmployee = getCurrentEmployee(currentAccount);
         Office currentOffice = currentEmployee.getOffice();
 
-        Page<Employee> employeePage = employeeRepository.findByOfficeIdWithSearch(
-                currentOffice.getId(), search, pageable);
+        if (currentOffice.getProvince() == null) {
+            log.error("Current user's office is not associated with a province");
+            throw new IllegalArgumentException("Current user's office is not associated with a province");
+        }
+
+        Page<Employee> employeePage = employeeRepository.findByProvinceCodeWithSearch(
+                currentOffice.getProvince().getCode(), search, pageable);
 
         Page<EmployeeResponse> responsePage = employeePage.map(this::mapToEmployeeResponse);
         log.info("Fetched page {} of staff for office {} with search '{}' (total: {})", 

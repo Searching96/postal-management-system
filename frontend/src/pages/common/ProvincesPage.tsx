@@ -11,8 +11,6 @@ import {
   ChevronDown,
   ChevronUp,
   Filter,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import {
   PageHeader,
@@ -20,6 +18,7 @@ import {
   LoadingSpinner,
   Alert,
   Button,
+  PaginationControls,
 } from "../../components/ui";
 
 export function ProvincesPage() {
@@ -158,13 +157,11 @@ export function ProvincesPage() {
             setError(response.message || "Không thể tải danh sách tỉnh thành");
           }
         }
-      } catch (err: any) {
-        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
-          console.log("Province request canceled");
+      } catch (err: unknown) {
+        if ((err as any).name === "CanceledError" || (err as any).code === "ERR_CANCELED") {
           return;
         }
         setError("Tải dữ liệu tỉnh thành thất bại");
-        console.error(err);
       } finally {
         if (abortControllerRef.current === controller) {
           setIsLoading(false);
@@ -204,12 +201,10 @@ export function ProvincesPage() {
         } else {
           console.error(response.message || "Không thể tải danh sách phường xã");
         }
-      } catch (err: any) {
-        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
-          console.log("Ward request canceled");
+      } catch (err: unknown) {
+        if ((err as any).name === "CanceledError" || (err as any).code === "ERR_CANCELED") {
           return;
         }
-        console.error("Lỗi khi tải danh sách phường xã", err);
       } finally {
         if (wardAbortControllerRef.current === controller) {
           setIsLoadingWards(false);
@@ -224,14 +219,13 @@ export function ProvincesPage() {
   // Load Provinces on page/size change
   useEffect(() => {
     loadProvincesData(provincePage, searchTerm);
-  }, [provincePage, provincePageSize]);
+  }, [provincePage, provincePageSize, selectedRegion, allProvincesCache.length]);
 
   // Region change - reset and reload
   useEffect(() => {
     setProvincePage(0);
     setSearchTerm("");
     setAllProvincesCache([]);
-    loadProvincesData(0, "");
   }, [selectedRegion]);
 
   // Debounce PROVINCE Search
@@ -241,7 +235,7 @@ export function ProvincesPage() {
       loadProvincesData(0, searchTerm);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, loadProvincesData]);
 
   // Load Wards on page/size change
   useEffect(() => {
@@ -290,7 +284,7 @@ export function ProvincesPage() {
   }
 
   return (
-    <div>
+    <div className="min-h-screen">
       <PageHeader
         title="Tỉnh thành & Phường xã"
         description="Tra cứu đơn vị hành chính"
@@ -486,53 +480,6 @@ export function ProvincesPage() {
           </div>
         )}
       </Card>
-    </div>
-  );
-}
-
-// Sub-component for Pagination
-export function PaginationControls({
-  page,
-  totalPages,
-  totalElements,
-  pageSize,
-  onPageChange,
-}: {
-  page: number;
-  totalPages: number;
-  totalElements: number;
-  pageSize: number;
-  onPageChange: (p: number) => void;
-}) {
-  return (
-    <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200 bg-gray-50">
-      <span className="text-sm text-gray-700">
-        Đang hiển thị <span className="font-medium">{page * pageSize + 1}</span> đến{" "}
-        <span className="font-medium">
-          {Math.min((page + 1) * pageSize, totalElements)}
-        </span>{" "}
-        trong tổng số <span className="font-medium">{totalElements}</span> kết quả
-      </span>
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          onClick={() => onPageChange(page - 1)}
-          disabled={page === 0}
-          className="py-1 px-3 text-sm h-9"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Trước
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => onPageChange(page + 1)}
-          disabled={page >= totalPages - 1}
-          className="py-1 px-3 text-sm h-9"
-        >
-          Sau
-          <ChevronRight className="h-4 w-4 ml-1" />
-        </Button>
-      </div>
     </div>
   );
 }

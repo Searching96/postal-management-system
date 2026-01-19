@@ -40,9 +40,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/administrative/**").permitAll()
                         .requestMatchers("/api/orders/**").permitAll()
-                        .requestMatchers("/api/absa/callback").permitAll()
-                        .requestMatchers("/api/absa/trigger-batch").permitAll()
+                        .requestMatchers("/api/absa/**").permitAll()
                         .requestMatchers("/api/test/**").permitAll()
+                        .requestMatchers("/api/tracking/order/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/offices/**").permitAll()
                         .requestMatchers("/swagger-ui/**",
                                          "/v3/api-docs/**",
                                          "/actuator/**").permitAll()

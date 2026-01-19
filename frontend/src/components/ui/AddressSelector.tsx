@@ -8,6 +8,7 @@ interface AddressSelectorProps {
     label: string;
     onAddressChange: (fullAddress: string) => void;
     onProvinceChange?: (provinceCode: string) => void;
+    onWardChange?: (wardCode: string) => void;
     initialValue?: string;
     required?: boolean;
     provinceCode?: string; // External province code
@@ -18,6 +19,7 @@ export function AddressSelector({
     label,
     onAddressChange,
     onProvinceChange,
+    onWardChange,
     initialValue = "",
     required = false,
     provinceCode: externalProvinceCode,
@@ -108,6 +110,10 @@ export function AddressSelector({
         }
     }, [selectedProvince]);
 
+    // Track last emitted values to prevent loops
+    const lastEmittedAddress = useRef("");
+    const lastEmittedWard = useRef("");
+
     // Bubbling up changes
     useEffect(() => {
         const provinceObj = provinces.find(p => p.code === selectedProvince);
@@ -120,8 +126,18 @@ export function AddressSelector({
         ].filter(Boolean);
 
         const fullAddress = parts.join(", ");
-        onAddressChange(fullAddress);
-    }, [selectedProvince, selectedWard, street, provinces, wards]);
+
+        // Only emit if changed
+        if (fullAddress !== lastEmittedAddress.current) {
+            lastEmittedAddress.current = fullAddress;
+            onAddressChange(fullAddress);
+        }
+
+        if (onWardChange && selectedWard !== lastEmittedWard.current) {
+            lastEmittedWard.current = selectedWard;
+            onWardChange(selectedWard);
+        }
+    }, [selectedProvince, selectedWard, street, provinces, wards, onAddressChange, onWardChange]);
 
     return (
         <div className="space-y-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
@@ -144,7 +160,7 @@ export function AddressSelector({
                             { value: "", label: "-- Chọn Tỉnh/Thành --" },
                             ...provinces.map(p => ({ value: p.code, label: p.name }))
                         ]}
-                            searchable
+                        searchable
                     />
                 )}
 
@@ -154,7 +170,9 @@ export function AddressSelector({
                     required={required}
                     value={selectedWard}
                     disabled={!selectedProvince || isLoadingWards}
-                    onChange={(val) => setSelectedWard(val as string)}
+                    onChange={(val) => {
+                        setSelectedWard(val as string);
+                    }}
                     options={[
                         {
                             value: "",
@@ -162,7 +180,7 @@ export function AddressSelector({
                         },
                         ...wards.map(w => ({ value: w.code, label: w.name }))
                     ]}
-                        searchable
+                    searchable
                 />
             </div>
 

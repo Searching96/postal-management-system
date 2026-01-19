@@ -10,6 +10,8 @@ import type {
   AssignWardsRequest,
   WardAssignmentInfo,
   PageResponse,
+  UpdateStaffRequest,
+  OfficeResponse,
 } from "../models";
 
 export const provinceAdminService = {
@@ -99,6 +101,38 @@ export const provinceAdminService = {
     const response = await api.get<ApiResponse<PageResponse<WardAssignmentInfo>>>(
       `/province-admin/wards/assignment-status?${params.toString()}`,
       { signal }
+    );
+    return response.data;
+  },
+
+  getEmployees: async (params?: { page?: number; size?: number; search?: string }): Promise<ApiResponse<PageResponse<EmployeeResponse>>> => {
+    const response = await api.get<ApiResponse<PageResponse<EmployeeResponse>>>("/province-admin/employees", { params });
+    return response.data;
+  },
+
+  getEmployeeById: async (staffId: string): Promise<ApiResponse<EmployeeResponse>> => {
+    const response = await api.get<ApiResponse<EmployeeResponse>>(`/province-admin/employees/${staffId}`);
+    return response.data;
+  },
+
+  updateEmployee: async (staffId: string, data: UpdateStaffRequest): Promise<ApiResponse<EmployeeResponse>> => {
+    const response = await api.put<ApiResponse<EmployeeResponse>>(`/province-admin/employees/${staffId}`, data);
+    return response.data;
+  },
+
+  deleteEmployee: async (staffId: string): Promise<ApiResponse<void>> => {
+    const response = await api.delete<ApiResponse<void>>(`/province-admin/employees/${staffId}`);
+    return response.data;
+  },
+
+  getWardOfficesByProvince: async (params?: {
+    search?: string;
+    page?: number;
+    size?: number;
+  }): Promise<ApiResponse<PageResponse<OfficeResponse>>> => {
+    const response = await api.get<ApiResponse<PageResponse<OfficeResponse>>>(
+      "/province-admin/offices/ward",
+      { params }
     );
     return response.data;
   },

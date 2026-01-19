@@ -1,4 +1,19 @@
 
+export interface OfficeResponse {
+  officeId: string;
+  officeName: string;
+  officeEmail: string;
+  officePhoneNumber: string;
+  officeAddress: string;
+  officeType: string;
+  provinceCode: string;
+  provinceName: string;
+  regionName: string;
+  parentOfficeId: string | null;
+  parentOfficeName: string | null;
+  capacity?: number;
+}
+
 export interface WardOfficePairResponse {
   officePairId: string;
   warehouse: {

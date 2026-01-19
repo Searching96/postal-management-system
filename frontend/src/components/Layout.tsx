@@ -9,8 +9,12 @@ import {
   Menu,
   X,
   User,
-  HelpCircle,
-  Settings,
+  Package,
+  Plus,
+  Truck,
+  Send,
+  Route,
+  MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { getRoleLabel } from "../lib/utils";
@@ -32,12 +36,14 @@ export function Layout() {
     { to: "/dashboard", icon: Home, label: "Tổng quan" },
   ];
 
+
   if (role === "SYSTEM_ADMIN") {
     primaryNav.push({ to: "/admin/system", icon: Users, label: "Quản trị hệ thống" });
   }
 
   if (role === "SYSTEM_ADMIN" || role === "HUB_ADMIN") {
     primaryNav.push({ to: "/admin/hub", icon: Building2, label: "Quản lý bưu cục" });
+    primaryNav.push({ to: "/admin/routes", icon: Route, label: "Quản lý tuyến đường" });
   }
 
   if (role === "PO_PROVINCE_ADMIN" || role === "WH_PROVINCE_ADMIN") {
@@ -52,10 +58,39 @@ export function Layout() {
     primaryNav.push({ to: "/admin/ward", icon: Building2, label: "Quản lý xã" });
   }
 
+  if (role === "HUB_ADMIN" || role === "WH_PROVINCE_ADMIN" || role === "WH_WARD_MANAGER" || role === "PO_PROVINCE_ADMIN" || role === "PO_WARD_MANAGER") {
+    primaryNav.push({ to: "/admin/shippers", icon: Truck, label: "Quản lý Bưu tá" });
+  }
+
+  const isPO = role.startsWith("PO_");
+  const isWH = role.startsWith("WH_");
+
+  if (isPO || isWH || role === "HUB_ADMIN" || role === "SYSTEM_ADMIN") {
+    primaryNav.push({ to: "/orders", icon: Package, label: "Quản lý đơn hàng" });
+
+    if (isPO) {
+      primaryNav.push({ to: "/orders/create", icon: Plus, label: "Tạo vận đơn" });
+      primaryNav.push({ to: "/orders/pending-pickups", icon: Truck, label: "Đơn chờ lấy hàng" });
+    }
+
+    if (isPO || isWH) {
+      primaryNav.push({ to: "/orders/delivery", icon: Send, label: "Giao Bưu tá" });
+      primaryNav.push({ to: "/batches", icon: Package, label: "Quản lý kiện hàng" });
+    }
+  }
+
+  if (role === "SHIPPER") {
+    primaryNav.push({ to: "/shipper", icon: Truck, label: "Đơn hàng của tôi" });
+  }
+
+  if (role === "CUSTOMER") {
+    primaryNav.push({ to: "/customer/pickup", icon: Truck, label: "Tạo yêu cầu lấy hàng" });
+    primaryNav.push({ to: "/orders", icon: Package, label: "Đơn hàng của tôi" });
+  }
+
   const secondaryNav = [
     { to: "/provinces", icon: MapPin, label: "Tra cứu hành chính" },
-    { to: "/settings", icon: Settings, label: "Cài đặt" },
-    { to: "/support", icon: HelpCircle, label: "Hỗ trợ & HDSD" },
+    { to: "/messages", icon: MessageSquare, label: "Tin nhắn" },
   ];
 
   return (

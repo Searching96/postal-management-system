@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { hubAdminService } from "../../services/hubAdminService";
 import { administrativeService } from "../../services/administrativeService";
-import { User, Mail, Lock, Building2, Phone, Plus, ShieldCheck, Map, Users } from "lucide-react";
+import { User, Mail, Lock, Building2, Phone, Plus, ShieldCheck, Map, ClipboardList } from "lucide-react";
 import type { RegionResponse } from "../../models";
 import {
   PageHeader,
@@ -11,6 +11,8 @@ import {
   FormInput,
   Modal,
   FormSelect,
+  Badge,
+  LoadingSpinner,
 } from "../../components/ui";
 
 export function HubAdminPage() {
@@ -45,6 +47,19 @@ export function HubAdminPage() {
     }
   };
 
+  // Fetch Hub Stats
+  const [stats, setStats] = useState({ orderCount: "0", userCount: "0" });
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Fetch orders to show activity in the hub
+        const orders = await import("../../services/orderService").then(m => m.orderService.getOrders({ size: 1 })).catch(() => ({ totalElements: 0 }));
+        setStats(prev => ({ ...prev, orderCount: (orders as any).totalElements.toString() }));
+      } catch (e) { console.error(e); }
+    };
+    fetchStats();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -73,10 +88,34 @@ export function HubAdminPage() {
     }
   };
 
+  const [provinceOffices, setProvinceOffices] = useState<any[]>([]);
+  const [isOfficesLoading, setIsOfficesLoading] = useState(false);
+
+  useEffect(() => {
+    fetchProvinceOffices();
+  }, []);
+
+  const fetchProvinceOffices = async () => {
+    setIsOfficesLoading(true);
+    try {
+      const response = await hubAdminService.getProvinceOffices({ size: 10 });
+      if (response.success) {
+        setProvinceOffices(response.data.content);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsOfficesLoading(false);
+    }
+  };
+
+  const areaCount = regions.length;
+  // TODO: Add endpoint to fetch Hub Admins count directly if needed, or use separate GET /employees API
+
   const systemStats = [
-    { label: "Khu vực quản lý", value: regions.length.toString(), icon: Map, color: "bg-blue-500" },
-    { label: "Quản trị viên Hub", value: "—", icon: ShieldCheck, color: "bg-primary-500" },
-    { label: "Tổng nhân sự bưu cục", value: "—", icon: Users, color: "bg-green-500" },
+    { label: "Khu vực quản lý", value: areaCount.toString(), icon: Map, color: "bg-blue-500" },
+    { label: "Đơn hàng xử lý", value: stats.orderCount, icon: ClipboardList, color: "bg-primary-500" },
+    { label: "Tổng bưu cục tỉnh", value: provinceOffices.length.toString(), icon: Building2, color: "bg-green-500" },
     { label: "Tình trạng Hub", value: "Ổn định", icon: Building2, color: "bg-indigo-500" },
   ];
 
@@ -107,22 +146,56 @@ export function HubAdminPage() {
       {error && <Alert type="error" onClose={() => setError("")}>{error}</Alert>}
       {success && <Alert type="success" onClose={() => setSuccess("")}>{success}</Alert>}
 
-      <Card title="Quản lý Quản trị viên Khu vực">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <p className="text-sm text-gray-500">
-            Cấp quyền cho quản trị viên mới để quản lý hoạt động bưu chính và kho bãi tại các vùng miền.
-          </p>
-          <Button onClick={() => setIsModalOpen(true)} className="gap-2 shrink-0">
-            <Plus className="w-4 h-4" /> Đăng ký Admin mới
-          </Button>
-        </div>
+      <div className="grid lg:grid-cols-2 gap-8">
+        <Card title="Quản lý Quản trị viên Khu vực">
+          <div className="flex flex-col justify-between h-full gap-4">
+            <div className="mb-2">
+              <p className="text-sm text-gray-500 mb-4">
+                Cấp quyền cho quản trị viên mới để quản lý hoạt động bưu chính tại các vùng miền.
+              </p>
+              <Button onClick={() => setIsModalOpen(true)} className="gap-2 w-full">
+                <Plus className="w-4 h-4" /> Đăng ký Admin mới
+              </Button>
+            </div>
 
-        <div className="border border-dashed border-gray-200 rounded-2xl p-12 text-center">
-          <ShieldCheck className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-gray-900 font-bold mb-1">Danh sách Quản trị viên Hub</h3>
-          <p className="text-sm text-gray-400">Chưa có dữ liệu liệt kê. Sử dụng nút đăng ký để thêm mới.</p>
-        </div>
-      </Card>
+            <div className="border border-dashed border-gray-200 rounded-2xl p-8 text-center bg-gray-50/50">
+              <ShieldCheck className="w-10 h-10 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-gray-900 font-bold mb-1">Danh sách Admin</h3>
+              <p className="text-xs text-gray-400">Xem và quản lý tài khoản Hub Admin.</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Các Bưu cục Tỉnh phụ trách">
+          <div className="space-y-4 h-full">
+            <p className="text-sm text-gray-500">
+              Danh sách các bưu cục cấp Tỉnh đang hoạt động trong các vùng bạn quản lý.
+            </p>
+            <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2">
+              {isOfficesLoading ? (
+                <div className="py-10 text-center"><LoadingSpinner size="sm" /></div>
+              ) : provinceOffices.length === 0 ? (
+                <div className="py-10 text-center text-gray-400 text-sm">Chưa có dữ liệu bưu cục</div>
+              ) : (
+                provinceOffices.map((office) => (
+                  <div key={office.id} className="flex items-center p-3 rounded-xl border border-gray-100 hover:border-primary-100 hover:bg-primary-50/10 transition-colors">
+                    <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center mr-4">
+                      <Building2 className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{office.officeName}</p>
+                      <p className="text-xs text-gray-500 truncate">{office.provinceName || "Bưu cục cấp tỉnh"}</p>
+                    </div>
+                    <div className="ml-4">
+                      <Badge variant="success" className="text-[10px] uppercase">Active</Badge>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
 
       {/* MODAL */}
       <Modal

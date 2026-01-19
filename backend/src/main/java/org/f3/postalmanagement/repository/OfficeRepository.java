@@ -17,6 +17,8 @@ public interface OfficeRepository extends JpaRepository<Office, UUID> {
 
     boolean existsByOfficeEmail(String officeEmail);
 
+    java.util.Optional<Office> findByOfficeEmail(String officeEmail);
+
     List<Office> findAllByOfficeType(OfficeType officeType);
 
     List<Office> findAllByOfficeTypeIn(List<OfficeType> officeTypes);
@@ -54,4 +56,20 @@ public interface OfficeRepository extends JpaRepository<Office, UUID> {
      * Find offices by province code and office type
      */
     List<Office> findByProvinceCodeAndOfficeType(String provinceCode, OfficeType officeType);
+
+    @Query("SELECT o FROM Office o WHERE " +
+           "(:search IS NULL OR :search = '' OR " +
+           "LOWER(o.officeName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(o.officeAddress) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY o.officeName ASC")
+    Page<Office> searchOffices(@Param("search") String search, Pageable pageable);
+
+    @Query("SELECT o FROM Office o WHERE o.officeType IN :officeTypes AND " +
+           "(:search IS NULL OR :search = '' OR " +
+           "LOWER(o.officeName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(o.officeEmail) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY o.officeName ASC")
+    Page<Office> findAllByOfficeTypeInWithSearch(@Param("officeTypes") List<OfficeType> officeTypes,
+                                                 @Param("search") String search,
+                                                 Pageable pageable);
 }

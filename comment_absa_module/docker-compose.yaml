@@ -1,0 +1,60 @@
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: postal-redis
+    ports:
+      - "6380:6379"
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  comment-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: postal-comment-api
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./projects/absa_streaming:/app
+      - ./models:/models
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_HOST=postal-redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: python /app/api/comment_api.py
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  absa-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: postal-absa-consumer
+    volumes:
+      - ./projects/absa_streaming:/app
+      - ./models:/models
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_HOST=postal-redis
+      - REDIS_PORT=6379
+      - MODEL_PATH=/models/postal_absa/phobert_absa_final
+      - BATCH_SIZE=128
+      - BATCH_TIMEOUT_HOURS=3
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: python /app/scripts/absa_consumer_standalone.py
+    restart: always

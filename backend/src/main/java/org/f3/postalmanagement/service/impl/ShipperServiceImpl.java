@@ -45,10 +45,12 @@ public class ShipperServiceImpl implements IShipperService {
         Office targetOffice = officeRepository.findById(request.getOfficeId())
                 .orElseThrow(() -> new IllegalArgumentException("Office not found with ID: " + request.getOfficeId()));
 
-        // Validate office is a warehouse type
+        // Validate office is a warehouse or post office type
         if (targetOffice.getOfficeType() != OfficeType.PROVINCE_WAREHOUSE && 
-            targetOffice.getOfficeType() != OfficeType.WARD_WAREHOUSE) {
-            throw new IllegalArgumentException("Shippers can only be assigned to warehouse offices");
+            targetOffice.getOfficeType() != OfficeType.WARD_WAREHOUSE &&
+            targetOffice.getOfficeType() != OfficeType.PROVINCE_POST &&
+            targetOffice.getOfficeType() != OfficeType.WARD_POST) {
+            throw new IllegalArgumentException("Shippers can only be assigned to warehouse or post office units");
         }
 
         // Validate access based on role
@@ -103,21 +105,26 @@ public class ShipperServiceImpl implements IShipperService {
                     regionId, Role.SHIPPER, search, pageable);
             log.info("Fetched page {} of shippers for region {} (total: {})", 
                     pageable.getPageNumber(), regionId, shipperPage.getTotalElements());
-        } else if (role == Role.WH_PROVINCE_ADMIN) {
-            // WH_PROVINCE_ADMIN: Get all shippers in the province's warehouses
+        } else if (role == Role.WH_PROVINCE_ADMIN || role == Role.PO_PROVINCE_ADMIN) {
+            // WH_PROVINCE_ADMIN or PO_PROVINCE_ADMIN: Get all shippers in the province's warehouses and post offices
             String provinceCode = currentEmployee.getOffice().getProvince().getCode();
-            List<OfficeType> warehouseTypes = List.of(OfficeType.PROVINCE_WAREHOUSE, OfficeType.WARD_WAREHOUSE);
+            List<OfficeType> allOfficeTypes = List.of(
+                OfficeType.PROVINCE_WAREHOUSE, OfficeType.WARD_WAREHOUSE,
+                OfficeType.PROVINCE_POST, OfficeType.WARD_POST
+            );
             shipperPage = employeeRepository.findByProvinceCodeAndRoleAndOfficeTypesWithSearch(
-                    provinceCode, Role.SHIPPER, warehouseTypes, search, pageable);
+                    provinceCode, Role.SHIPPER, allOfficeTypes, search, pageable);
             log.info("Fetched page {} of shippers for province {} (total: {})", 
                     pageable.getPageNumber(), provinceCode, shipperPage.getTotalElements());
-        } else {
-            // WH_WARD_MANAGER: Get all shippers in their own office
+        } else if (role == Role.WH_WARD_MANAGER || role == Role.PO_WARD_MANAGER || role == Role.PO_STAFF) {
+            // Ward Manager or Staff: Get all shippers in their own office
             UUID officeId = currentEmployee.getOffice().getId();
             shipperPage = employeeRepository.findByOfficeIdAndRoleWithSearch(
                     officeId, Role.SHIPPER, search, pageable);
             log.info("Fetched page {} of shippers for office {} (total: {})", 
                     pageable.getPageNumber(), officeId, shipperPage.getTotalElements());
+        } else {
+            throw new AccessDeniedException("Unauthorized to view shippers for this scope");
         }
 
         Page<EmployeeResponse> responsePage = shipperPage.map(this::mapToEmployeeResponse);
@@ -220,8 +227,9 @@ public class ShipperServiceImpl implements IShipperService {
 
     private void validateWarehouseRole(Account currentAccount) {
         Role role = currentAccount.getRole();
-        if (role != Role.HUB_ADMIN && role != Role.WH_PROVINCE_ADMIN && role != Role.WH_WARD_MANAGER) {
-            throw new AccessDeniedException("Only HUB_ADMIN, WH_PROVINCE_ADMIN, and WH_WARD_MANAGER can manage shippers");
+        if (role != Role.HUB_ADMIN && role != Role.WH_PROVINCE_ADMIN && role != Role.WH_WARD_MANAGER &&
+            role != Role.PO_PROVINCE_ADMIN && role != Role.PO_WARD_MANAGER && role != Role.PO_STAFF) {
+            throw new AccessDeniedException("Only authorized office staff can manage shippers");
         }
     }
 
@@ -236,10 +244,15 @@ public class ShipperServiceImpl implements IShipperService {
             if (!targetOffice.getProvince().getCode().equals(currentEmployee.getOffice().getProvince().getCode())) {
                 throw new AccessDeniedException("You can only create shippers for offices in your province");
             }
-        } else if (role == Role.WH_WARD_MANAGER) {
-            // WH_WARD_MANAGER: Target office must be the same as current office
+        } else if (role == Role.WH_WARD_MANAGER || role == Role.PO_WARD_MANAGER) {
+            // Ward Manager: Target office must be the same as current office
             if (!targetOffice.getId().equals(currentEmployee.getOffice().getId())) {
                 throw new AccessDeniedException("You can only create shippers for your own office");
+            }
+        } else if (role == Role.WH_PROVINCE_ADMIN || role == Role.PO_PROVINCE_ADMIN) {
+             // Province Admin: Target office must be in the same province
+            if (!targetOffice.getProvince().getCode().equals(currentEmployee.getOffice().getProvince().getCode())) {
+                throw new AccessDeniedException("You can only create shippers for offices in your province");
             }
         }
     }
@@ -255,10 +268,15 @@ public class ShipperServiceImpl implements IShipperService {
             if (!shipper.getOffice().getProvince().getCode().equals(currentEmployee.getOffice().getProvince().getCode())) {
                 throw new AccessDeniedException("You can only " + action + " shippers in your province");
             }
-        } else if (role == Role.WH_WARD_MANAGER) {
-            // WH_WARD_MANAGER: Shipper must be in the same office
+        } else if (role == Role.WH_WARD_MANAGER || role == Role.PO_WARD_MANAGER || role == Role.PO_STAFF) {
+            // Office-level: Shipper must be in the same office
             if (!shipper.getOffice().getId().equals(currentEmployee.getOffice().getId())) {
                 throw new AccessDeniedException("You can only " + action + " shippers in your office");
+            }
+        } else if (role == Role.WH_PROVINCE_ADMIN || role == Role.PO_PROVINCE_ADMIN) {
+            // Province Admin: Shipper must be in the same province
+            if (!shipper.getOffice().getProvince().getCode().equals(currentEmployee.getOffice().getProvince().getCode())) {
+                throw new AccessDeniedException("You can only " + action + " shippers in your province");
             }
         }
     }

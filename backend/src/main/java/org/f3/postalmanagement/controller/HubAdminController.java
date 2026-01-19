@@ -52,7 +52,7 @@ public class HubAdminController {
     }
 
     @GetMapping("/province-offices")
-    @PreAuthorize("hasRole('HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN')")
     @Operation(
             summary = "Get all province offices in the region",
             description = "Get all PROVINCE_WAREHOUSE and PROVINCE_POST offices in the HUB admin's region with pagination and optional search."
