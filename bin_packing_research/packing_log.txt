@@ -1,0 +1,433 @@
+
+======================================================================
+📊 VEHICLE-BUNDLE COMPATIBILITY ANALYSIS
+======================================================================
+
+🚛 Xe tập kết (Collection Truck)
+   Thùng xe: 2700 x 1500 x 1400 mm
+   Tải trọng: 800 kg
+   Khả năng xếp bundle:
+      - SMALL (450x300x350): 30/layer × 3 layers = 90 bundles (100.0% floor efficiency)
+      - MEDIUM (675x500x400): 12/layer × 3 layers = 36 bundles (100.0% floor efficiency)
+      - LARGE (900x750x450): 6/layer × 2 layers = 12 bundles (100.0% floor efficiency)
+
+🚛 Xe liên tỉnh (Inter-District Truck)
+   Thùng xe: 4200 x 1900 x 1800 mm
+   Tải trọng: 2500 kg
+   Khả năng xếp bundle:
+      - SMALL (450x300x350): 56/layer × 4 layers = 224 bundles (94.7% floor efficiency)
+      - MEDIUM (675x500x400): 18/layer × 4 layers = 72 bundles (76.1% floor efficiency)
+      - LARGE (900x750x450): 10/layer × 3 layers = 30 bundles (84.6% floor efficiency)
+
+🚛 Xe liên miền (Inter-Region Truck)
+   Thùng xe: 6200 x 2400 x 2400 mm
+   Tải trọng: 8000 kg
+   Khả năng xếp bundle:
+      - SMALL (450x300x350): 104/layer × 6 layers = 624 bundles (94.4% floor efficiency)
+      - MEDIUM (675x500x400): 36/layer × 5 layers = 180 bundles (81.7% floor efficiency)
+      - LARGE (900x750x450): 18/layer × 4 layers = 72 bundles (81.7% floor efficiency)
+
+======================================================================
+
+🔄 Generating Realistic Postal Parcel Dataset...
+📦 Total Parcels Generated: 3000
+   - XS (thư từ): 750
+   - S (phụ kiện): 900
+   - M (quần áo): 750
+   - L (gia dụng): 360
+   - XL (điện tử): 180
+   - XXL (nội thất): 60
+
+======================================================================
+🚛 TEST 1: COLLECTION TRUCK - Xe tập kết (Ward → District Hub)
+======================================================================
+Scenario: Thu gom 600 bưu phẩm từ 1 ward
+
+
+============================================================
+🚛 PACKING FOR: Xe tập kết (Collection Truck)
+   Container: 2700 x 1500 x 1400 mm
+   Capacity: 800 kg
+============================================================
+
+📦 PHASE 1: Palletizing (Gom hàng vào bundles)...
+
+   📊 Bundle Statistics:
+      - SMALL: 10 bundles (avg fill: 92.2%)
+      - MEDIUM: 42 bundles (avg fill: 76.0%)
+      - LARGE: 7 bundles (avg fill: 78.6%)
+   => Total: 59 bundles created
+   📈 Average Bundle Fill Rate: 77.6%
+
+🚛 PHASE 2: Loading bundles into Xe tập kết (Collection Truck)...
+   ❌ Failed: Bundle 38 (Size: 675x500x450)
+   ❌ Failed: Bundle 44 (Size: 675x500x450)
+   ❌ Failed: Bundle 47 (Size: 675x500x450)
+   ❌ Failed: Bundle 10 (Size: 675x500x441)
+   ❌ Failed: Bundle 11 (Size: 675x500x441)
+   ❌ Failed: Bundle 15 (Size: 675x500x441)
+   ❌ Failed: Bundle 41 (Size: 675x500x441)
+   ❌ Failed: Bundle 23 (Size: 675x500x437)
+   ❌ Failed: Bundle 37 (Size: 675x500x437)
+   ❌ Failed: Bundle 40 (Size: 675x500x437)
+   ❌ Failed: Bundle 45 (Size: 675x500x436)
+   ❌ Failed: Bundle 48 (Size: 675x500x436)
+   ❌ Failed: Bundle 46 (Size: 675x500x434)
+   ❌ Failed: Bundle 13 (Size: 675x500x425)
+   ❌ Failed: Bundle 18 (Size: 675x500x425)
+   ❌ Failed: Bundle 32 (Size: 675x500x425)
+   ❌ Failed: Bundle 24 (Size: 675x500x416)
+   ❌ Failed: Bundle 30 (Size: 675x500x416)
+   ❌ Failed: Bundle 31 (Size: 675x500x416)
+   ❌ Failed: Bundle 35 (Size: 675x500x416)
+   ❌ Failed: Bundle 39 (Size: 675x500x416)
+   ❌ Failed: Bundle 43 (Size: 675x500x412)
+   ❌ Failed: Bundle 22 (Size: 675x500x407)
+   ❌ Failed: Bundle 26 (Size: 675x500x407)
+   ❌ Failed: Bundle 29 (Size: 675x500x407)
+   ❌ Failed: Bundle 0 (Size: 900x750x400)
+   ❌ Failed: Bundle 49 (Size: 450x300x400)
+   ❌ Failed: Bundle 50 (Size: 450x300x400)
+   ❌ Failed: Bundle 51 (Size: 450x300x400)
+   ❌ Failed: Bundle 52 (Size: 450x300x400)
+   ❌ Failed: Bundle 53 (Size: 450x300x400)
+   ❌ Failed: Bundle 54 (Size: 450x300x400)
+   ❌ Failed: Bundle 55 (Size: 450x300x400)
+   ❌ Failed: Bundle 56 (Size: 450x300x400)
+   ❌ Failed: Bundle 57 (Size: 450x300x400)
+   ❌ Failed: Bundle 58 (Size: 450x300x400)
+   ❌ Failed: Bundle 42 (Size: 675x500x382)
+
+======================================================================
+🏆 FINAL PACKING REPORT
+======================================================================
+📦 Container: Xe tập kết (Collection Truck)
+   Dimensions: 2700 x 1500 x 1400 mm
+   Capacity: 800 kg
+
+📊 Items & Bundles:
+   Total parcels: 600
+   Bundles created: 59
+   Bundles loaded: 22/59
+   ❌ Failed bundles: 37
+
+📈 Bundle Type Breakdown:
+   MEDIUM      :  16 bundles, Volume:  1728.52 L
+   LARGE       :   6 bundles, Volume:  1489.22 L
+
+✅ Efficiency Metrics:
+   Volume (Items):    56.75% - thể tích thực tế items trong xe
+   Volume (Bundles):  78.35% - thể tích bundles (bao gồm khoảng trống)
+   Floor Space:      100.00% - diện tích sàn layer đầu
+   Weight:             0.00% - 0.0/800 kg
+   Bundle Fill Rate:  77.59% - hiệu quả sử dụng không gian bundle
+======================================================================
+
+======================================================================
+🚛 TEST 2: INTER-DISTRICT TRUCK - Xe liên tỉnh (District → Province Hub)
+======================================================================
+Scenario: Vận chuyển 1500 bưu phẩm từ district hub
+
+
+============================================================
+🚛 PACKING FOR: Xe liên tỉnh (Inter-District Truck)
+   Container: 4200 x 1900 x 1800 mm
+   Capacity: 2500 kg
+============================================================
+
+📦 PHASE 1: Palletizing (Gom hàng vào bundles)...
+
+   📊 Bundle Statistics:
+      - SMALL: 27 bundles (avg fill: 91.4%)
+      - MEDIUM: 96 bundles (avg fill: 76.9%)
+      - LARGE: 24 bundles (avg fill: 77.2%)
+   => Total: 147 bundles created
+   📈 Average Bundle Fill Rate: 77.8%
+
+🚛 PHASE 2: Loading bundles into Xe liên tỉnh (Inter-District Truck)...
+   ❌ Failed: Bundle 38 (Size: 675x500x450)
+   ❌ Failed: Bundle 39 (Size: 675x500x450)
+   ❌ Failed: Bundle 40 (Size: 675x500x450)
+   ❌ Failed: Bundle 41 (Size: 675x500x450)
+   ❌ Failed: Bundle 42 (Size: 675x500x450)
+   ❌ Failed: Bundle 46 (Size: 675x500x450)
+   ❌ Failed: Bundle 49 (Size: 675x500x450)
+   ❌ Failed: Bundle 51 (Size: 675x500x450)
+   ❌ Failed: Bundle 52 (Size: 675x500x450)
+   ❌ Failed: Bundle 53 (Size: 675x500x450)
+   ❌ Failed: Bundle 54 (Size: 675x500x450)
+   ❌ Failed: Bundle 57 (Size: 675x500x450)
+   ❌ Failed: Bundle 60 (Size: 675x500x450)
+   ❌ Failed: Bundle 62 (Size: 675x500x450)
+   ❌ Failed: Bundle 66 (Size: 675x500x450)
+   ❌ Failed: Bundle 68 (Size: 675x500x450)
+   ❌ Failed: Bundle 69 (Size: 675x500x450)
+   ❌ Failed: Bundle 71 (Size: 675x500x450)
+   ❌ Failed: Bundle 72 (Size: 675x500x450)
+   ❌ Failed: Bundle 73 (Size: 675x500x450)
+   ❌ Failed: Bundle 87 (Size: 675x500x450)
+   ❌ Failed: Bundle 88 (Size: 675x500x450)
+   ❌ Failed: Bundle 89 (Size: 675x500x450)
+   ❌ Failed: Bundle 90 (Size: 675x500x450)
+   ❌ Failed: Bundle 94 (Size: 675x500x450)
+   ❌ Failed: Bundle 109 (Size: 675x500x450)
+   ❌ Failed: Bundle 117 (Size: 675x500x450)
+   ❌ Failed: Bundle 31 (Size: 675x500x441)
+   ❌ Failed: Bundle 33 (Size: 675x500x441)
+   ❌ Failed: Bundle 45 (Size: 675x500x441)
+   ❌ Failed: Bundle 55 (Size: 675x500x441)
+   ❌ Failed: Bundle 56 (Size: 675x500x441)
+   ❌ Failed: Bundle 58 (Size: 675x500x441)
+   ❌ Failed: Bundle 59 (Size: 675x500x441)
+   ❌ Failed: Bundle 101 (Size: 675x500x441)
+   ❌ Failed: Bundle 102 (Size: 675x500x441)
+   ❌ Failed: Bundle 103 (Size: 675x500x441)
+   ❌ Failed: Bundle 112 (Size: 675x500x441)
+   ❌ Failed: Bundle 119 (Size: 675x500x441)
+   ❌ Failed: Bundle 125 (Size: 675x500x441)
+   ❌ Failed: Bundle 61 (Size: 675x500x437)
+   ❌ Failed: Bundle 74 (Size: 675x500x437)
+   ❌ Failed: Bundle 75 (Size: 675x500x437)
+   ❌ Failed: Bundle 76 (Size: 675x500x437)
+   ❌ Failed: Bundle 95 (Size: 675x500x437)
+   ❌ Failed: Bundle 96 (Size: 675x500x437)
+   ❌ Failed: Bundle 97 (Size: 675x500x437)
+   ❌ Failed: Bundle 63 (Size: 675x500x436)
+   ❌ Failed: Bundle 64 (Size: 675x500x436)
+   ❌ Failed: Bundle 85 (Size: 675x500x436)
+   ❌ Failed: Bundle 86 (Size: 675x500x436)
+   ❌ Failed: Bundle 111 (Size: 675x500x436)
+   ❌ Failed: Bundle 105 (Size: 675x500x434)
+   ❌ Failed: Bundle 106 (Size: 675x500x434)
+   ❌ Failed: Bundle 107 (Size: 675x500x434)
+   ❌ Failed: Bundle 113 (Size: 675x500x434)
+   ❌ Failed: Bundle 116 (Size: 675x500x434)
+   ❌ Failed: Bundle 120 (Size: 675x500x434)
+   ❌ Failed: Bundle 34 (Size: 675x500x425)
+   ❌ Failed: Bundle 35 (Size: 675x500x425)
+   ❌ Failed: Bundle 36 (Size: 675x500x425)
+   ❌ Failed: Bundle 43 (Size: 675x500x425)
+   ❌ Failed: Bundle 47 (Size: 675x500x425)
+   ❌ Failed: Bundle 48 (Size: 675x500x425)
+   ❌ Failed: Bundle 50 (Size: 675x500x425)
+   ❌ Failed: Bundle 70 (Size: 675x500x416)
+   ❌ Failed: Bundle 78 (Size: 675x500x416)
+   ❌ Failed: Bundle 79 (Size: 675x500x416)
+   ❌ Failed: Bundle 80 (Size: 675x500x416)
+   ❌ Failed: Bundle 81 (Size: 675x500x416)
+   ❌ Failed: Bundle 82 (Size: 675x500x416)
+   ❌ Failed: Bundle 83 (Size: 675x500x416)
+   ❌ Failed: Bundle 84 (Size: 675x500x416)
+   ❌ Failed: Bundle 91 (Size: 675x500x416)
+   ❌ Failed: Bundle 92 (Size: 675x500x416)
+   ❌ Failed: Bundle 93 (Size: 675x500x416)
+   ❌ Failed: Bundle 98 (Size: 675x500x416)
+   ❌ Failed: Bundle 99 (Size: 675x500x416)
+   ❌ Failed: Bundle 100 (Size: 675x500x416)
+   ❌ Failed: Bundle 108 (Size: 675x500x412)
+   ❌ Failed: Bundle 110 (Size: 675x500x410)
+   ❌ Failed: Bundle 77 (Size: 675x500x407)
+   ❌ Failed: Bundle 118 (Size: 675x500x399)
+   ❌ Failed: Bundle 104 (Size: 675x500x382)
+
+======================================================================
+🏆 FINAL PACKING REPORT
+======================================================================
+📦 Container: Xe liên tỉnh (Inter-District Truck)
+   Dimensions: 4200 x 1900 x 1800 mm
+   Capacity: 2500 kg
+
+📊 Items & Bundles:
+   Total parcels: 1500
+   Bundles created: 147
+   Bundles loaded: 63/147
+   ❌ Failed bundles: 84
+
+📈 Bundle Type Breakdown:
+   SMALL       :  27 bundles, Volume:  1166.33 L
+   MEDIUM      :  12 bundles, Volume:  1318.84 L
+   LARGE       :  24 bundles, Volume:  5624.91 L
+
+✅ Efficiency Metrics:
+   Volume (Items):    56.46% - thể tích thực tế items trong xe
+   Volume (Bundles):  77.13% - thể tích bundles (bao gồm khoảng trống)
+   Floor Space:       96.99% - diện tích sàn layer đầu
+   Weight:             0.00% - 0.0/2500 kg
+   Bundle Fill Rate:  77.85% - hiệu quả sử dụng không gian bundle
+======================================================================
+
+======================================================================
+🚛 TEST 3: INTER-REGION TRUCK - Xe liên miền (Province → Regional Hub)
+======================================================================
+Scenario: Vận chuyển 3000 bưu phẩm từ province hub
+
+
+============================================================
+🚛 PACKING FOR: Xe liên miền (Inter-Region Truck)
+   Container: 6200 x 2400 x 2400 mm
+   Capacity: 8000 kg
+============================================================
+
+📦 PHASE 1: Palletizing (Gom hàng vào bundles)...
+
+   📊 Bundle Statistics:
+      - SMALL: 63 bundles (avg fill: 91.1%)
+      - MEDIUM: 180 bundles (avg fill: 78.3%)
+      - LARGE: 50 bundles (avg fill: 78.9%)
+   => Total: 293 bundles created
+   📈 Average Bundle Fill Rate: 79.4%
+
+🚛 PHASE 2: Loading bundles into Xe liên miền (Inter-Region Truck)...
+   ❌ Failed: Bundle 107 (Size: 675x500x441)
+   ❌ Failed: Bundle 109 (Size: 675x500x441)
+   ❌ Failed: Bundle 110 (Size: 675x500x441)
+   ❌ Failed: Bundle 111 (Size: 675x500x441)
+   ❌ Failed: Bundle 112 (Size: 675x500x441)
+   ❌ Failed: Bundle 196 (Size: 675x500x441)
+   ❌ Failed: Bundle 197 (Size: 675x500x441)
+   ❌ Failed: Bundle 198 (Size: 675x500x441)
+   ❌ Failed: Bundle 199 (Size: 675x500x441)
+   ❌ Failed: Bundle 217 (Size: 675x500x441)
+   ❌ Failed: Bundle 218 (Size: 675x500x441)
+   ❌ Failed: Bundle 229 (Size: 675x500x441)
+   ❌ Failed: Bundle 252 (Size: 675x500x441)
+   ❌ Failed: Bundle 152 (Size: 675x500x437)
+   ❌ Failed: Bundle 153 (Size: 675x500x437)
+   ❌ Failed: Bundle 154 (Size: 675x500x437)
+   ❌ Failed: Bundle 155 (Size: 675x500x437)
+   ❌ Failed: Bundle 183 (Size: 675x500x437)
+   ❌ Failed: Bundle 184 (Size: 675x500x437)
+   ❌ Failed: Bundle 185 (Size: 675x500x437)
+   ❌ Failed: Bundle 186 (Size: 675x500x437)
+   ❌ Failed: Bundle 187 (Size: 675x500x437)
+   ❌ Failed: Bundle 188 (Size: 675x500x437)
+   ❌ Failed: Bundle 189 (Size: 675x500x437)
+   ❌ Failed: Bundle 118 (Size: 675x500x436)
+   ❌ Failed: Bundle 119 (Size: 675x500x436)
+   ❌ Failed: Bundle 120 (Size: 675x500x436)
+   ❌ Failed: Bundle 121 (Size: 675x500x436)
+   ❌ Failed: Bundle 122 (Size: 675x500x436)
+   ❌ Failed: Bundle 123 (Size: 675x500x436)
+   ❌ Failed: Bundle 124 (Size: 675x500x436)
+   ❌ Failed: Bundle 125 (Size: 675x500x436)
+   ❌ Failed: Bundle 126 (Size: 675x500x436)
+   ❌ Failed: Bundle 167 (Size: 675x500x436)
+   ❌ Failed: Bundle 168 (Size: 675x500x436)
+   ❌ Failed: Bundle 169 (Size: 675x500x436)
+   ❌ Failed: Bundle 230 (Size: 675x500x436)
+   ❌ Failed: Bundle 201 (Size: 675x500x434)
+   ❌ Failed: Bundle 202 (Size: 675x500x434)
+   ❌ Failed: Bundle 203 (Size: 675x500x434)
+   ❌ Failed: Bundle 204 (Size: 675x500x434)
+   ❌ Failed: Bundle 226 (Size: 675x500x434)
+   ❌ Failed: Bundle 227 (Size: 675x500x434)
+   ❌ Failed: Bundle 228 (Size: 675x500x434)
+   ❌ Failed: Bundle 238 (Size: 675x500x434)
+   ❌ Failed: Bundle 212 (Size: 675x500x433)
+   ❌ Failed: Bundle 64 (Size: 675x500x425)
+   ❌ Failed: Bundle 65 (Size: 675x500x425)
+   ❌ Failed: Bundle 66 (Size: 675x500x425)
+   ❌ Failed: Bundle 82 (Size: 675x500x425)
+   ❌ Failed: Bundle 85 (Size: 675x500x425)
+   ❌ Failed: Bundle 132 (Size: 675x500x425)
+   ❌ Failed: Bundle 166 (Size: 675x500x425)
+   ❌ Failed: Bundle 79 (Size: 675x500x420)
+   ❌ Failed: Bundle 116 (Size: 675x500x416)
+   ❌ Failed: Bundle 129 (Size: 675x500x416)
+   ❌ Failed: Bundle 130 (Size: 675x500x416)
+   ❌ Failed: Bundle 134 (Size: 675x500x416)
+   ❌ Failed: Bundle 136 (Size: 675x500x416)
+   ❌ Failed: Bundle 140 (Size: 675x500x416)
+   ❌ Failed: Bundle 141 (Size: 675x500x416)
+   ❌ Failed: Bundle 142 (Size: 675x500x416)
+   ❌ Failed: Bundle 143 (Size: 675x500x416)
+   ❌ Failed: Bundle 156 (Size: 675x500x416)
+   ❌ Failed: Bundle 157 (Size: 675x500x416)
+   ❌ Failed: Bundle 158 (Size: 675x500x416)
+   ❌ Failed: Bundle 159 (Size: 675x500x416)
+   ❌ Failed: Bundle 160 (Size: 675x500x416)
+   ❌ Failed: Bundle 161 (Size: 675x500x416)
+   ❌ Failed: Bundle 162 (Size: 675x500x416)
+   ❌ Failed: Bundle 163 (Size: 675x500x416)
+   ❌ Failed: Bundle 164 (Size: 675x500x416)
+   ❌ Failed: Bundle 165 (Size: 675x500x416)
+   ❌ Failed: Bundle 190 (Size: 675x500x416)
+   ❌ Failed: Bundle 191 (Size: 675x500x416)
+   ❌ Failed: Bundle 192 (Size: 675x500x416)
+   ❌ Failed: Bundle 193 (Size: 675x500x416)
+   ❌ Failed: Bundle 194 (Size: 675x500x416)
+   ❌ Failed: Bundle 195 (Size: 675x500x416)
+   ❌ Failed: Bundle 210 (Size: 675x500x416)
+   ❌ Failed: Bundle 211 (Size: 675x500x416)
+   ❌ Failed: Bundle 208 (Size: 675x500x410)
+   ❌ Failed: Bundle 209 (Size: 675x500x410)
+   ❌ Failed: Bundle 80 (Size: 675x500x407)
+   ❌ Failed: Bundle 81 (Size: 675x500x407)
+   ❌ Failed: Bundle 216 (Size: 675x500x407)
+   ❌ Failed: Bundle 271 (Size: 450x300x400)
+   ❌ Failed: Bundle 273 (Size: 450x300x400)
+   ❌ Failed: Bundle 275 (Size: 450x300x400)
+   ❌ Failed: Bundle 280 (Size: 450x300x400)
+   ❌ Failed: Bundle 282 (Size: 450x300x400)
+   ❌ Failed: Bundle 283 (Size: 450x300x400)
+   ❌ Failed: Bundle 285 (Size: 450x300x400)
+   ❌ Failed: Bundle 286 (Size: 450x300x400)
+   ❌ Failed: Bundle 288 (Size: 450x300x400)
+   ❌ Failed: Bundle 290 (Size: 450x300x400)
+   ❌ Failed: Bundle 291 (Size: 450x300x400)
+   ❌ Failed: Bundle 292 (Size: 450x300x400)
+   ❌ Failed: Bundle 250 (Size: 450x300x399)
+   ❌ Failed: Bundle 264 (Size: 450x300x399)
+   ❌ Failed: Bundle 269 (Size: 450x300x399)
+   ❌ Failed: Bundle 272 (Size: 450x300x399)
+   ❌ Failed: Bundle 274 (Size: 450x300x399)
+   ❌ Failed: Bundle 289 (Size: 450x300x399)
+   ❌ Failed: Bundle 259 (Size: 450x300x398)
+   ❌ Failed: Bundle 284 (Size: 450x300x398)
+   ❌ Failed: Bundle 287 (Size: 450x300x398)
+   ❌ Failed: Bundle 277 (Size: 450x300x397)
+   ❌ Failed: Bundle 278 (Size: 450x300x397)
+   ❌ Failed: Bundle 281 (Size: 450x300x397)
+   ❌ Failed: Bundle 279 (Size: 450x300x396)
+   ❌ Failed: Bundle 276 (Size: 450x300x394)
+   ❌ Failed: Bundle 215 (Size: 675x500x387)
+   ❌ Failed: Bundle 251 (Size: 675x500x387)
+   ❌ Failed: Bundle 205 (Size: 675x500x380)
+   ❌ Failed: Bundle 206 (Size: 675x500x380)
+   ❌ Failed: Bundle 237 (Size: 675x500x380)
+
+======================================================================
+🏆 FINAL PACKING REPORT
+======================================================================
+📦 Container: Xe liên miền (Inter-Region Truck)
+   Dimensions: 6200 x 2400 x 2400 mm
+   Capacity: 8000 kg
+
+📊 Items & Bundles:
+   Total parcels: 3000
+   Bundles created: 293
+   Bundles loaded: 176/293
+   ❌ Failed bundles: 117
+
+📈 Bundle Type Breakdown:
+   SMALL       :  37 bundles, Volume:  1597.69 L
+   MEDIUM      :  89 bundles, Volume:  9669.12 L
+   LARGE       :  50 bundles, Volume: 11985.63 L
+
+✅ Efficiency Metrics:
+   Volume (Items):    65.11% - thể tích thực tế items trong xe
+   Volume (Bundles):  89.69% - thể tích bundles (bao gồm khoảng trống)
+   Floor Space:       93.25% - diện tích sàn layer đầu
+   Weight:             0.00% - 0.0/8000 kg
+   Bundle Fill Rate:  79.40% - hiệu quả sử dụng không gian bundle
+======================================================================
+
+======================================================================
+📊 COMPARISON SUMMARY
+======================================================================
+Vehicle                 Bundles     Loaded  Volume Eff.  Bundle Fill
+----------------------------------------------------------------------
+Xe tập kết                   59         22        56.8%        79.0%
+Xe liên tỉnh                147         63        56.5%        79.6%
+Xe liên miền                293        176        65.1%        81.1%
+======================================================================
