@@ -27,6 +27,14 @@ import {
     type RouteType
 } from '../../services/routeService';
 import { RouteNetworkMap } from '../../components/admin/RouteNetworkMap';
+import { CreateTransferRouteModal } from '../../components/admin/modals/CreateTransferRouteModal';
+import { officeDataService } from '../../services/officeDataService';
+
+interface Location {
+    id: string;
+    name: string;
+    type: 'PROVINCE_WAREHOUSE' | 'HUB' | 'SYSTEM_HUB';
+}
 
 interface RouteManagementPageProps {
     filterRouteType?: RouteType;
@@ -38,11 +46,13 @@ export function RouteManagementPage({ filterRouteType }: RouteManagementPageProp
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'list' | 'graph'>('graph');
+    const [availableLocations, setAvailableLocations] = useState<Location[]>([]);
 
     // Modal state
     const [showDisableModal, setShowDisableModal] = useState(false);
     const [showEnableModal, setShowEnableModal] = useState(false);
     const [showImpactModal, setShowImpactModal] = useState(false);
+    const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedRoute, setSelectedRoute] = useState<TransferRoute | null>(null);
     const [impact, setImpact] = useState<ReroutingImpact | null>(null);
     const [impactLoading, setImpactLoading] = useState(false);
@@ -60,12 +70,21 @@ export function RouteManagementPage({ filterRouteType }: RouteManagementPageProp
     async function loadData() {
         try {
             setLoading(true);
-            const [routesData, disruptionsData] = await Promise.all([
+            const [routesData, disruptionsData, hubsData, provinceWhData] = await Promise.all([
                 getAllRoutes(),
-                getActiveDisruptions()
+                getActiveDisruptions(),
+                officeDataService.getHubWarehouses(),
+                officeDataService.getProvinceWarehouses()
             ]);
             setRoutes(routesData);
             setActiveDisruptions(disruptionsData);
+
+            // Combine hubs and province warehouses with type information
+            const locations: Location[] = [
+                ...hubsData.map((h: any) => ({ id: h.id, name: h.name, type: h.type === 'SYSTEM_HUB' ? 'SYSTEM_HUB' as const : 'HUB' as const })),
+                ...provinceWhData.map((w: any) => ({ id: w.id, name: w.name, type: 'PROVINCE_WAREHOUSE' as const }))
+            ];
+            setAvailableLocations(locations);
             setError(null);
         } catch (err) {
             setError('Không thể tải dữ liệu tuyến đường');
@@ -74,6 +93,13 @@ export function RouteManagementPage({ filterRouteType }: RouteManagementPageProp
             setLoading(false);
         }
     }
+
+    const getRouteTypeLabel = (): string => {
+        if (filterRouteType === 'PROVINCE_TO_HUB') {
+            return 'Tuyến Trung Chuyển (Tỉnh → Hub)';
+        }
+        return 'Tuyến Liên Kho (Hub → Hub)';
+    };
 
     async function handlePreviewImpact(route: TransferRoute) {
         console.log('Opening impact modal for route:', route.id);
@@ -181,10 +207,16 @@ export function RouteManagementPage({ filterRouteType }: RouteManagementPageProp
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Quản lý Tuyến đường</h1>
                     <p className="text-gray-500 mt-1">
-                        Quản lý các tuyến vận chuyển giữa các HUB
+                        {getRouteTypeLabel()}
                     </p>
                 </div>
                 <div className="flex gap-4 items-center">
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+                    >
+                        + Tạo Tuyến Đường
+                    </button>
                     <div className="flex gap-2">
                         <div className="px-4 py-2 bg-green-100 text-green-800 rounded-lg font-medium text-sm flex items-center">
                             <CheckCircle className="w-4 h-4 mr-1" />
@@ -255,6 +287,9 @@ export function RouteManagementPage({ filterRouteType }: RouteManagementPageProp
                                         Tuyến đường
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        Loại
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                         Khoảng cách
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -283,6 +318,17 @@ export function RouteManagementPage({ filterRouteType }: RouteManagementPageProp
                                                     </p>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-600 whitespace-nowrap text-sm">
+                                            {route.routeType === 'PROVINCE_TO_HUB' ? (
+                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                                    Trung Chuyển
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    Liên Kho
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
                                             {route.distanceKm ? `${route.distanceKm} km` : '-'}
@@ -566,6 +612,15 @@ export function RouteManagementPage({ filterRouteType }: RouteManagementPageProp
                 </div>,
                 document.body
             )}
+
+            {/* Create Transfer Route Modal */}
+            <CreateTransferRouteModal
+                isOpen={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                onSuccess={() => loadData()}
+                filterRouteType={filterRouteType}
+                availableLocations={availableLocations}
+            />
         </div>
     );
 }

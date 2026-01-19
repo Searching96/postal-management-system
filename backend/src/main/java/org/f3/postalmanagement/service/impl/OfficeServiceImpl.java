@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.f3.postalmanagement.dto.request.office.OfficeStatusUpdateRequest;
 import org.f3.postalmanagement.dto.response.office.OfficeResponse;
 import org.f3.postalmanagement.entity.unit.Office;
+import org.f3.postalmanagement.enums.OfficeType;
 import org.f3.postalmanagement.exception.NotFoundException;
 import org.f3.postalmanagement.repository.OfficeRepository;
 import org.f3.postalmanagement.service.IOfficeService;
@@ -24,12 +25,29 @@ public class OfficeServiceImpl implements IOfficeService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OfficeResponse> searchOffices(String query, Pageable pageable) {
+    public Page<OfficeResponse> searchOffices(String query, String type, Pageable pageable) {
         Page<Office> offices;
-        if (query == null || query.isBlank()) {
-            offices = officeRepository.findAll(pageable);
+
+        // If type filter is provided, use it
+        if (type != null && !type.isBlank()) {
+            try {
+                OfficeType officeType = OfficeType.valueOf(type);
+                if (query == null || query.isBlank()) {
+                    offices = officeRepository.findByOfficeType(officeType, pageable);
+                } else {
+                    offices = officeRepository.searchOfficesByTypeAndQuery(query, officeType, pageable);
+                }
+            } catch (IllegalArgumentException e) {
+                // Invalid type provided, return empty
+                return Page.empty(pageable);
+            }
         } else {
-            offices = officeRepository.searchOffices(query, pageable);
+            // No type filter
+            if (query == null || query.isBlank()) {
+                offices = officeRepository.findAll(pageable);
+            } else {
+                offices = officeRepository.searchOffices(query, pageable);
+            }
         }
         return offices.map(this::mapToResponse);
     }

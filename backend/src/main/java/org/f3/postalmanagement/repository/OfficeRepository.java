@@ -73,4 +73,16 @@ public interface OfficeRepository extends JpaRepository<Office, UUID> {
     Page<Office> findAllByOfficeTypeInWithSearch(@Param("officeTypes") List<OfficeType> officeTypes,
                                                  @Param("search") String search,
                                                  Pageable pageable);
+
+    @Query("SELECT o FROM Office o WHERE o.officeType = :officeType ORDER BY o.officeName ASC")
+    Page<Office> findByOfficeType(@Param("officeType") OfficeType officeType, Pageable pageable);
+
+    @Query("SELECT o FROM Office o WHERE o.officeType = :officeType AND " +
+           "(:search IS NULL OR :search = '' OR " +
+           "LOWER(o.officeName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(o.officeEmail) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY o.officeName ASC")
+    Page<Office> searchOfficesByTypeAndQuery(@Param("search") String search,
+                                             @Param("officeType") OfficeType officeType,
+                                             Pageable pageable);
 }

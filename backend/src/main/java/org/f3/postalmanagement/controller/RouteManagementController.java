@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.f3.postalmanagement.dto.request.route.CreateTransferRouteRequest;
 import org.f3.postalmanagement.dto.request.route.DisableRouteRequest;
 import org.f3.postalmanagement.dto.response.route.DisruptionResponse;
 import org.f3.postalmanagement.dto.response.route.ReroutingImpactResponse;
@@ -41,6 +42,15 @@ public class RouteManagementController {
     @Operation(summary = "Get all transfer routes", description = "Returns all hub-to-hub transfer routes with their current status")
     public ResponseEntity<List<TransferRouteResponse>> getAllRoutes() {
         return ResponseEntity.ok(reroutingService.getAllRoutes());
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN')")
+    @Operation(summary = "Create a new transfer route", description = "Creates a new transfer route between hubs")
+    public ResponseEntity<TransferRouteResponse> createRoute(
+            @Valid @RequestBody CreateTransferRouteRequest request,
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
+        return ResponseEntity.ok(reroutingService.createRoute(request, currentAccount));
     }
 
     @GetMapping("/{routeId}")

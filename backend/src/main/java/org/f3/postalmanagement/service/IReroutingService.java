@@ -1,5 +1,6 @@
 package org.f3.postalmanagement.service;
 
+import org.f3.postalmanagement.dto.request.route.CreateTransferRouteRequest;
 import org.f3.postalmanagement.dto.request.route.DisableRouteRequest;
 import org.f3.postalmanagement.dto.response.route.DisruptionResponse;
 import org.f3.postalmanagement.dto.response.route.ReroutingImpactResponse;
@@ -13,6 +14,11 @@ import java.util.UUID;
  * Service for managing route disruptions and rerouting.
  */
 public interface IReroutingService {
+
+    /**
+     * Create a new transfer route.
+     */
+    TransferRouteResponse createRoute(CreateTransferRouteRequest request, Account currentAccount);
 
     /**
      * Get all transfer routes with their current status.

@@ -108,3 +108,14 @@ export async function getWardOfficesByProvince(provinceCode: string): Promise<Of
         return [];
     }
 }
+
+// Export as object for convenience
+export const officeDataService = {
+    getAllProvinces,
+    getWardsByProvince,
+    getOffices,
+    getProvinceWarehouses,
+    getHubWarehouses,
+    getWardOffices,
+    getWardOfficesByProvince,
+};

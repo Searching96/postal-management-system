@@ -60,14 +60,14 @@ function App() {
                 <Route path="/admin/system" element={<SystemAdminPage />} />
               </Route>
 
-              {/* Hub Admin & System Admin - Transfer Routes */}
+              {/* Hub Admin & System Admin - Route Management (role-based routing) */}
               <Route element={<RoleRoute allowedRoles={["SYSTEM_ADMIN", "HUB_ADMIN"]} />}>
                 <Route path="/admin/hub" element={<HubAdminPage />} />
                 <Route path="/admin/routes" element={<UnifiedRouteManagementPage />} />
               </Route>
 
-              {/* Consolidation Routes - WARD → PROVINCE (only PROVINCE_ADMIN creates, WARD can view) */}
-              <Route element={<RoleRoute allowedRoles={["SYSTEM_ADMIN", "PO_PROVINCE_ADMIN", "WH_PROVINCE_ADMIN", "PO_WARD_MANAGER", "WH_WARD_MANAGER"]} />}>
+              {/* Province Admin - Consolidation Routes Management (WARD → PROVINCE) */}
+              <Route element={<RoleRoute allowedRoles={["SYSTEM_ADMIN", "PO_PROVINCE_ADMIN", "WH_PROVINCE_ADMIN"]} />}>
                 <Route path="/admin/consolidation-routes" element={<ConsolidationRouteManagementPage />} />
               </Route>
 

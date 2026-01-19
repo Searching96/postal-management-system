@@ -8,7 +8,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.UUID;
 
 public interface IOfficeService {
-    Page<OfficeResponse> searchOffices(String query, Pageable pageable);
+    Page<OfficeResponse> searchOffices(String query, String type, Pageable pageable);
     OfficeResponse getOfficeDetails(UUID id);
     OfficeResponse updateOfficeStatus(UUID id, OfficeStatusUpdateRequest request);
 }

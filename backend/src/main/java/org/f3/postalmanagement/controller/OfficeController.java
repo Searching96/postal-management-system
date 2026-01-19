@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.f3.postalmanagement.dto.request.office.OfficeStatusUpdateRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
 import org.f3.postalmanagement.dto.response.office.OfficeResponse;
+import org.f3.postalmanagement.enums.OfficeType;
 import org.f3.postalmanagement.service.IOfficeService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,10 +30,11 @@ public class OfficeController {
     @GetMapping
     public ResponseEntity<PageResponse<OfficeResponse>> searchOffices(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) String type,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<OfficeResponse> result = officeService.searchOffices(search, pageable);
+        Page<OfficeResponse> result = officeService.searchOffices(search, type, pageable);
         return ResponseEntity.ok(PageResponse.of(result));
     }
 

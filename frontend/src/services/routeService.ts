@@ -79,6 +79,22 @@ export interface DisruptionResponse {
 }
 
 // API functions
+export interface CreateTransferRouteRequest {
+    routeType: RouteType;
+    fromHubId: string;
+    toHubId: string;
+    distanceKm?: number;
+    transitHours?: number;
+    priority?: number;
+    isActive?: boolean;
+    provinceWarehouseId?: string;
+}
+
+export async function createRoute(request: CreateTransferRouteRequest): Promise<TransferRoute> {
+    const response = await api.post('/routes', request);
+    return response.data;
+}
+
 export async function getAllRoutes(): Promise<TransferRoute[]> {
     const response = await api.get('/routes');
     return response.data;

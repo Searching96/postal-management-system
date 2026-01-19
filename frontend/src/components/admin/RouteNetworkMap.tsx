@@ -92,8 +92,11 @@ export function RouteNetworkMap({ routes, onEdgeClick }: RouteNetworkMapProps) {
                 dashArray: route.isActive ? undefined : '5, 10',
                 onClick: () => onEdgeClick?.(route),
                 popupContent: (
-                    <div className="p-1 min-w-[200px]">
-                        <h4 className="font-bold text-gray-900 text-sm mb-2">{route.fromHubName} → {route.toHubName}</h4>
+                    <div className="p-1 min-w-[220px]">
+                        <h4 className="font-bold text-gray-900 text-sm mb-1">{route.fromHubName} → {route.toHubName}</h4>
+                        <div className="text-xs font-medium text-primary-600 mb-2">
+                            {route.routeType === 'PROVINCE_TO_HUB' ? 'Tuyến Trung Chuyển (Tỉnh → Hub)' : 'Tuyến Liên Kho (Hub → Hub)'}
+                        </div>
                         <div className="space-y-1 text-xs text-gray-600">
                             <div className="flex justify-between">
                                 <span>Khoảng cách:</span>

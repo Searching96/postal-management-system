@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { AlertCircle, Loader2, RefreshCw, Tabs } from 'lucide-react';
+import React from 'react';
+import { AlertCircle } from 'lucide-react';
 import { useAuth } from '../../lib/AuthContext';
 import { EmployeeMeResponse } from '../../models/user';
 import { ConsolidationRouteManagementPage } from './ConsolidationRouteManagementPage';
 import { RouteManagementPage as TransferRouteManagementPage } from './RouteManagementPage';
 
-type RouteTab = 'consolidation' | 'transfer-province' | 'transfer-hub';
-
+/**
+ * Smart router that displays role-based route management pages.
+ *
+ * - PROVINCE_ADMIN/WH_PROVINCE_ADMIN: Consolidation routes (WARD → PROVINCE)
+ * - HUB_ADMIN: Transfer routes (PROVINCE → HUB only)
+ * - SYSTEM_ADMIN: Transfer routes (HUB → HUB only)
+ * - Others: No access
+ */
 export function UnifiedRouteManagementPage() {
     const { user: currentUser } = useAuth();
-    const [activeTab, setActiveTab] = useState<RouteTab>('consolidation');
-    const [loading, setLoading] = useState(false);
 
     if (!currentUser || !('office' in currentUser)) {
         return (
@@ -20,135 +24,69 @@ export function UnifiedRouteManagementPage() {
         );
     }
 
-    const employeeUser = currentUser as EmployeeMeResponse;
     const userRole = currentUser.role;
-    const isProvinceAdmin = userRole === 'PO_PROVINCE_ADMIN' || userRole === 'WH_PROVINCE_ADMIN';
-    const isHubAdmin = userRole === 'HUB_ADMIN' || userRole === 'SYSTEM_ADMIN';
-    const isWardManager = userRole === 'PO_WARD_MANAGER' || userRole === 'WH_WARD_MANAGER';
+    const employeeUser = currentUser as EmployeeMeResponse;
 
-    // Determine which tabs are accessible
-    const canViewConsolidation = isProvinceAdmin || isWardManager || isHubAdmin || userRole === 'SYSTEM_ADMIN';
-    const canViewTransfer = isHubAdmin || userRole === 'SYSTEM_ADMIN';
+    // Province-level managers: manage consolidation routes (WARD → PROVINCE)
+    if (userRole === 'PO_PROVINCE_ADMIN' || userRole === 'WH_PROVINCE_ADMIN') {
+        return <ConsolidationRouteManagementPage />;
+    }
 
-    // Auto-select first available tab
-    useEffect(() => {
-        if (!canViewConsolidation && activeTab === 'consolidation') {
-            setActiveTab('transfer-province');
-        } else if (!canViewTransfer && (activeTab === 'transfer-province' || activeTab === 'transfer-hub')) {
-            setActiveTab('consolidation');
-        }
-    }, [canViewConsolidation, canViewTransfer, activeTab]);
-
-    const tabs: Array<{
-        id: RouteTab;
-        label: string;
-        icon: string;
-        visible: boolean;
-        description: string;
-    }> = [
-        {
-            id: 'consolidation',
-            label: 'Tuyến Tập Kết',
-            icon: '📦',
-            visible: canViewConsolidation,
-            description: 'Tuyến từ phường lên tỉnh (WARD → PROVINCE)',
-        },
-        {
-            id: 'transfer-province',
-            label: 'Tuyến Trung Chuyển',
-            icon: '🚚',
-            visible: canViewTransfer,
-            description: 'Tuyến từ tỉnh lên hub (PROVINCE → HUB)',
-        },
-        {
-            id: 'transfer-hub',
-            label: 'Tuyến Liên Kho',
-            icon: '🔄',
-            visible: canViewTransfer,
-            description: 'Tuyến giữa các hub (HUB → HUB / DIRECT)',
-        },
-    ];
-
-    const visibleTabs = tabs.filter((t) => t.visible);
-
-    if (visibleTabs.length === 0) {
+    // Hub admin: manage PROVINCE_TO_HUB transfer routes
+    if (userRole === 'HUB_ADMIN') {
         return (
-            <div className="p-6 text-center text-gray-500">
-                Bạn không có quyền quản lý tuyến đường
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Quản Lý Tuyến Trung Chuyển</h1>
+                        <p className="text-gray-600 mt-1">
+                            Tuyến từ tỉnh lên hub • Cơ sở: {employeeUser.office?.name}
+                        </p>
+                    </div>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p className="text-sm text-amber-900">
+                        <strong>Tuyến Trung Chuyển:</strong> Quản lý tuyến từ tỉnh lên hub.
+                        Dùng để định tuyến đơn hàng từ kho tỉnh đến hub khu vực.
+                    </p>
+                </div>
+                <TransferRouteManagementPage filterRouteType="PROVINCE_TO_HUB" />
             </div>
         );
     }
 
-    return (
-        <div className="space-y-6 p-6 max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Quản Lý Tuyến Đường</h1>
-                    <p className="text-gray-600 mt-1">
-                        Cơ sở: {employeeUser.office?.name} ({userRole})
+    // System admin: manage HUB_TO_HUB transfer routes
+    if (userRole === 'SYSTEM_ADMIN') {
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Quản Lý Tuyến Liên Kho</h1>
+                        <p className="text-gray-600 mt-1">
+                            Tuyến giữa các hub • Cơ sở: {employeeUser.office?.name}
+                        </p>
+                    </div>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-sm text-green-900">
+                        <strong>Tuyến Liên Kho:</strong> Quản lý tuyến giữa các hub.
+                        Bao gồm tuyến thường (HUB_TO_HUB) và tuyến trực tiếp (DIRECT_HUB) cho thông lượng cao.
                     </p>
                 </div>
+                <TransferRouteManagementPage filterRouteType="HUB_TO_HUB" />
             </div>
+        );
+    }
 
-            {/* Tabs */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="flex border-b border-gray-200 overflow-x-auto">
-                    {visibleTabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`px-6 py-4 font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
-                                activeTab === tab.id
-                                    ? 'border-b-2 border-blue-600 text-blue-600'
-                                    : 'text-gray-600 hover:text-gray-900 border-b-2 border-transparent'
-                            }`}
-                            title={tab.description}
-                        >
-                            <span className="mr-2">{tab.icon}</span>
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Tab Content */}
-                <div className="p-6">
-                    {activeTab === 'consolidation' && canViewConsolidation && (
-                        <div>
-                            <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                <p className="text-sm text-blue-900">
-                                    <strong>Tuyến Tập Kết:</strong> Quản lý tuyến từ phường lên tỉnh.
-                                    Cấp tỉnh tạo tuyến này, cấp phường xem được để gán đơn hàng.
-                                </p>
-                            </div>
-                            <ConsolidationRouteManagementPage />
-                        </div>
-                    )}
-
-                    {activeTab === 'transfer-province' && canViewTransfer && (
-                        <div>
-                            <div className="mb-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                                <p className="text-sm text-amber-900">
-                                    <strong>Tuyến Trung Chuyển:</strong> Quản lý tuyến từ tỉnh lên hub.
-                                    Dùng để định tuyến đơn hàng từ kho tỉnh đến hub khu vực.
-                                </p>
-                            </div>
-                            <TransferRouteManagementPage filterRouteType="PROVINCE_TO_HUB" />
-                        </div>
-                    )}
-
-                    {activeTab === 'transfer-hub' && canViewTransfer && (
-                        <div>
-                            <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                                <p className="text-sm text-green-900">
-                                    <strong>Tuyến Liên Kho:</strong> Quản lý tuyến giữa các hub.
-                                    Bao gồm tuyến thường (HUB_TO_HUB) và tuyến trực tiếp (DIRECT_HUB) cho thông lượng cao.
-                                </p>
-                            </div>
-                            <TransferRouteManagementPage filterRouteType="HUB_TO_HUB" />
-                        </div>
-                    )}
-                </div>
+    // Ward-level and other roles: no access
+    return (
+        <div className="p-6 max-w-md mx-auto">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-3" />
+                <h3 className="text-lg font-semibold text-red-900 mb-2">Truy cập bị từ chối</h3>
+                <p className="text-red-700">
+                    Bạn không có quyền quản lý tuyến đường. Chỉ quản lý viên cấp tỉnh, hub hoặc hệ thống mới có thể truy cập.
+                </p>
             </div>
         </div>
     );

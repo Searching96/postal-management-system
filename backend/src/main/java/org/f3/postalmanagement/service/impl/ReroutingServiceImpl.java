@@ -2,6 +2,7 @@ package org.f3.postalmanagement.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.f3.postalmanagement.dto.request.route.CreateTransferRouteRequest;
 import org.f3.postalmanagement.dto.request.route.DisableRouteRequest;
 import org.f3.postalmanagement.dto.response.route.DisruptionResponse;
 import org.f3.postalmanagement.dto.response.route.ReroutingImpactResponse;
@@ -11,9 +12,11 @@ import org.f3.postalmanagement.entity.order.BatchPackage;
 import org.f3.postalmanagement.entity.unit.Office;
 import org.f3.postalmanagement.entity.unit.RouteDisruption;
 import org.f3.postalmanagement.entity.unit.TransferRoute;
+import org.f3.postalmanagement.enums.OfficeType;
 import org.f3.postalmanagement.exception.BadRequestException;
 import org.f3.postalmanagement.exception.NotFoundException;
 import org.f3.postalmanagement.repository.BatchPackageRepository;
+import org.f3.postalmanagement.repository.OfficeRepository;
 import org.f3.postalmanagement.repository.RouteDisruptionRepository;
 import org.f3.postalmanagement.repository.TransferRouteRepository;
 import org.f3.postalmanagement.service.IReroutingService;
@@ -22,7 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,7 +39,70 @@ public class ReroutingServiceImpl implements IReroutingService {
     private final TransferRouteRepository transferRouteRepository;
     private final RouteDisruptionRepository routeDisruptionRepository;
     private final BatchPackageRepository batchPackageRepository;
+    private final OfficeRepository officeRepository;
     private final IRouteService routeService;
+
+    @Override
+    @Transactional
+    public TransferRouteResponse createRoute(CreateTransferRouteRequest request, Account currentAccount) {
+        // Fetch from and to hubs
+        Office fromHub = officeRepository.findById(request.getFromHubId())
+                .orElseThrow(() -> new NotFoundException("From hub not found: " + request.getFromHubId()));
+
+        Office toHub = officeRepository.findById(request.getToHubId())
+                .orElseThrow(() -> new NotFoundException("To hub not found: " + request.getToHubId()));
+
+        // Validate hubs exist and are appropriate types
+        if (fromHub.getOfficeType() != OfficeType.HUB) {
+            throw new BadRequestException("From office must be a hub");
+        }
+        if (toHub.getOfficeType() != OfficeType.HUB) {
+            throw new BadRequestException("To office must be a hub");
+        }
+
+        // Create new route (forward direction)
+        TransferRoute route = new TransferRoute();
+        route.setRouteType(request.getRouteType());
+        route.setFromHub(fromHub);
+        route.setToHub(toHub);
+        route.setDistanceKm(request.getDistanceKm());
+        route.setTransitHours(request.getTransitHours());
+        route.setPriority(request.getPriority() != null ? request.getPriority() : 1);
+        route.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+
+        // For PROVINCE_TO_HUB routes, set the province warehouse
+        if (request.getRouteType().name().equals("PROVINCE_TO_HUB") && request.getProvinceWarehouseId() != null) {
+            Office provinceWarehouse = officeRepository.findById(request.getProvinceWarehouseId())
+                    .orElseThrow(() -> new NotFoundException("Province warehouse not found: " + request.getProvinceWarehouseId()));
+            route.setProvinceWarehouse(provinceWarehouse);
+        }
+
+        route = transferRouteRepository.save(route);
+
+        // Create reverse route (bi-directional)
+        TransferRoute reverseRoute = new TransferRoute();
+        reverseRoute.setRouteType(request.getRouteType());
+        reverseRoute.setFromHub(toHub);
+        reverseRoute.setToHub(fromHub);
+        reverseRoute.setDistanceKm(request.getDistanceKm());
+        reverseRoute.setTransitHours(request.getTransitHours());
+        reverseRoute.setPriority(request.getPriority() != null ? request.getPriority() : 1);
+        reverseRoute.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+
+        // For PROVINCE_TO_HUB routes, reverse direction uses same province warehouse
+        if (request.getRouteType().name().equals("PROVINCE_TO_HUB") && request.getProvinceWarehouseId() != null) {
+            Office provinceWarehouse = officeRepository.findById(request.getProvinceWarehouseId())
+                    .orElseThrow(() -> new NotFoundException("Province warehouse not found: " + request.getProvinceWarehouseId()));
+            reverseRoute.setProvinceWarehouse(provinceWarehouse);
+        }
+
+        transferRouteRepository.save(reverseRoute);
+
+        log.info("Bi-directional transfer routes created by {}: {} ↔ {}", currentAccount.getEmail(),
+                fromHub.getOfficeName(), toHub.getOfficeName());
+
+        return mapToRouteResponse(route);
+    }
 
     @Override
     @Transactional(readOnly = true)
