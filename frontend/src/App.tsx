@@ -25,7 +25,8 @@ import {
   LiveTrackingPage,
   OfficeSearchPage,
   MessagesPage,
-  AssignDeliveryPage
+  AssignDeliveryPage,
+  ShipperDeliveryPage
 } from "./pages";
 
 function App() {
@@ -99,6 +100,7 @@ function App() {
               {/* Shipper specifics */}
               <Route element={<RoleRoute allowedRoles={["SHIPPER"]} />}>
                 <Route path="/shipper" element={<ShipperDashboardPage />} />
+                <Route path="/shipper/deliveries" element={<ShipperDeliveryPage />} />
               </Route>
 
               {/* Customer specifics */}

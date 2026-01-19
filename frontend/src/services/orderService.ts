@@ -197,6 +197,11 @@ export const orderService = {
         return response.data;
     },
 
+    getShipperDeliveryOrders: async (params?: PaginationParams): Promise<PageResponse<Order>> => {
+        const response = await api.get<PageResponse<Order>>("/orders/shipper/deliveries", { params });
+        return response.data;
+    },
+
     markOrderPickedUp: async (orderId: string): Promise<ApiResponse<Order>> => {
         const response = await api.post<ApiResponse<Order>>(`/orders/${orderId}/pickup`);
         return response.data;

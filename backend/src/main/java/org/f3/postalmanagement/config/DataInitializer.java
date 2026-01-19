@@ -1,11 +1,14 @@
 package org.f3.postalmanagement.config;
 
+import org.springframework.core.annotation.Order;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.entity.actor.Employee;
 import org.f3.postalmanagement.entity.administrative.AdministrativeRegion;
 import org.f3.postalmanagement.entity.administrative.Province;
+import org.f3.postalmanagement.entity.administrative.Ward;
 import org.f3.postalmanagement.entity.unit.Office;
 import org.f3.postalmanagement.entity.unit.TransferRoute;
 import org.f3.postalmanagement.enums.OfficeType;
@@ -16,6 +19,7 @@ import org.f3.postalmanagement.repository.EmployeeRepository;
 import org.f3.postalmanagement.repository.OfficeRepository;
 import org.f3.postalmanagement.repository.ProvinceRepository;
 import org.f3.postalmanagement.repository.TransferRouteRepository;
+import org.f3.postalmanagement.repository.WardRepository;
 import org.f3.postalmanagement.repository.OfficePairRepository;
 import org.f3.postalmanagement.entity.unit.OfficePair;
 import org.springframework.boot.CommandLineRunner;
@@ -28,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@Order(1)
 @Slf4j
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
@@ -40,6 +45,7 @@ public class DataInitializer implements CommandLineRunner {
     private final EmployeeRepository employeeRepository;
     private final TransferRouteRepository transferRouteRepository;
     private final OfficePairRepository officePairRepository;
+    private final WardRepository wardRepository;
 
     @Override
     @Transactional
@@ -47,8 +53,34 @@ public class DataInitializer implements CommandLineRunner {
         Map<Integer, Office> hubs = initHubForEachRegion();
         initSystemAdmin(hubs.values().stream().findFirst().orElse(null));
         initProvinceOffices(hubs);
-        initWardOffices();
+        initWards(); // Seed Ward entities
+        initWardOffices(); // Seed Ward Offices (Infrastructure)
         initHubTransferRoutes(hubs);
+    }
+
+    private void initWards() {
+        if (wardRepository.count() > 0) {
+            log.debug("Wards already exist.");
+            return;
+        }
+
+        List<Province> provinces = provinceRepository.findAll();
+        for (Province province : provinces) {
+            // Check if wards exist for this province (redundant if checking global count, but safer)
+            if (!wardRepository.findByProvince_Code(province.getCode()).isEmpty()) {
+                continue;
+            }
+
+            // Create a default Ward for each province so Seeder has somewhere to ship to
+            Ward ward = new Ward();
+            ward.setCode(province.getCode() + "00001");
+            ward.setName("Phường 1"); // Generic name
+            ward.setProvince(province);
+            // AdministrativeUnit is optional/unknown at this seeding stage
+            wardRepository.save(ward);
+            log.info("Seeded default Ward for province: {}", province.getName());
+        }
+        log.info("Initialized default Wards for {} provinces.", provinces.size());
     }
 
     private void initSystemAdmin(Office defaultOffice) {
@@ -113,7 +145,7 @@ public class DataInitializer implements CommandLineRunner {
                 hubsByRegion.put(region.getId(), savedHub);
                 
                 // Create HUB_ADMIN for this hub
-                createOfficeManager(savedHub, Role.HUB_ADMIN, "hub.admin" + region.getId(), "090000000" + region.getId());
+                createOfficeManager(savedHub, Role.HUB_ADMIN, "hub.admin" + region.getId(), String.format("09%08d", region.getId()));
                 
                 log.info("Created HUB for region: {}", region.getName());
             }
@@ -140,7 +172,7 @@ public class DataInitializer implements CommandLineRunner {
                 Office warehouse = new Office();
                 warehouse.setOfficeName("Kho " + province.getName());
                 warehouse.setOfficeEmail(warehouseEmail);
-                warehouse.setOfficePhoneNumber("1900" + province.getCode() + "00");
+                warehouse.setOfficePhoneNumber("09" + province.getCode() + "0000");
                 warehouse.setOfficeAddress("Địa chỉ Kho " + province.getName());
                 warehouse.setRegion(region);
                 warehouse.setProvince(province);
@@ -150,7 +182,7 @@ public class DataInitializer implements CommandLineRunner {
                 Office savedWarehouse = officeRepository.save(warehouse);
                 
                 // Create WH_PROVINCE_ADMIN for this warehouse
-                createOfficeManager(savedWarehouse, Role.WH_PROVINCE_ADMIN, "wh.admin." + province.getCode(), "091" + province.getCode() + "00000");
+                createOfficeManager(savedWarehouse, Role.WH_PROVINCE_ADMIN, "wh.admin." + province.getCode(), "091" + province.getCode() + "00");
                 log.info("Created PROVINCE_WAREHOUSE for province: {}", province.getName());
             }
 
@@ -160,7 +192,7 @@ public class DataInitializer implements CommandLineRunner {
                 Office postOffice = new Office();
                 postOffice.setOfficeName("Bưu cục " + province.getName());
                 postOffice.setOfficeEmail(postOfficeEmail);
-                postOffice.setOfficePhoneNumber("1900" + province.getCode() + "01");
+                postOffice.setOfficePhoneNumber("09" + province.getCode() + "1000");
                 postOffice.setOfficeAddress("Địa chỉ Bưu cục " + province.getName());
                 postOffice.setRegion(region);
                 postOffice.setProvince(province);
@@ -169,7 +201,7 @@ public class DataInitializer implements CommandLineRunner {
                 Office savedPostOffice = officeRepository.save(postOffice);
                 
                 // Create PO_PROVINCE_ADMIN for this post office
-                createOfficeManager(savedPostOffice, Role.PO_PROVINCE_ADMIN, "po.admin." + province.getCode(), "092" + province.getCode() + "00000");
+                createOfficeManager(savedPostOffice, Role.PO_PROVINCE_ADMIN, "po.admin." + province.getCode(), "092" + province.getCode() + "00");
                 log.info("Created PROVINCE_POST for province: {}", province.getName());
             }
         }
@@ -199,7 +231,7 @@ public class DataInitializer implements CommandLineRunner {
                 Office wardWh = new Office();
                 wardWh.setOfficeName("Kho Phường 1 " + province.getName());
                 wardWh.setOfficeEmail("wh.ward1." + provinceCode + "@f3postal.com");
-                wardWh.setOfficePhoneNumber("1900" + provinceCode + "10"); // slightly different suffix
+                wardWh.setOfficePhoneNumber("09" + province.getCode() + "2000");
                 wardWh.setOfficeAddress("Address Kho Ward 1 " + province.getName());
                 wardWh.setRegion(province.getAdministrativeRegion());
                 wardWh.setProvince(province);
@@ -209,13 +241,13 @@ public class DataInitializer implements CommandLineRunner {
                 Office savedWardWh = officeRepository.save(wardWh);
                 
                 // Create Ward Manager for Warehouse
-                createOfficeManager(savedWardWh, Role.WH_WARD_MANAGER, "wh.manager.w1." + provinceCode, "093" + provinceCode + "10");
+                createOfficeManager(savedWardWh, Role.WH_WARD_MANAGER, "wh.manager.w1." + provinceCode, "093" + province.getCode() + "10");
 
                 // Create Ward Post Office
                 Office wardPo = new Office();
                 wardPo.setOfficeName("Bưu cục Phường 1 " + province.getName());
                 wardPo.setOfficeEmail("po.ward1." + provinceCode + "@f3postal.com");
-                wardPo.setOfficePhoneNumber("1900" + provinceCode + "11");
+                wardPo.setOfficePhoneNumber("09" + province.getCode() + "3000");
                 wardPo.setOfficeAddress("Address PO Ward 1 " + province.getName());
                 wardPo.setRegion(province.getAdministrativeRegion());
                 wardPo.setProvince(province);
@@ -224,7 +256,7 @@ public class DataInitializer implements CommandLineRunner {
                 Office savedWardPo = officeRepository.save(wardPo);
                 
                 // Create Ward Manager for Post Office
-                createOfficeManager(savedWardPo, Role.PO_WARD_MANAGER, "po.manager.w1." + provinceCode, "094" + provinceCode + "10");
+                createOfficeManager(savedWardPo, Role.PO_WARD_MANAGER, "po.manager.w1." + provinceCode, "094" + province.getCode() + "10");
 
                 // Create OfficePair
                 OfficePair pair = new OfficePair();

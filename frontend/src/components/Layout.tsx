@@ -81,6 +81,7 @@ export function Layout() {
 
   if (role === "SHIPPER") {
     primaryNav.push({ to: "/shipper", icon: Truck, label: "Đơn hàng của tôi" });
+    primaryNav.push({ to: "/shipper/deliveries", icon: MapPin, label: "Giao hàng (Bản đồ)" });
   }
 
   if (role === "CUSTOMER") {

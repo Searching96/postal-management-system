@@ -1,18 +1,26 @@
-// Auth pages
-export { LoginPage, RegisterPage } from "./auth";
+export { LoginPage } from './auth/LoginPage';
+export { RegisterPage } from './auth/RegisterPage';
+export { DashboardPage } from './common/DashboardPage';
+export { ProvincesPage } from './common/ProvincesPage';
+export { ProfilePage } from './common/ProfilePage';
+export { SystemAdminPage } from './system_admin/SystemAdminPage';
+export { HubAdminPage } from './hub_admin/HubAdminPage';
+export { ProvinceAdminPage } from './province_admin/ProvinceAdminPage';
+export { WardManagerPage } from './ward_manager/WardManagerPage';
+export { OrderListPage } from './orders/OrderListPage';
+export { CreateOrderPage } from './orders/CreateOrderPage';
+export { OrderDetailsPage } from './orders/OrderDetailsPage';
+export { TrackOrderPage } from './orders/TrackOrderPage';
+export { BatchListPage } from './batches/BatchListPage';
+export { BatchDetailsPage } from './batches/BatchDetailsPage';
+export { ShipperManagementPage } from './admin/ShipperManagementPage';
+export { ShipperDashboardPage } from './shipper/ShipperDashboardPage';
+export { PendingPickupsPage } from './orders/PendingPickupsPage';
+export { CustomerPickupPage } from './customer/CustomerPickupPage';
+export { LiveTrackingPage } from './tracking/LiveTrackingPage';
+export { OfficeSearchPage } from './offices/OfficeSearchPage';
+export { AssignDeliveryPage } from './orders/AssignDeliveryPage';
 
-// Common pages
-export { DashboardPage, ProvincesPage, ProfilePage, MessagesPage } from "./common";
-
-// Role-specific pages
-export { SystemAdminPage } from "./system_admin";
-export { HubAdminPage } from "./hub_admin";
-export { ProvinceAdminPage } from "./province_admin";
-export { OrderListPage, CreateOrderPage, OrderDetailsPage, TrackOrderPage, PendingPickupsPage, AssignDeliveryPage } from "./orders";
-export { BatchListPage, BatchDetailsPage } from "./batches";
-export { ShipperManagementPage, RouteManagementPage } from "./admin";
-export { LiveTrackingPage } from "./tracking";
-export * from "./offices";
-export { WardManagerPage } from "./ward_manager";
-export { ShipperDashboardPage } from "./shipper";
-export { CustomerPickupPage } from "./customer";
+export { default as RouteManagementPage } from './admin/RouteManagementPage';
+export { default as MessagesPage } from './common/MessagesPage';
+export { default as ShipperDeliveryPage } from './shipper/ShipperDeliveryPage';

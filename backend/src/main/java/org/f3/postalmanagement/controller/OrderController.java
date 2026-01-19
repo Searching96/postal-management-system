@@ -272,6 +272,26 @@ public class OrderController {
 
     // ==================== SHIPPER ENDPOINTS ====================
 
+    @GetMapping("/shipper/deliveries")
+    @PreAuthorize("hasRole('SHIPPER')")
+    @Operation(
+            summary = "Get shipper's assigned last-mile deliveries",
+            description = "Shipper views their assigned orders that are out for delivery to consumers.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Assigned deliveries retrieved",
+                    content = @Content(schema = @Schema(implementation = PageResponse.class)))
+    })
+    public ResponseEntity<PageResponse<OrderResponse>> getShipperDeliveryOrders(
+            @ParameterObject
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
+    ) {
+        PageResponse<OrderResponse> response = orderService.getShipperDeliveryOrders(pageable, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/shipper/assigned")
     @PreAuthorize("hasRole('SHIPPER')")
     @Operation(

@@ -159,7 +159,7 @@ public class ProvinceAdminController {
     }
 
     @GetMapping("/ward-offices")
-    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN', 'PO_WARD_MANAGER', 'WH_WARD_MANAGER')")
     @Operation(
             summary = "Get all ward office pairs",
             description = "Get all ward office pairs (WARD_WAREHOUSE + WARD_POST) under the admin's jurisdiction. " +
@@ -180,7 +180,7 @@ public class ProvinceAdminController {
     }
 
     @GetMapping("/ward-offices/{officePairId}")
-    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN', 'PO_WARD_MANAGER', 'WH_WARD_MANAGER')")
     @Operation(
             summary = "Get ward office pair by office pair ID",
             description = "Get a specific ward office pair by the office pair ID"
@@ -201,7 +201,7 @@ public class ProvinceAdminController {
     }
 
     @GetMapping("/wards/assignment-status")
-    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN', 'PO_WARD_MANAGER', 'WH_WARD_MANAGER')")
     @Operation(
             summary = "Get ward assignment status",
             description = "Get all wards in the province with their office assignment status. " +
@@ -319,7 +319,7 @@ public class ProvinceAdminController {
     }
 
     @GetMapping("/offices/ward")
-    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN', 'PO_WARD_MANAGER', 'WH_WARD_MANAGER')")
     @Operation(
             summary = "Get all ward offices in the province",
             description = "Get all WARD_WAREHOUSE and WARD_POST offices in the Province Admin's province with pagination and optional search."

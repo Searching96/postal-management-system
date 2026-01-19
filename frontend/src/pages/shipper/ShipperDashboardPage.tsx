@@ -89,7 +89,7 @@ export function ShipperDashboardPage() {
         if (!confirm("Xác nhận đã giao hàng thành công?")) return;
         setProcessingOrderId(orderId);
         try {
-            await orderService.markOrderDelivered(orderId, { note: "Giao hàng thành công" });
+            await orderService.markOrderDelivered(orderId);
             toast.success("Đã giao hàng thành công!");
             fetchAssignedOrders();
         } catch (err: unknown) {
@@ -108,7 +108,7 @@ export function ShipperDashboardPage() {
         if (!selectedOrderForFail) return;
         setProcessingOrderId(selectedOrderForFail.orderId || selectedOrderForFail.id!);
         try {
-            await orderService.markOrderDeliveryFailed(selectedOrderForFail.orderId || selectedOrderForFail.id!, { note: failReason });
+            await orderService.markOrderDeliveryFailed(selectedOrderForFail.orderId || selectedOrderForFail.id!, failReason);
             toast.warning("Đã ghi nhận giao hàng thất bại");
             setSelectedOrderForFail(null);
             fetchAssignedOrders();

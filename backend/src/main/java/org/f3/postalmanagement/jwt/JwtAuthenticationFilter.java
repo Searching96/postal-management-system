@@ -52,12 +52,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (id != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            CustomUserDetails userDetails = userDetailsService.loadUserById(id);
-
-            if (jwtUtil.validateToken(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+            try {
+                CustomUserDetails userDetails = userDetailsService.loadUserById(id);
+                if (jwtUtil.validateToken(jwt, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            } catch (Exception e) {
+                log.error("Failed to load user from JWT: {}", e.getMessage());
             }
         }
 

@@ -198,9 +198,8 @@ export function CreateOrderPage() {
         setIsSubmitting(true);
         try {
             const res = await orderService.createOrder(data);
-            const rawData = res as Order;
             const orderData = {
-                ...rawData,
+                ...res.data,
                 lengthCm: data.lengthCm,
                 widthCm: data.widthCm,
                 heightCm: data.heightCm

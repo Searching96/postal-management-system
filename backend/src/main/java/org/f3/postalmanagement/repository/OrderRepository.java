@@ -135,4 +135,13 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     long countUnbatchedOrdersForDestination(@Param("originOfficeId") UUID originOfficeId,
                                              @Param("destinationOfficeId") UUID destinationOfficeId,
                                              @Param("statuses") java.util.List<OrderStatus> statuses);
+    /**
+     * Find orders assigned to a shipper for delivery (last mile)
+     */
+    @Query("SELECT o FROM Order o WHERE o.assignedShipper.account = :account AND " +
+           "o.status = :status " +
+           "ORDER BY o.createdAt DESC")
+    Page<Order> findByAssignedShipperAccountAndStatus(@Param("account") org.f3.postalmanagement.entity.actor.Account account,
+                                                       @Param("status") OrderStatus status,
+                                                       Pageable pageable);
 }

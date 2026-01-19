@@ -139,6 +139,15 @@ public interface IOrderService {
     OrderResponse markOrderPickedUp(UUID orderId, Account currentAccount);
 
     /**
+     * Get orders assigned to a shipper for delivery (last mile).
+     *
+     * @param pageable pagination parameters
+     * @param currentAccount the shipper's account
+     * @return paginated list of assigned orders for delivery
+     */
+    PageResponse<OrderResponse> getShipperDeliveryOrders(Pageable pageable, Account currentAccount);
+
+    /**
      * Accept a walk-in order or pickup order at the office.
      *
      * @param orderId the order ID

@@ -32,7 +32,7 @@ public class Order extends BaseEntity {
 
     /**
      * Unique tracking number for the order.
-     * Format: VN + 9 digits + VN (e.g., VN123456789VN)
+     * Format: VN + YY + 9 digits (e.g., VN23123456789) -> 13 chars
      */
     @Column(name = "tracking_number", nullable = false, unique = true, length = 15)
     private String trackingNumber;

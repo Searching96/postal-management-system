@@ -111,7 +111,7 @@ public class OrderServiceImpl implements IOrderService {
                 originOffice = officeRepository.findById(request.getOriginOfficeId())
                         .orElseThrow(() -> new IllegalArgumentException("Office not found: " + request.getOriginOfficeId()));
             } else {
-                validateStaffRole(currentAccount);
+                validatePOStaffRole(currentAccount);
                 Employee currentEmployee = getCurrentEmployee(currentAccount);
                 originOffice = currentEmployee.getOffice();
             }
@@ -201,7 +201,7 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     @Transactional
     public OrderResponse createOrder(CreateOrderRequest request, Account currentAccount) {
-        validateStaffRole(currentAccount);
+        validatePOStaffRole(currentAccount);
         Employee currentEmployee = getCurrentEmployee(currentAccount);
         Office originOffice = currentEmployee.getOffice();
         
@@ -400,6 +400,14 @@ public class OrderServiceImpl implements IOrderService {
     // ==================== PRIVATE HELPER METHODS ====================
 
     private void validateStaffRole(Account account) {
+        Role role = account.getRole();
+        if (role != Role.PO_STAFF && role != Role.PO_WARD_MANAGER && role != Role.PO_PROVINCE_ADMIN &&
+            role != Role.WH_STAFF && role != Role.WH_WARD_MANAGER && role != Role.WH_PROVINCE_ADMIN) {
+            throw new AccessDeniedException("Only authorized office staff can perform this action");
+        }
+    }
+
+    private void validatePOStaffRole(Account account) {
         Role role = account.getRole();
         if (role != Role.PO_STAFF && role != Role.PO_WARD_MANAGER && role != Role.PO_PROVINCE_ADMIN) {
             throw new AccessDeniedException("Only post office staff can perform this action");
@@ -755,7 +763,7 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<OrderResponse> getPendingPickupOrders(Pageable pageable, Account currentAccount) {
-        validateStaffRole(currentAccount);
+        validatePOStaffRole(currentAccount);
         Employee currentEmployee = getCurrentEmployee(currentAccount);
         UUID officeId = currentEmployee.getOffice().getId();
         
@@ -768,7 +776,7 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     @Transactional
     public OrderResponse assignShipperToPickup(AssignShipperRequest request, Account currentAccount) {
-        validateStaffRole(currentAccount);
+        validatePOStaffRole(currentAccount);
         Employee currentEmployee = getCurrentEmployee(currentAccount);
         
         // Get order
@@ -835,6 +843,24 @@ public class OrderServiceImpl implements IOrderService {
         notificationService.notifyShipperAssignment(shipper.getId(), notification);
         
         return mapToOrderResponse(savedOrder);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<OrderResponse> getShipperDeliveryOrders(Pageable pageable, Account currentAccount) {
+        if (currentAccount.getRole() != Role.SHIPPER) {
+            throw new AccessDeniedException("Only shippers can view assigned deliveries");
+        }
+
+        // Find orders assigned to this shipper with status OUT_FOR_DELIVERY
+        Page<Order> orderPage = orderRepository.findByAssignedShipperAccountAndStatus(
+                currentAccount, 
+                OrderStatus.OUT_FOR_DELIVERY, 
+                pageable
+        );
+        
+        Page<OrderResponse> responsePage = orderPage.map(this::mapToOrderResponse);
+        return mapToPageResponse(responsePage);
     }
 
     @Override
@@ -919,7 +945,7 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     @Transactional
     public OrderResponse acceptOrder(UUID orderId, Account currentAccount) {
-        validateStaffRole(currentAccount);
+        validatePOStaffRole(currentAccount);
         Employee currentEmployee = getCurrentEmployee(currentAccount);
 
         Order order = orderRepository.findById(orderId)
