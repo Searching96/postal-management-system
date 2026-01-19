@@ -246,7 +246,8 @@ export function AssignDeliveryPage() {
                                                     <p className="text-xs text-gray-500">{order.receiverPhone}</p>
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    <p className="text-[11px] text-gray-600 line-clamp-2 max-w-[200px]">{order.receiverAddress}</p>
+                                                    {/* Refactored: Display receiver address using names for UI */}
+                                                    <p className="text-[11px] text-gray-600 line-clamp-2 max-w-[200px]">{`${order.receiverAddressLine1}, ${order.receiverWardName}, ${order.receiverProvinceName}`}</p>
                                                 </td>
                                                 <td className="py-3 px-4 text-right text-sm">
                                                     {order.weightKg} kg

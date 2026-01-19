@@ -125,11 +125,12 @@ public interface IOrderService {
     /**
      * Get orders assigned to a shipper for pickup.
      *
+     * @param search optional search term (tracking number, sender name, phone, address)
      * @param pageable pagination parameters
      * @param currentAccount the shipper's account
      * @return paginated list of assigned orders
      */
-    PageResponse<OrderResponse> getShipperAssignedOrders(Pageable pageable, Account currentAccount);
+    PageResponse<OrderResponse> getShipperAssignedOrders(String search, Pageable pageable, Account currentAccount);
 
     /**
      * Mark an order as picked up by shipper.
@@ -166,6 +167,16 @@ public interface IOrderService {
      */
     CommentResponse getOrderComment(UUID orderId, Account currentAccount);
   
+    /**
+     * Get orders assigned to a shipper for delivery (last mile).
+     *
+     * @param search optional search term (tracking number, receiver name, phone, address)
+     * @param pageable pagination parameters
+     * @param currentAccount the shipper's account
+     * @return paginated list of assigned orders for delivery
+     */
+    PageResponse<OrderResponse> getShipperDeliveryOrders(String search, Pageable pageable, Account currentAccount);
+
     /**
      * Accept a walk-in order or pickup order at the office.
      *

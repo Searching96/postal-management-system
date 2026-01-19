@@ -38,7 +38,7 @@ public class TrackingController {
     }
 
     @GetMapping("/shipper/{shipperId}")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'PO_WARD_MANAGER')")
     @Operation(summary = "Get shipper location", description = "Get current location of a specific shipper")
     public ResponseEntity<ShipperLocationResponse> getShipperLocation(@PathVariable UUID shipperId) {
         return ResponseEntity.ok(trackingService.getShipperLocation(shipperId));
@@ -71,7 +71,7 @@ public class TrackingController {
     }
 
     @GetMapping("/active")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN', 'WH_PROVINCE_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'HUB_ADMIN', 'WH_PROVINCE_ADMIN', 'WH_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'PO_WARD_MANAGER')")
     @Operation(summary = "Get active shippers", description = "Get all shippers currently on delivery")
     public ResponseEntity<List<ShipperLocationResponse>> getActiveShippers() {
         return ResponseEntity.ok(trackingService.getActiveShippers());

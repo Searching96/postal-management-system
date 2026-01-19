@@ -1,371 +1,205 @@
-import { useState, useEffect } from "react";
-import { Package, MapPin, Phone, User, CheckCircle, Clock, Navigation, XCircle, Play, Map } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { orderService } from '../../services/orderService';
 import {
-    Card, Button, PageHeader, Badge, LoadingSpinner, Alert, PaginationControls,
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Input
-} from "../../components/ui";
-import { orderService, Order } from "../../services/orderService";
-import { startDelivery, openGoogleMapsDirections } from "../../services/trackingService";
-import { useLocationTracking } from "../../hooks/useLocationTracking";
-import { toast } from "sonner";
-import { formatDate } from "../../lib/utils";
+    Package, TrendingUp, CheckCircle, Clock,
+    Truck, MapPin, ChevronRight, BarChart3
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
-export function ShipperDashboardPage() {
-    const [orders, setOrders] = useState<Order[]>([]);
+interface DashboardStats {
+    pendingPickups: number;
+    pendingDeliveries: number;
+    completedPickups: number;
+    completedDeliveries: number;
+}
+
+const ShipperDashboardPage = () => {
+    const navigate = useNavigate();
+    const [stats, setStats] = useState<DashboardStats>({
+        pendingPickups: 0,
+        pendingDeliveries: 0,
+        completedPickups: 0,
+        completedDeliveries: 0
+    });
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [page, setPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
-    const [totalElements, setTotalElements] = useState(0);
-    const pageSize = 10;
-
-    const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
-
-    const fetchAssignedOrders = async () => {
-        setIsLoading(true);
-        setError("");
-        try {
-            const res = await orderService.getShipperAssignedOrders({ page, size: pageSize });
-            if (res && res.content) {
-                setOrders(res.content);
-                setTotalPages(res.totalPages);
-                setTotalElements(res.totalElements);
-            }
-        } catch (err: unknown) {
-            setError("Không thể tải danh sách đơn hàng được giao");
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     useEffect(() => {
-        fetchAssignedOrders();
-    }, [page]);
+        const fetchStats = async () => {
+            setIsLoading(true);
+            try {
+                // Parallel requests to get counts
+                const [
+                    pendingPickupsRes,
+                    pendingDeliveriesRes,
+                    completedPickupsRes,
+                    completedDeliveriesRes
+                ] = await Promise.all([
+                    orderService.getShipperAssignedOrders({ status: 'ACCEPTED,PENDING_PICKUP', size: 1 }),
+                    orderService.getShipperDeliveryOrders({ status: 'OUT_FOR_DELIVERY', size: 1 }),
+                    orderService.getShipperAssignedOrders({ status: 'PICKED_UP', size: 1 }),
+                    orderService.getShipperDeliveryOrders({ status: 'DELIVERED', size: 1 })
+                ]);
 
-    const [failReason, setFailReason] = useState("");
-    const [selectedOrderForFail, setSelectedOrderForFail] = useState<Order | null>(null);
+                setStats({
+                    pendingPickups: pendingPickupsRes.totalElements,
+                    pendingDeliveries: pendingDeliveriesRes.totalElements,
+                    completedPickups: completedPickupsRes.totalElements,
+                    completedDeliveries: completedDeliveriesRes.totalElements
+                });
+            } catch (error) {
+                console.error("Error fetching dashboard stats:", error);
+                toast.error("Không thể tải thông tin thống kê");
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-    // Location tracking hook
-    const { location, startTracking } = useLocationTracking();
+        fetchStats();
+    }, []);
 
-    // Start delivery - update status and begin GPS tracking
-    const handleStartDelivery = async (orderId: string) => {
-        setProcessingOrderId(orderId);
-        try {
-            await startDelivery(orderId);
-            startTracking(); // Start GPS broadcasting
-            toast.success("Đã bắt đầu giao hàng! Đang chia sẻ vị trí...");
-            fetchAssignedOrders();
-        } catch (err: unknown) {
-            toast.error("Không thể bắt đầu giao hàng");
-        } finally {
-            setProcessingOrderId(null);
-        }
+    const completionRate = () => {
+        const totalTasks = stats.pendingPickups + stats.pendingDeliveries + stats.completedPickups + stats.completedDeliveries;
+        if (totalTasks === 0) return 0;
+        const completed = stats.completedPickups + stats.completedDeliveries;
+        return Math.round((completed / totalTasks) * 100);
     };
 
-    // Open Google Maps for navigation
-    const handleNavigate = (order: Order) => {
-        openGoogleMapsDirections(
-            order.receiverAddress,
-            location?.latitude,
-            location?.longitude
+
+    const containerVariants = "p-4 space-y-6 max-w-5xl mx-auto pb-24";
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-[calc(100vh-4rem)]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            </div>
         );
-    };
-
-    const handleMarkPickedUp = async (orderId: string) => {
-        setProcessingOrderId(orderId);
-        try {
-            await orderService.markOrderPickedUp(orderId);
-            toast.success("Đã xác nhận lấy hàng thành công!");
-            fetchAssignedOrders();
-        } catch (err: unknown) {
-            toast.error("Không thể xác nhận lấy hàng. Vui lòng thử lại.");
-        } finally {
-            setProcessingOrderId(null);
-        }
-    };
-
-    const handleDeliverSuccess = async (orderId: string) => {
-        if (!confirm("Xác nhận đã giao hàng thành công?")) return;
-        setProcessingOrderId(orderId);
-        try {
-            await orderService.markOrderDelivered(orderId, { note: "Giao hàng thành công" });
-            toast.success("Đã giao hàng thành công!");
-            fetchAssignedOrders();
-        } catch (err: unknown) {
-            toast.error("Thao tác thất bại. Vui lòng thử lại.");
-        } finally {
-            setProcessingOrderId(null);
-        }
-    };
-
-    const openFailDialog = (order: Order) => {
-        setSelectedOrderForFail(order);
-        setFailReason("");
-    };
-
-    const handleDeliverFail = async () => {
-        if (!selectedOrderForFail) return;
-        setProcessingOrderId(selectedOrderForFail.orderId || selectedOrderForFail.id!);
-        try {
-            await orderService.markOrderDeliveryFailed(selectedOrderForFail.orderId || selectedOrderForFail.id!, { note: failReason });
-            toast.warning("Đã ghi nhận giao hàng thất bại");
-            setSelectedOrderForFail(null);
-            fetchAssignedOrders();
-        } catch (err: unknown) {
-            toast.error("Thao tác thất bại.");
-        } finally {
-            setProcessingOrderId(null);
-        }
-    };
-
-    const getStatusBadge = (status: string) => {
-        const map: Record<string, "success" | "warning" | "info" | "secondary"> = {
-            PENDING_PICKUP: "warning",
-            PICKED_UP: "success",
-            OUT_FOR_DELIVERY: "info",
-        };
-        const labels: Record<string, string> = {
-            PENDING_PICKUP: "Chờ lấy hàng",
-            PICKED_UP: "Đã lấy hàng",
-            OUT_FOR_DELIVERY: "Đang giao",
-        };
-        return <Badge variant={map[status] || "secondary"}>{labels[status] || status}</Badge>;
-    };
-
-    const canPickUp = (status: string) => status === "PENDING_PICKUP";
-    const canStartDelivery = (status: string) => status === "PICKED_UP";
-    const canDeliver = (status: string) => status === "OUT_FOR_DELIVERY";
-
+    }
     return (
-        <div className="space-y-6">
-            <PageHeader
-                title="Đơn hàng được giao"
-                description="Danh sách đơn hàng bạn được phân công lấy và giao"
-            />
-
-            {error && (
-                <Alert type="error">{error}</Alert>
-            )}
-
-            {isLoading ? (
-                <div className="flex justify-center py-12">
-                    <LoadingSpinner />
+        <div className={containerVariants}>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Tổng quan</h1>
+                    <p className="text-gray-500 text-sm mt-1">Xin chào, chúc bạn một ngày làm việc hiệu quả!</p>
                 </div>
-            ) : orders.length === 0 ? (
-                <Card className="p-12 text-center">
-                    <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 text-lg">Bạn chưa được giao đơn hàng nào</p>
-                    <p className="text-gray-400 text-sm mt-2">Các đơn hàng mới sẽ xuất hiện ở đây khi được phân công</p>
-                </Card>
-            ) : (
-                <>
-                    {/* Stats Summary */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <Card className="p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-yellow-100 rounded-lg">
-                                    <Clock className="h-5 w-5 text-yellow-600" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-500">Chờ lấy</p>
-                                    <p className="text-xl font-bold text-gray-900">
-                                        {orders.filter(o => o.status === "PENDING_PICKUP").length}
-                                    </p>
-                                </div>
-                            </div>
-                        </Card>
-                        <Card className="p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-100 rounded-lg">
-                                    <Navigation className="h-5 w-5 text-blue-600" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-500">Đang giao</p>
-                                    <p className="text-xl font-bold text-gray-900">
-                                        {orders.filter(o => o.status === "OUT_FOR_DELIVERY").length}
-                                    </p>
-                                </div>
-                            </div>
-                        </Card>
-                        <Card className="p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-100 rounded-lg">
-                                    <CheckCircle className="h-5 w-5 text-green-600" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-500">Đã lấy</p>
-                                    <p className="text-xl font-bold text-gray-900">
-                                        {orders.filter(o => o.status === "PICKED_UP").length}
-                                    </p>
-                                </div>
-                            </div>
-                        </Card>
+                <div className="h-10 w-10 bg-primary-50 rounded-full flex items-center justify-center text-primary-600">
+                    <BarChart3 size={20} />
+                </div>
+            </div>
+
+            {/* Quick Stats Cards */}
+            <div className="grid grid-cols-2 gap-4">
+                <div
+                    onClick={() => navigate('/shipper/pickups')}
+                    className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 cursor-pointer active:scale-95 transition-transform"
+                >
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                            <Package size={20} />
+                        </div>
+                        <span className="text-sm font-medium text-gray-600">Cần lấy</span>
+                    </div>
+                    <div className="flex items-end justify-between">
+                        <span className="text-2xl font-bold text-gray-900">{stats.pendingPickups}</span>
+                        <ChevronRight size={16} className="text-gray-400 mb-1" />
+                    </div>
+                </div>
+
+                <div
+                    onClick={() => navigate('/shipper/deliveries')}
+                    className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 cursor-pointer active:scale-95 transition-transform"
+                >
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-orange-50 text-orange-600 rounded-lg">
+                            <Truck size={20} />
+                        </div>
+                        <span className="text-sm font-medium text-gray-600">Cần giao</span>
+                    </div>
+                    <div className="flex items-end justify-between">
+                        <span className="text-2xl font-bold text-gray-900">{stats.pendingDeliveries}</span>
+                        <ChevronRight size={16} className="text-gray-400 mb-1" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Performance Summary */}
+            <div className="bg-gradient-to-br from-primary-600 to-primary-800 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-4 opacity-90">
+                        <TrendingUp size={18} />
+                        <span className="font-medium text-sm">Hiệu suất hôm nay</span>
                     </div>
 
-                    {/* Order Cards */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {orders.map((order) => (
-                            <Card key={order.orderId} className="p-5 hover:shadow-md transition-shadow">
-                                {/* Header */}
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <p className="text-sm text-gray-500">Mã vận đơn</p>
-                                        <p className="font-bold text-gray-900">{order.trackingNumber}</p>
-                                    </div>
-                                    {getStatusBadge(order.status)}
-                                </div>
-
-                                {/* Sender Info */}
-                                <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-2">
-                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Người gửi</p>
-                                    <div className="flex items-center gap-2 text-gray-700">
-                                        <User className="h-4 w-4 text-gray-400" />
-                                        <span className="font-medium">{order.senderName}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-gray-600">
-                                        <Phone className="h-4 w-4 text-gray-400" />
-                                        <a href={`tel:${order.senderPhone}`} className="hover:text-primary-600">
-                                            {order.senderPhone}
-                                        </a>
-                                    </div>
-                                    <div className="flex items-start gap-2 text-gray-600">
-                                        <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                                        <span className="text-sm">{order.senderAddress}</span>
-                                    </div>
-                                </div>
-
-                                {/* Receiver Info */}
-                                <div className="bg-primary-50 rounded-lg p-4 mb-4 space-y-2">
-                                    <p className="text-xs font-medium text-primary-600 uppercase tracking-wide">Người nhận</p>
-                                    <div className="flex items-center gap-2 text-gray-700">
-                                        <User className="h-4 w-4 text-primary-400" />
-                                        <span className="font-medium">{order.receiverName}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-gray-600">
-                                        <Phone className="h-4 w-4 text-primary-400" />
-                                        <a href={`tel:${order.receiverPhone}`} className="hover:text-primary-600">
-                                            {order.receiverPhone}
-                                        </a>
-                                    </div>
-                                    <div className="flex items-start gap-2 text-gray-600">
-                                        <MapPin className="h-4 w-4 text-primary-400 mt-0.5 flex-shrink-0" />
-                                        <span className="text-sm">{order.receiverAddress}</span>
-                                    </div>
-                                </div>
-
-                                {/* Footer */}
-                                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                                    <span className="text-xs text-gray-400">
-                                        {formatDate(order.createdAt)}
-                                    </span>
-                                    {canPickUp(order.status) && (
-                                        <Button
-                                            onClick={() => handleMarkPickedUp(order.orderId || order.id!)}
-                                            disabled={!!processingOrderId}
-                                            size="sm"
-                                        >
-                                            {processingOrderId === (order.orderId || order.id!) ? (
-                                                <LoadingSpinner size="sm" />
-                                            ) : (
-                                                <>
-                                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                                    Lấy hàng
-                                                </>
-                                            )}
-                                        </Button>
-                                    )}
-                                    {canStartDelivery(order.status) && (
-                                        <Button
-                                            onClick={() => handleStartDelivery(order.orderId || order.id!)}
-                                            disabled={!!processingOrderId}
-                                            size="sm"
-                                            className="bg-blue-600 hover:bg-blue-700"
-                                        >
-                                            {processingOrderId === (order.orderId || order.id!) ? (
-                                                <LoadingSpinner size="sm" />
-                                            ) : (
-                                                <>
-                                                    <Play className="h-4 w-4 mr-1" />
-                                                    Bắt đầu giao
-                                                </>
-                                            )}
-                                        </Button>
-                                    )}
-                                    {canDeliver(order.status) && (
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => handleNavigate(order)}
-                                                size="sm"
-                                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                                            >
-                                                <Map className="h-4 w-4 mr-1" />
-                                                Chỉ đường
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => openFailDialog(order)}
-                                                disabled={!!processingOrderId}
-                                                size="sm"
-                                                className="text-red-600 border-red-200 hover:bg-red-50"
-                                            >
-                                                <XCircle className="h-4 w-4 mr-1" />
-                                                Thất bại
-                                            </Button>
-                                            <Button
-                                                onClick={() => handleDeliverSuccess(order.orderId || order.id!)}
-                                                disabled={!!processingOrderId}
-                                                size="sm"
-                                                className="bg-green-600 hover:bg-green-700 text-white"
-                                            >
-                                                {processingOrderId === (order.orderId || order.id!) ? (
-                                                    <LoadingSpinner size="sm" />
-                                                ) : (
-                                                    <>
-                                                        <CheckCircle className="h-4 w-4 mr-1" />
-                                                        Đã giao
-                                                    </>
-                                                )}
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            </Card>
-                        ))}
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-4xl font-bold">{completionRate()}%</span>
+                        <div className="text-right">
+                            <p className="text-sm opacity-80">Đã hoàn thành</p>
+                            <p className="text-lg font-semibold">{stats.completedPickups + stats.completedDeliveries} đơn</p>
+                        </div>
                     </div>
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                        <PaginationControls
-                            page={page}
-                            totalPages={totalPages}
-                            totalElements={totalElements}
-                            pageSize={pageSize}
-                            onPageChange={setPage}
-                        />
-                    )}
-                </>
-            )}
-            {/* Fail Dialog */}
-            <Dialog open={!!selectedOrderForFail} onOpenChange={(open) => !open && setSelectedOrderForFail(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Báo cáo giao hàng thất bại</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <Input
-                            placeholder="Lý do thất bại (Vd: Khách không nghe máy, Sai địa chỉ...)"
-                            value={failReason}
-                            onChange={(e) => setFailReason(e.target.value)}
-                        />
+                    <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
+                        <div
+                            className="bg-white h-full rounded-full transition-all duration-1000"
+                            style={{ width: `${completionRate()}%` }}
+                        ></div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setSelectedOrderForFail(null)}>Hủy</Button>
-                        <Button variant="danger" onClick={handleDeliverFail} disabled={!failReason}>Xác nhận thất bại</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                </div>
+
+                {/* Decorative background circles */}
+                <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+            </div>
+
+            {/* Detailed Stats */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100">
+                <div className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-green-50 text-green-600 rounded-full">
+                            <CheckCircle size={18} />
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-gray-900">Đã lấy thành công</p>
+                            <p className="text-xs text-gray-500">Tổng số đơn đã lấy từ khách</p>
+                        </div>
+                    </div>
+                    <span className="font-bold text-gray-900">{stats.completedPickups}</span>
+                </div>
+
+                <div className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-50 text-purple-600 rounded-full">
+                            <MapPin size={18} />
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-gray-900">Đã giao thành công</p>
+                            <p className="text-xs text-gray-500">Tổng số đơn đã giao cho khách</p>
+                        </div>
+                    </div>
+                    <span className="font-bold text-gray-900">{stats.completedDeliveries}</span>
+                </div>
+            </div>
+
+            {/* Actions Menu */}
+            <h3 className="font-bold text-gray-900 mt-2">Thao tác nhanh</h3>
+            <div className="grid grid-cols-2 gap-3">
+                <button
+                    onClick={() => navigate('/shipper/pickups')}
+                    className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:bg-gray-100 transition active:scale-95"
+                >
+                    <Clock className="text-blue-600 mb-2" size={24} />
+                    <span className="text-sm font-medium text-gray-700">Lịch sử lấy</span>
+                </button>
+                <button
+                    onClick={() => navigate('/shipper/deliveries')}
+                    className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-xl border border-gray-200 hover:bg-gray-100 transition active:scale-95"
+                >
+                    <CheckCircle className="text-green-600 mb-2" size={24} />
+                    <span className="text-sm font-medium text-gray-700">Lịch sử giao</span>
+                </button>
+            </div>
         </div>
     );
-}
+};
+
+export default ShipperDashboardPage;

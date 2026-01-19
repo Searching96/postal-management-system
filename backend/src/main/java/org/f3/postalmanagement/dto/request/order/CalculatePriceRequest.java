@@ -19,6 +19,9 @@ public class CalculatePriceRequest {
 
     @Schema(description = "Origin office ID (required for online customers, optional for staff - defaults to their office)")
     private UUID originOfficeId;
+    
+    @Schema(description = "Sender ward code (optional - helps find nearest office/hub)")
+    private String senderWardCode;
 
     @NotBlank(message = "Destination ward code is required")
     @Schema(description = "Ward code of destination", example = "00001")

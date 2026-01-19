@@ -34,9 +34,7 @@ export function BatchDetailsPage() {
         setIsLoading(true);
         try {
             const res = await batchService.getBatchById(id, true);
-            if (res.success) {
-                setBatch(res.data);
-            }
+            setBatch(res);
         } catch (error) {
             console.error(error);
             toast.error("Không thể tải thông tin kiện hàng");
@@ -52,11 +50,9 @@ export function BatchDetailsPage() {
     const handleAction = async (action: () => Promise<any>, successMsg: string) => {
         setIsActionLoading(true);
         try {
-            const res = await action();
-            if (res.success) {
-                toast.success(successMsg);
-                fetchBatchDetails();
-            }
+            await action();
+            toast.success(successMsg);
+            fetchBatchDetails();
         } catch (error) {
             console.error(error);
             toast.error("Thao tác thất bại");
@@ -210,7 +206,7 @@ export function BatchDetailsPage() {
                                 <tr key={order.id} className="border-t">
                                     <td className="py-3 px-6 font-medium text-primary-600">{order.trackingNumber}</td>
                                     <td className="py-3 px-4">{order.receiverName}</td>
-                                    <td className="py-3 px-4 max-w-xs truncate">{order.receiverAddress}</td>
+                                    <td className="py-3 px-4 max-w-xs truncate">{`${order.receiverAddressLine1}, ${order.receiverWardName}, ${order.receiverProvinceName}`}</td>
                                     <td className="py-3 px-4 text-center">{order.weightKg} kg</td>
                                     <td className="py-3 px-6 text-right">
                                         <Button variant="ghost" size="sm" onClick={() => navigate(`/orders/${order.id}`)}>

@@ -1,0 +1,72 @@
+context:
+  application: Postal Management System
+  base_url: /api
+controllers[11]: AdministrativeController, AuthController, BatchController, DashboardController, HubAdminController, OrderController, ProvinceAdminController, ShipperController, UploadController, UserController, WardManagerController
+endpoints[67]{method,path,summary,roles}:
+  GET,/api/administrative/regions,Get all administrative regions,PUBLIC
+  GET,/api/administrative/regions/{regionId}/provinces,Get provinces by region,PUBLIC
+  GET,/api/administrative/provinces,Get all provinces,PUBLIC
+  GET,/api/administrative/provinces/paginated,Get all provinces with pagination,PUBLIC
+  GET,/api/administrative/provinces/{provinceCode}/wards,Get wards by province,PUBLIC
+  GET,/api/administrative/provinces/{provinceCode}/wards/paginated,Get wards by province with pagination,PUBLIC
+  GET,/api/administrative/provinces/{provinceCode}/post-offices,Get post offices by province,PUBLIC
+  POST,/api/auth/login,Login with username and password,PUBLIC
+  POST,/api/auth/register,Register new customer account,PUBLIC
+  POST,/api/batches,Create a new batch,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  POST,/api/batches/auto-batch,Auto-batch orders,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  POST,/api/batches/add-orders,Add orders to a batch,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  DELETE,/api/batches/{batchId}/orders/{orderId},Remove order from batch,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  POST,/api/batches/{batchId}/seal,Seal a batch,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  POST,/api/batches/{batchId}/dispatch,Dispatch batch for transit,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  POST,/api/batches/{batchId}/arrive,Mark batch as arrived,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  POST,/api/batches/{batchId}/distribute,Distribute batch orders,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  POST,/api/batches/{batchId}/cancel,Cancel a batch,"PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  GET,/api/batches/{batchId},Get batch by ID,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  GET,/api/batches/code/{batchCode},Get batch by code,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  GET,/api/batches,Get batches at current office,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  GET,/api/batches/incoming,Get incoming batches,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  GET,/api/batches/open,Get open batches,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  GET,/api/batches/destinations,Get batchable destinations,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,HUB_ADMIN"
+  POST,/api/dashboard/register-admin,Register new system admin,SYSTEM_ADMIN
+  POST,/api/hub-admins/register,Register new HUB admin,"SYSTEM_ADMIN,HUB_ADMIN"
+  GET,/api/hub-admins/province-offices,Get all province offices in the region,HUB_ADMIN
+  POST,/api/orders/calculate-price,Calculate shipping price,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN,CUSTOMER"
+  POST,/api/orders,Create new order,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN"
+  GET,/api/orders/{orderId},Get order by ID,"PO_STAFF,WH_STAFF,SHIPPER,PO_WARD_MANAGER,WH_WARD_MANAGER,PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN,HUB_ADMIN,SYSTEM_ADMIN,CUSTOMER"
+  GET,/api/orders/track/{trackingNumber},Track order by tracking number,PUBLIC
+  GET,/api/orders,List orders at current office,"PO_STAFF,WH_STAFF,PO_WARD_MANAGER,WH_WARD_MANAGER,PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN,HUB_ADMIN,SYSTEM_ADMIN"
+  GET,/api/orders/by-phone/{phone},Get orders by sender phone number,"PO_STAFF,WH_STAFF,PO_WARD_MANAGER,WH_WARD_MANAGER,PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN,HUB_ADMIN,SYSTEM_ADMIN"
+  GET,/api/orders/customer/{customerId},Get orders by customer ID,"PO_STAFF,WH_STAFF,PO_WARD_MANAGER,WH_WARD_MANAGER,PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN,HUB_ADMIN,SYSTEM_ADMIN,CUSTOMER"
+  POST,/api/orders/customer/pickup,Create pickup order,CUSTOMER
+  GET,/api/orders/pending-pickups,Get pending pickup orders,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN"
+  POST,/api/orders/assign-shipper,Assign shipper to pickup order,"PO_STAFF,PO_WARD_MANAGER,PO_PROVINCE_ADMIN"
+  GET,/api/orders/shipper/assigned,Get shipper's assigned pickup orders,SHIPPER
+  POST,/api/orders/{orderId}/pickup,Mark order as picked up,SHIPPER
+  POST,/api/province-admin/employees/province-admin,Create a new Province Admin,"PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN"
+  POST,/api/province-admin/employees/ward-manager,Create a new Ward Manager,"PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN"
+  POST,/api/province-admin/employees/staff,Create a new Staff,"PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN"
+  POST,/api/province-admin/ward-offices,Create a new ward office pair,PO_PROVINCE_ADMIN
+  POST,/api/province-admin/ward-offices/assign-wards,Assign wards to a ward office pair,PO_PROVINCE_ADMIN
+  GET,/api/province-admin/ward-offices,Get all ward office pairs,"PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN"
+  GET,/api/province-admin/ward-offices/{officePairId},Get ward office pair by ID,"PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN"
+  GET,/api/province-admin/wards/assignment-status,Get ward assignment status,"PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN"
+  GET,/api/province-admin/employees,Get all staff in the admin's office,"PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN"
+  GET,/api/province-admin/employees/{staffId},Get a staff member by ID,"PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN"
+  PUT,/api/province-admin/employees/{staffId},Update a staff member,"PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN"
+  DELETE,/api/province-admin/employees/{staffId},Delete a staff member,"PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN"
+  GET,/api/province-admin/offices/ward,Get all ward offices in the province,"PO_PROVINCE_ADMIN,WH_PROVINCE_ADMIN"
+  POST,/api/shippers,Create a new shipper,"HUB_ADMIN,WH_PROVINCE_ADMIN,WH_WARD_MANAGER"
+  GET,/api/shippers,Get all shippers,"HUB_ADMIN,WH_PROVINCE_ADMIN,WH_WARD_MANAGER"
+  GET,/api/shippers/{shipperId},Get a shipper by ID,"HUB_ADMIN,WH_PROVINCE_ADMIN,WH_WARD_MANAGER"
+  PUT,/api/shippers/{shipperId},Update a shipper,"HUB_ADMIN,WH_PROVINCE_ADMIN,WH_WARD_MANAGER"
+  DELETE,/api/shippers/{shipperId},Delete a shipper,"HUB_ADMIN,WH_PROVINCE_ADMIN,WH_WARD_MANAGER"
+  POST,/api/uploads/avatar,Upload avatar,AUTHENTICATED
+  POST,/api/uploads/orders/{orderId}/evidence,Upload delivery/pickup evidence,"STAFF,SHIPPER,WARD_MANAGER,PROVINCE_ADMIN,MANAGER"
+  POST,/api/uploads/attachments,Upload a general attachment,AUTHENTICATED
+  GET,/api/users/me,Get current user info,AUTHENTICATED
+  GET,/api/ward-manager/employees,Get all staff in the manager's office,"PO_WARD_MANAGER,WH_WARD_MANAGER"
+  GET,/api/ward-manager/employees/{staffId},Get a staff member by ID,"PO_WARD_MANAGER,WH_WARD_MANAGER"
+  PUT,/api/ward-manager/employees/{staffId},Update a staff member,"PO_WARD_MANAGER,WH_WARD_MANAGER"
+  DELETE,/api/ward-manager/employees/{staffId},Delete a staff member,"PO_WARD_MANAGER,WH_WARD_MANAGER"
+  POST,/api/ward-manager/employees/staff,Create a new staff in the same office,"PO_WARD_MANAGER,WH_WARD_MANAGER"
+  POST,/api/ward-manager/employees/ward-manager,Create a new ward manager in the same office,"PO_WARD_MANAGER,WH_WARD_MANAGER"

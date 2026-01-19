@@ -42,13 +42,13 @@ public class CreateWardOfficeRequest {
     )
     private String warehousePhoneNumber;
 
-    @NotBlank(message = "Warehouse address is required")
+    @NotBlank(message = "Warehouse address line 1 is required")
     @Schema(
-            description = "Address of the warehouse",
-            example = "123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM",
+            description = "Address line 1 of the warehouse",
+            example = "123 Nguyễn Huệ",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
-    private String warehouseAddress;
+    private String warehouseAddressLine1;
 
     @NotNull(message = "Warehouse capacity is required")
     @Min(value = 1, message = "Capacity must be at least 1")
@@ -89,13 +89,22 @@ public class CreateWardOfficeRequest {
     )
     private String postOfficePhoneNumber;
 
-    @NotBlank(message = "Post office address is required")
+    @NotBlank(message = "Post office address line 1 is required")
     @Schema(
-            description = "Address of the post office",
-            example = "125 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM",
+            description = "Address line 1 of the post office",
+            example = "125 Nguyễn Huệ",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
-    private String postOfficeAddress;
+    private String postOfficeAddressLine1;
+
+    // --- Ward & Province ---
+    @NotBlank(message = "Ward code is required")
+    @Schema(
+            description = "Ward code for both offices",
+            example = "00001",
+            requiredMode = Schema.RequiredMode.REQUIRED
+    )
+    private String wardCode;
 
     // --- Province code (required for SYSTEM_ADMIN) ---
     @Schema(

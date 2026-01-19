@@ -11,6 +11,7 @@ import org.f3.postalmanagement.entity.unit.Office;
 import org.f3.postalmanagement.enums.OrderStatus;
 import org.f3.postalmanagement.enums.PackageType;
 import org.f3.postalmanagement.enums.ServiceType;
+import org.f3.postalmanagement.entity.administrative.Province;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
@@ -32,11 +33,13 @@ public class Order extends BaseEntity {
 
     /**
      * Unique tracking number for the order.
-     * Format: VN + 9 digits + VN (e.g., VN123456789VN)
+     * Format: VN + YY + 9 digits (e.g., VN23123456789) -> 13 chars
      */
     @Column(name = "tracking_number", nullable = false, unique = true, length = 15)
     private String trackingNumber;
 
+
+// ...
     // ==================== SENDER INFORMATION ====================
     
     /**
@@ -61,8 +64,12 @@ public class Order extends BaseEntity {
     /**
      * Sender's address (snapshot at time of order creation)
      */
-    @Column(name = "sender_address", nullable = false)
-    private String senderAddress;
+    @Column(name = "sender_address_line1", nullable = false)
+    private String senderAddressLine1;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sender_ward_code")
+    private Ward senderWard;
 
     // ==================== RECEIVER INFORMATION ====================
 
@@ -88,15 +95,15 @@ public class Order extends BaseEntity {
     /**
      * Receiver's full address (snapshot at time of order creation)
      */
-    @Column(name = "receiver_address", nullable = false)
-    private String receiverAddress;
+    @Column(name = "receiver_address_line1", nullable = false)
+    private String receiverAddressLine1;
 
     /**
-     * Destination ward for routing
+     * Destination/Receiver ward for routing (Province is derivable from ward)
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "destination_ward_code", referencedColumnName = "code")
-    private Ward destinationWard;
+    @JoinColumn(name = "receiver_ward_code", referencedColumnName = "code")
+    private Ward receiverWard;
 
     // ==================== PACKAGE INFORMATION ====================
 

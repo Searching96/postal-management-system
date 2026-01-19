@@ -23,8 +23,14 @@ public class OfficeResponse {
     @Schema(description = "Office phone number")
     private String officePhoneNumber;
 
-    @Schema(description = "Office address")
-    private String officeAddress;
+    @Schema(description = "Office address line 1")
+    private String officeAddressLine1;
+
+    @Schema(description = "Ward code")
+    private String wardCode;
+
+    @Schema(description = "Ward name")
+    private String wardName;
 
     @Schema(description = "Office type")
     private String officeType;

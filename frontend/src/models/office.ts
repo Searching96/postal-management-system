@@ -4,8 +4,10 @@ export interface OfficeResponse {
   officeName: string;
   officeEmail: string;
   officePhoneNumber: string;
-  officeAddress: string;
+  officeAddressLine1: string;
   officeType: string;
+  wardCode?: string;
+  wardName?: string;
   provinceCode: string;
   provinceName: string;
   regionName: string;
@@ -21,7 +23,7 @@ export interface WardOfficePairResponse {
     officeName: string;
     officeEmail: string;
     officePhoneNumber: string;
-    officeAddress: string;
+    officeAddressLine1: string;
     officeType: string;
     parentOfficeId: string;
     parentOfficeName: string;
@@ -31,7 +33,7 @@ export interface WardOfficePairResponse {
     officeName: string;
     officeEmail: string;
     officePhoneNumber: string;
-    officeAddress: string;
+    officeAddressLine1: string;
     officeType: string;
     parentOfficeId: string;
     parentOfficeName: string;
@@ -50,12 +52,13 @@ export interface CreateWardOfficeRequest {
   warehouseName: string;
   warehouseEmail: string;
   warehousePhoneNumber: string;
-  warehouseAddress: string;
+  warehouseAddressLine1: string;
   warehouseCapacity: number;
   postOfficeName: string;
   postOfficeEmail: string;
   postOfficePhoneNumber: string;
-  postOfficeAddress: string;
+  postOfficeAddressLine1: string;
+  wardCode: string;
   provinceCode?: string;
 }
 

@@ -72,7 +72,7 @@ public class UploadController {
      * Upload delivery/pickup evidence image for an order
      */
     @PostMapping("/orders/{orderId}/evidence")
-    @PreAuthorize("hasAnyRole('STAFF', 'SHIPPER', 'WARD_MANAGER', 'PROVINCE_ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'WH_STAFF', 'SHIPPER', 'PO_WARD_MANAGER', 'WH_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'WH_PROVINCE_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadEvidence(
             @PathVariable UUID orderId,
             @RequestParam("type") String evidenceType,

@@ -28,8 +28,12 @@ public class Office extends BaseEntity {
     @Column(name="office_phone_number", nullable = false)
     private String officePhoneNumber;
 
-    @Column(name="office_address", nullable = false)
-    private String officeAddress;
+    @Column(name="office_address_line1", nullable = false)
+    private String officeAddressLine1;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="ward_code")
+    private Ward ward;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="region_id", nullable = false)
@@ -38,10 +42,6 @@ public class Office extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="parent_id")
     private Office parent;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="province_code")
-    private Province province;
 
     @Enumerated(EnumType.STRING)
     @Column(name="office_type", nullable = false)
@@ -55,4 +55,8 @@ public class Office extends BaseEntity {
 
     @Column(name = "working_hours", nullable = false)
     private String workingHours = "07:00-17:00";
+
+    public Province getProvince() {
+        return ward != null ? ward.getProvince() : null;
+    }
 }

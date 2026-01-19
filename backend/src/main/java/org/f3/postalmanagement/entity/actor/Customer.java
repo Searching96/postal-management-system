@@ -7,6 +7,8 @@ import org.f3.postalmanagement.entity.BaseEntity;
 import org.f3.postalmanagement.enums.SubscriptionPlan;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import org.f3.postalmanagement.entity.administrative.Ward;
+import org.f3.postalmanagement.entity.administrative.Province;
 
 @Entity
 @Table(name = "customers")
@@ -26,8 +28,16 @@ public class Customer extends BaseEntity {
     @Column(name="phone_number", nullable = false)
     private String phoneNumber;
 
-    @Column(name="address", nullable = false)
-    private String address;
+    @Column(name="address_line1", nullable = false)
+    private String addressLine1;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="ward_code")
+    private Ward ward;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="province_code")
+    private Province province;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "subscription_plan", nullable = false)

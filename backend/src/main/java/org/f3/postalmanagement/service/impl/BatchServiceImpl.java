@@ -557,6 +557,19 @@ public class BatchServiceImpl implements IBatchService {
         return mapToPageResponse(page);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderSummaryResponse> getUnbatchedOrders(UUID destinationOfficeId, Account currentAccount) {
+        Employee employee = getEmployeeFromAccount(currentAccount);
+        UUID originOfficeId = employee.getOffice().getId();
+
+        List<Order> unbatched = getUnbatchedOrders(originOfficeId, destinationOfficeId);
+        
+        return unbatched.stream()
+                .map(this::mapToOrderSummary)
+                .collect(Collectors.toList());
+    }
+
     // ==================== HELPER METHODS ====================
 
     private Employee getEmployeeFromAccount(Account account) {
@@ -686,14 +699,14 @@ public class BatchServiceImpl implements IBatchService {
                 .originOffice(BatchPackageResponse.OfficeInfo.builder()
                         .id(batch.getOriginOffice().getId())
                         .name(batch.getOriginOffice().getOfficeName())
-                        .address(batch.getOriginOffice().getOfficeAddress())
+                        .addressLine1(batch.getOriginOffice().getOfficeAddressLine1())
                         .province(batch.getOriginOffice().getProvince() != null ?
                                 batch.getOriginOffice().getProvince().getName() : null)
                         .build())
                 .destinationOffice(BatchPackageResponse.OfficeInfo.builder()
                         .id(batch.getDestinationOffice().getId())
                         .name(batch.getDestinationOffice().getOfficeName())
-                        .address(batch.getDestinationOffice().getOfficeAddress())
+                        .addressLine1(batch.getDestinationOffice().getOfficeAddressLine1())
                         .province(batch.getDestinationOffice().getProvince() != null ?
                                 batch.getDestinationOffice().getProvince().getName() : null)
                         .build())
@@ -738,7 +751,7 @@ public class BatchServiceImpl implements IBatchService {
                 .status(order.getStatus())
                 .senderName(order.getSenderName())
                 .receiverName(order.getReceiverName())
-                .receiverAddress(order.getReceiverAddress())
+                .receiverAddressLine1(order.getReceiverAddressLine1())
                 .packageType(order.getPackageType())
                 .serviceType(order.getServiceType())
                 .chargeableWeightKg(order.getChargeableWeightKg())

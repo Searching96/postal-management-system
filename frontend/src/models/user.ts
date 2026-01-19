@@ -9,7 +9,11 @@ export interface CustomerMeResponse {
   role: string;
   fullName: string;
   phoneNumber: string;
-  address: string;
+  addressLine1: string;
+  wardCode?: string;
+  wardName?: string;
+  provinceCode?: string;
+  provinceName?: string;
   subscriptionPlan: string;
   active: boolean;
 }
@@ -27,8 +31,10 @@ export interface EmployeeMeResponse {
     name: string;
     email: string;
     phoneNumber: string;
-    address: string;
+    addressLine1: string;
     type: string;
+    wardCode?: string;
+    wardName?: string;
     region?: {
       id: number;
       name: string;

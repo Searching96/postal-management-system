@@ -14,12 +14,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/messages")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class MessageController {
 
     private final MessageService messageService;

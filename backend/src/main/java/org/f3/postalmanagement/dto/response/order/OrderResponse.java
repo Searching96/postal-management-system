@@ -31,7 +31,6 @@ public class OrderResponse {
     private String trackingNumber;
 
     // ==================== SENDER INFO ====================
-
     @Schema(description = "Sender customer ID (if registered)")
     private UUID senderCustomerId;
 
@@ -41,8 +40,17 @@ public class OrderResponse {
     @Schema(description = "Sender phone", example = "0901234567")
     private String senderPhone;
 
-    @Schema(description = "Sender address")
-    private String senderAddress;
+    @Schema(description = "Sender address line 1 (full text for display)")
+    private String senderAddressLine1;
+
+    @Schema(description = "Sender ward code (Province is derivable from ward)")
+    private String senderWardCode;
+
+    @Schema(description = "Sender ward name")
+    private String senderWardName;
+
+    @Schema(description = "Sender province name")
+    private String senderProvinceName;
 
     // ==================== RECEIVER INFO ====================
 
@@ -52,14 +60,29 @@ public class OrderResponse {
     @Schema(description = "Receiver phone", example = "0912345678")
     private String receiverPhone;
 
-    @Schema(description = "Receiver address")
-    private String receiverAddress;
+    @Schema(description = "Receiver address line 1 (full text for display)")
+    private String receiverAddressLine1;
 
-    @Schema(description = "Destination ward name")
-    private String destinationWardName;
+    @Schema(description = "Receiver ward code (Province is derivable from ward)")
+    private String receiverWardCode;
 
-    @Schema(description = "Destination province name")
-    private String destinationProvinceName;
+    @Schema(description = "Receiver ward name")
+    private String receiverWardName;
+
+    @Schema(description = "Receiver province name")
+    private String receiverProvinceName;
+
+    @Schema(description = "Receiver latitude (for map display)")
+    private Double receiverLatitude;
+
+    @Schema(description = "Receiver longitude (for map display)")
+    private Double receiverLongitude;
+
+    @Schema(description = "Sender latitude (for map display)")
+    private Double senderLatitude;
+
+    @Schema(description = "Sender longitude (for map display)")
+    private Double senderLongitude;
 
     // ==================== PACKAGE INFO ====================
 

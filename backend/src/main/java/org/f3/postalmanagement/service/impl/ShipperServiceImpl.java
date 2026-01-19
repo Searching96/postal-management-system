@@ -228,7 +228,8 @@ public class ShipperServiceImpl implements IShipperService {
     private void validateWarehouseRole(Account currentAccount) {
         Role role = currentAccount.getRole();
         if (role != Role.HUB_ADMIN && role != Role.WH_PROVINCE_ADMIN && role != Role.WH_WARD_MANAGER &&
-            role != Role.PO_PROVINCE_ADMIN && role != Role.PO_WARD_MANAGER && role != Role.PO_STAFF) {
+            role != Role.PO_PROVINCE_ADMIN && role != Role.PO_WARD_MANAGER && role != Role.PO_STAFF &&
+            role != Role.WH_STAFF) {
             throw new AccessDeniedException("Only authorized office staff can manage shippers");
         }
     }

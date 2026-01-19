@@ -63,7 +63,7 @@ public class BatchController {
     })
     public ResponseEntity<BatchPackageResponse> createBatch(
             @Valid @RequestBody CreateBatchRequest request,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         BatchPackageResponse response = batchService.createBatch(request, currentAccount);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -84,7 +84,7 @@ public class BatchController {
     })
     public ResponseEntity<AutoBatchResultResponse> autoBatchOrders(
             @Valid @RequestBody AutoBatchRequest request,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         AutoBatchResultResponse response = batchService.autoBatchOrders(request, currentAccount);
         return ResponseEntity.ok(response);
     }
@@ -106,7 +106,7 @@ public class BatchController {
     })
     public ResponseEntity<BatchPackageResponse> addOrdersToBatch(
             @Valid @RequestBody AddOrdersToBatchRequest request,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         BatchPackageResponse response = batchService.addOrdersToBatch(request, currentAccount);
         return ResponseEntity.ok(response);
     }
@@ -126,7 +126,7 @@ public class BatchController {
     public ResponseEntity<BatchPackageResponse> removeOrderFromBatch(
             @PathVariable UUID batchId,
             @PathVariable UUID orderId,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         BatchPackageResponse response = batchService.removeOrderFromBatch(batchId, orderId, currentAccount);
         return ResponseEntity.ok(response);
     }
@@ -145,7 +145,7 @@ public class BatchController {
     })
     public ResponseEntity<BatchPackageResponse> sealBatch(
             @PathVariable UUID batchId,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         BatchPackageResponse response = batchService.sealBatch(batchId, currentAccount);
         return ResponseEntity.ok(response);
     }
@@ -164,7 +164,7 @@ public class BatchController {
     })
     public ResponseEntity<BatchPackageResponse> dispatchBatch(
             @PathVariable UUID batchId,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         BatchPackageResponse response = batchService.markBatchInTransit(batchId, currentAccount);
         return ResponseEntity.ok(response);
     }
@@ -184,7 +184,7 @@ public class BatchController {
     })
     public ResponseEntity<BatchPackageResponse> markBatchArrived(
             @PathVariable UUID batchId,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         BatchPackageResponse response = batchService.markBatchArrived(batchId, currentAccount);
         return ResponseEntity.ok(response);
     }
@@ -205,7 +205,7 @@ public class BatchController {
     })
     public ResponseEntity<BatchPackageResponse> distributeBatch(
             @PathVariable UUID batchId,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         BatchPackageResponse response = batchService.distributeBatch(batchId, currentAccount);
         return ResponseEntity.ok(response);
     }
@@ -225,7 +225,7 @@ public class BatchController {
     })
     public ResponseEntity<BatchPackageResponse> cancelBatch(
             @PathVariable UUID batchId,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         BatchPackageResponse response = batchService.cancelBatch(batchId, currentAccount);
         return ResponseEntity.ok(response);
     }
@@ -233,7 +233,7 @@ public class BatchController {
     // ==================== BATCH QUERIES ====================
 
     @GetMapping("/{batchId}")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Get batch by ID",
             description = "Get detailed information about a specific batch, optionally including the list of orders.",
@@ -247,13 +247,13 @@ public class BatchController {
             @PathVariable UUID batchId,
             @Parameter(description = "Include list of orders in batch")
             @RequestParam(defaultValue = "false") boolean includeOrders,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         BatchPackageResponse response = batchService.getBatchById(batchId, includeOrders, currentAccount);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/code/{batchCode}")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Get batch by code",
             description = "Get batch details using the batch code.",
@@ -267,13 +267,13 @@ public class BatchController {
             @PathVariable String batchCode,
             @Parameter(description = "Include list of orders in batch")
             @RequestParam(defaultValue = "false") boolean includeOrders,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         BatchPackageResponse response = batchService.getBatchByCode(batchCode, includeOrders, currentAccount);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Get batches at current office",
             description = "Get all batches originating from the current staff's office, with optional status filter.",
@@ -287,13 +287,13 @@ public class BatchController {
             @RequestParam(required = false) BatchStatus status,
             @ParameterObject
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         PageResponse<BatchPackageResponse> response = batchService.getBatchesByOriginOffice(status, pageable, currentAccount);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/incoming")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Get incoming batches",
             description = "Get batches that are being sent to the current staff's office (destination).",
@@ -307,13 +307,13 @@ public class BatchController {
             @RequestParam(required = false) BatchStatus status,
             @ParameterObject
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         PageResponse<BatchPackageResponse> response = batchService.getIncomingBatches(status, pageable, currentAccount);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/open")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Get open batches",
             description = "Get batches that are still open and can accept more orders.",
@@ -325,13 +325,13 @@ public class BatchController {
     public ResponseEntity<PageResponse<BatchPackageResponse>> getOpenBatches(
             @ParameterObject
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         PageResponse<BatchPackageResponse> response = batchService.getOpenBatches(pageable, currentAccount);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/destinations")
-    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN')")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
     @Operation(
             summary = "Get batchable destinations",
             description = "Get list of destinations with unbatched orders, useful for planning batch creation.",
@@ -342,8 +342,25 @@ public class BatchController {
                     content = @Content(schema = @Schema(implementation = BatchableDestinationsResponse.class)))
     })
     public ResponseEntity<BatchableDestinationsResponse> getDestinationsWithUnbatchedOrders(
-            @AuthenticationPrincipal Account currentAccount) {
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
         BatchableDestinationsResponse response = batchService.getDestinationsWithUnbatchedOrders(currentAccount);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/unbatched-orders")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Get unbatched orders",
+            description = "Get list of unbatched orders at the current office, optionally filtered by destination.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Unbatched orders list retrieved")
+    })
+    public ResponseEntity<java.util.List<org.f3.postalmanagement.dto.response.order.OrderSummaryResponse>> getUnbatchedOrders(
+            @Parameter(description = "Filter by destination office ID")
+            @RequestParam(required = false) UUID destinationOfficeId,
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
+        return ResponseEntity.ok(batchService.getUnbatchedOrders(destinationOfficeId, currentAccount));
     }
 }

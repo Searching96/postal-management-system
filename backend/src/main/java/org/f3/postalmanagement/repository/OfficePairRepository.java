@@ -38,7 +38,7 @@ public interface OfficePairRepository extends JpaRepository<OfficePair, UUID> {
     /**
      * Find all office pairs in a specific province
      */
-    @Query("SELECT op FROM OfficePair op WHERE op.whOffice.province.code = :provinceCode")
+    @Query("SELECT op FROM OfficePair op WHERE op.whOffice.ward.province.code = :provinceCode")
     List<OfficePair> findAllByProvinceCode(@Param("provinceCode") String provinceCode);
 
     /**
@@ -56,6 +56,6 @@ public interface OfficePairRepository extends JpaRepository<OfficePair, UUID> {
     /**
      * Find all ward-level office pairs in a specific province
      */
-    @Query("SELECT op FROM OfficePair op WHERE op.whOffice.officeType = 'WARD_WAREHOUSE' AND op.whOffice.province.code = :provinceCode")
+    @Query("SELECT op FROM OfficePair op WHERE op.whOffice.officeType = 'WARD_WAREHOUSE' AND op.whOffice.ward.province.code = :provinceCode")
     List<OfficePair> findAllWardOfficePairsByProvinceCode(@Param("provinceCode") String provinceCode);
 }

@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleBadCredentialsException(BadCredentialsException ex) {
         ApiResponse<?> response = ApiResponse.builder()
                 .success(false)
-                .message("Invalid username or password")
+                .message("Tên người dùng hoặc mật khẩu không hợp lệ")
                 .errorCode("BAD_CREDENTIALS")
                 .build();
 
@@ -45,7 +45,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleAuthenticationException(AuthenticationException ex) {
         ApiResponse<?> response = ApiResponse.builder()
                 .success(false)
-                .message("Authentication failed: " + ex.getMessage())
+                .message("Xác thực thất bại: " + ex.getMessage())
                 .errorCode("AUTHENTICATION_FAILED")
                 .build();
 
@@ -74,7 +74,7 @@ public class GlobalExceptionHandler {
 
         ApiResponse<?> response = ApiResponse.builder()
                 .success(false)
-                .message("Validation failed")
+                .message("Xác thực dữ liệu thất bại")
                 .data(errors)
                 .errorCode("VALIDATION_ERROR")
                 .build();
@@ -136,7 +136,7 @@ public class GlobalExceptionHandler {
         
         ApiResponse<?> apiResponse = new ApiResponse<>(
                 HttpStatus.INTERNAL_SERVER_ERROR,
-                "An unexpected error occurred: " + ex.getMessage(),
+                "Đã xảy ra lỗi không mong muốn: " + ex.getMessage(),
                 null,
                 "INTERNAL_SERVER_ERROR"
         );

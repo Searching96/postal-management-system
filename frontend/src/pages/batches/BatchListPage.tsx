@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, ArrowRight, ArrowLeft, RotateCcw } from "lucide-react";
+import { Plus, Search, ArrowRight, ArrowLeft, RotateCcw, Wand2 } from "lucide-react";
 import {
     Card,
     Button,
@@ -10,6 +10,8 @@ import {
     TabsList,
     TabsTrigger
 } from "../../components/ui";
+import { CreateBatchDialog } from "../../components/batch/CreateBatchDialog";
+import { AutoBatchDialog } from "../../components/batch/AutoBatchDialog";
 import { batchService, BatchPackageResponse } from "../../services/batchService";
 import { BatchStatusBadge } from "../../components/batch/BatchStatusBadge";
 import { toast } from "sonner";
@@ -24,6 +26,26 @@ export function BatchListPage() {
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
 
+    const [showCreateDialog, setShowCreateDialog] = useState(false);
+    const [showAutoDialog, setShowAutoDialog] = useState(false);
+    const [destinations, setDestinations] = useState<{ value: string; label: string }[]>([]);
+
+    useEffect(() => {
+        // Pre-fetch destinations for AutoBatch dialog
+        const loadDestinations = async () => {
+            try {
+                const res = await batchService.getDestinationsWithUnbatchedOrders();
+                setDestinations(res.destinations.map(d => ({
+                    value: d.officeId,
+                    label: `${d.officeName} (${d.province})`
+                })));
+            } catch (error) {
+                console.error("Failed to load destinations", error);
+            }
+        };
+        loadDestinations();
+    }, []);
+
     const fetchBatches = async () => {
         setIsLoading(true);
         try {
@@ -31,10 +53,8 @@ export function BatchListPage() {
                 ? await batchService.getBatches({ page, size: 10 })
                 : await batchService.getIncomingBatches({ page, size: 10 });
 
-            if (res.success) {
-                setBatches(res.data.content);
-                setTotalPages(res.data.totalPages);
-            }
+            setBatches(res.content);
+            setTotalPages(res.totalPages);
         } catch (error) {
             console.error(error);
             toast.error("Không thể tải danh sách kiện hàng");
@@ -55,14 +75,27 @@ export function BatchListPage() {
                     description="Quản lý việc gom đơn và đóng gói vận chuyển giữa các bưu cục"
                 />
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => toast.info("Tính năng Tự động gom kiện đang phát triển")}>
-                        <Plus className="mr-2 h-4 w-4" /> Tự động gom kiện
+                    <Button variant="outline" onClick={() => setShowAutoDialog(true)}>
+                        <Wand2 className="mr-2 h-4 w-4" /> Tự động gom kiện
                     </Button>
-                    <Button onClick={() => toast.info("Tính năng Tạo kiện hàng đang phát triển")}>
+                    <Button onClick={() => setShowCreateDialog(true)}>
                         <Plus className="mr-2 h-4 w-4" /> Tạo kiện hàng mới
                     </Button>
                 </div>
             </div>
+
+            <CreateBatchDialog
+                open={showCreateDialog}
+                onOpenChange={setShowCreateDialog}
+                onSuccess={fetchBatches}
+            />
+
+            <AutoBatchDialog
+                open={showAutoDialog}
+                onOpenChange={setShowAutoDialog}
+                onSuccess={fetchBatches}
+                destinations={destinations}
+            />
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>

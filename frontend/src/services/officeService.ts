@@ -5,7 +5,7 @@ export interface Office {
     officeName: string;
     officeEmail: string;
     officePhoneNumber: string;
-    officeAddress: string;
+    officeAddressLine1: string;
     officeType: string;
     provinceCode?: string;
     provinceName?: string;

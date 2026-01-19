@@ -18,14 +18,16 @@ import {
   BatchListPage,
   BatchDetailsPage,
   ShipperManagementPage,
-  ShipperDashboardPage,
   PendingPickupsPage,
   CustomerPickupPage,
   RouteManagementPage,
   LiveTrackingPage,
   OfficeSearchPage,
   MessagesPage,
-  AssignDeliveryPage
+  AssignDeliveryPage,
+  ShipperDeliveryPage,
+  ShipperPickupPage,
+  DebugLoginPage
 } from "./pages";
 
 function App() {
@@ -37,6 +39,7 @@ function App() {
           <Route element={<PublicRoute />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/debug/:phoneNumber" element={<DebugLoginPage />} />
           </Route>
 
           {/* Public tracking page (no auth required) */}
@@ -98,7 +101,8 @@ function App() {
 
               {/* Shipper specifics */}
               <Route element={<RoleRoute allowedRoles={["SHIPPER"]} />}>
-                <Route path="/shipper" element={<ShipperDashboardPage />} />
+                <Route path="/shipper/pickups" element={<ShipperPickupPage />} />
+                <Route path="/shipper/deliveries" element={<ShipperDeliveryPage />} />
               </Route>
 
               {/* Customer specifics */}

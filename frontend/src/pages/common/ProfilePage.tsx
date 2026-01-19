@@ -173,7 +173,7 @@ export function ProfilePage() {
                                     </div>
                                     <div>
                                         <p className="text-xs font-medium text-gray-500 uppercase">Địa chỉ</p>
-                                        <p className="text-gray-900">{customerProfile?.address}</p>
+                                        <p className="text-gray-900">{`${customerProfile?.addressLine1}, ${customerProfile?.wardName}, ${customerProfile?.provinceName}`}</p>
                                     </div>
                                 </div>
                             )}

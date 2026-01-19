@@ -30,6 +30,7 @@ public class Message extends BaseEntity {
     @Column(name = "sent_at", nullable = false)
     private Instant sentAt;
 
+    @Builder.Default
     @Column(name = "is_read", nullable = false)
     private boolean isRead = false;
 
