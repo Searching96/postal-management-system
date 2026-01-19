@@ -43,10 +43,6 @@ public class Office extends BaseEntity {
     @JoinColumn(name="parent_id")
     private Office parent;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="province_code")
-    private Province province;
-
     @Enumerated(EnumType.STRING)
     @Column(name="office_type", nullable = false)
     private OfficeType officeType;
@@ -59,4 +55,8 @@ public class Office extends BaseEntity {
 
     @Column(name = "working_hours", nullable = false)
     private String workingHours = "07:00-17:00";
+
+    public Province getProvince() {
+        return ward != null ? ward.getProvince() : null;
+    }
 }

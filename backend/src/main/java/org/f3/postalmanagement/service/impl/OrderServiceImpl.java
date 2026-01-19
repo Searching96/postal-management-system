@@ -257,7 +257,8 @@ public class OrderServiceImpl implements IOrderService {
                     Customer newCustomer = new Customer();
                     newCustomer.setFullName(request.getReceiverName());
                     newCustomer.setPhoneNumber(request.getReceiverPhone());
-                    newCustomer.setAddress(request.getReceiverAddress());
+                    newCustomer.setAddressLine1(request.getReceiverAddressLine1());
+                    newCustomer.setWard(receiverWard);
                     newCustomer.setSubscriptionPlan(SubscriptionPlan.BASIC);
                     // No account for new receiver customer
                     return customerRepository.save(newCustomer);
@@ -706,7 +707,8 @@ public class OrderServiceImpl implements IOrderService {
                     Customer newCustomer = new Customer();
                     newCustomer.setFullName(request.getReceiverName());
                     newCustomer.setPhoneNumber(request.getReceiverPhone());
-                    newCustomer.setAddress(request.getReceiverAddress());
+                    newCustomer.setAddressLine1(request.getReceiverAddressLine1());
+                    newCustomer.setWard(receiverWard);
                     newCustomer.setSubscriptionPlan(SubscriptionPlan.BASIC);
                     // No account for new receiver customer
                     return customerRepository.save(newCustomer);
@@ -1154,6 +1156,9 @@ public class OrderServiceImpl implements IOrderService {
                 .absaQualityAspect(comment.getAbsaQualityAspect())
                 .absaPriceAspect(comment.getAbsaPriceAspect())
                 .absaAnalyzedAt(comment.getAbsaAnalyzedAt())
+                .build();
+    }
+
     @Override
     @Transactional
     public OrderResponse acceptOrder(UUID orderId, Account currentAccount) {

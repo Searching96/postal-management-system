@@ -1,6 +1,6 @@
 # 🔧 BACKEND CONTEXT GUIDELINES - Postal Management System
 
-**Version**: 1.0 | **Last Updated**: 2026-01-19 | **Authority**: Backend Specification
+**Version**: 1.3 | **Last Updated**: 2026-01-19 | **Authority**: Backend Specification
 
 ---
 
@@ -36,6 +36,7 @@ AdministrativeRegion{id:UUID, created_at, updated_at, deleted_at}:
   name: String (non-null) - e.g., "Đông Bắc Bộ"
   code: String (unique, non-null)
   relationships:
+  1.6,2026-01-19,LogisticsDemoSeeder for Demo Flows,Seeder for inter-ward, inter-province, inter-region demo scenarios
     ↔ provinces: 1-to-many
     ↔ admin_units: 1-to-many
 
@@ -61,6 +62,7 @@ AdministrativeUnit{id:UUID, created_at, updated_at, deleted_at}:
   id: UUID (PK)
   name: String (non-null)
   relationships:
+    1.5,2026-01-19,VehicleType Enum Added,VehicleType enum for demo routing flows
     ↔ provinces: 1-to-many
     ↔ wards: 1-to-many
 ```
@@ -153,6 +155,19 @@ TransferRoute{id:UUID, created_at, updated_at, deleted_at}:
   constraints:
     unique(from_hub_id, to_hub_id)
 
+  FINDING-2026-01-19-009,2026-01-19,INFORMATIONAL,LogisticsDemoSeeder for Demo Flows,ACTIVE
+    issue: Need for realistic, scenario-driven demo data for inter-ward, inter-province, and inter-region routing
+    location: LogisticsDemoSeeder.java (new)
+    details:
+      - Seeds real wards, post offices, and hubs for Hà Nội and TP.HCM using real SPX data
+      - Creates OfficePair for each ward, sets working hours and addresses
+      - Creates demo customer and receiver
+      - Seeds demo orders for all three scenarios (inter-ward, inter-province, inter-region)
+      - Tags demo orders in internalNotes and deliveryInstructions for scenario tracking
+      - Demo orders distributed across all key order statuses for UI/API verification
+    impact: Enables full demonstration of routing, batching, and delivery flows for all major logistics scenarios
+    verified_date: 2026-01-19
+
 OfficePair{id:UUID, created_at, updated_at, deleted_at}:
   id: UUID (PK)
   wh_office_id: UUID (FK, non-null) - WARD_WAREHOUSE
@@ -169,6 +184,16 @@ OfficePair{id:UUID, created_at, updated_at, deleted_at}:
 context:
   domain: Shipping orders and batch consolidation
   flow: CREATE → CONSOLIDATED → DEPARTED → DELIVERED
+
+    FINDING-2026-01-19-008,2026-01-19,INFORMATIONAL,VehicleType Enum for Routing Demo,ACTIVE
+      issue: Demo and routing flows require explicit vehicle type categorization for each route segment
+      location: VehicleType.java (new), referenced in demo seeder and optionally TransferRoute
+      details:
+        - Enum VehicleType created with values: COLLECTION_TRUCK, MEDIUM_TRANSFER_TRUCK, LARGE_TRANSFER_TRUCK
+        - Used for demo scenario documentation and (optionally) for TransferRoute display
+        - No hard constraints enforced; informational for demo and UI
+      impact: Enables realistic demo flows and future vehicle-based routing logic
+      verified_date: 2026-01-19
 
 Order{id:UUID, created_at, updated_at, deleted_at}:
   id: UUID (PK)
@@ -659,6 +684,11 @@ format_for_new_findings:
 ```
 version_history[version,date,summary,findings_added]:
   1.0,2026-01-19,Initial baseline specification,20 entities + 8 enums + core rules
+  1.1,2026-01-19,Added Sacred Covenant + Protocols,Constitutional authority + append-only
+  1.2,2026-01-19,Seeding Data Audit Discovery,222 malformed phone numbers identified + padding strategy
+  1.3,2026-01-19,Shipper Endpoint Investigation,Clarified pickup vs delivery workflows (NOT a bug)
+
+  1.4,2026-01-19,Network Topology, Shipper Location, WH_STAFF Access, Auto-Batching,TransferRoute topology, shipper tracking, WH_STAFF order access, batch auto-batching logic
 
 FINDINGS_REGISTRY[finding_id,date,severity,topic,status]:
   FINDING-2026-01-19-001,2026-01-19,CRITICAL,Phone Number Format,ACTIVE
@@ -668,6 +698,109 @@ FINDINGS_REGISTRY[finding_id,date,severity,topic,status]:
     entities_affected: Employee, Office, Account (all actor entities)
     validation_rule: ALL phone_number fields MUST be exactly 10 digits
     added_to_context: Rule phone_numbers section
+
+  FINDING-2026-01-19-002,2026-01-19,CRITICAL,Seeding Data Phone Padding,ACTIVE
+    issue: 222 phone numbers in seeding data are malformed (7-11 digits, not 10)
+    root_cause: Inconsistent phone number generation in DataInitializer
+    examples_broken{count,min_length,max_length,sample}:
+      7_digit_numbers: 0934610, 0914400, 0917900, 0912200 (7 digits)
+      9_digit_numbers: 094290001, 094050002, 094200001 (9 digits)
+      10_digit_correct: 0900000001, 0900000002, 0900000003 (10 digits - VALID)
+      11_digit_oversize: few examples exist with 11 digits
+
+    padding_strategy: RIGHT-PAD with zeros to reach 10 digits
+      rule: if length < 10 → append zeros until length = 10
+      rule: if length = 10 → keep as-is
+      rule: if length > 10 → REJECT & LOG ERROR (data integrity issue)
+
+    implementation_pattern:
+      String padded = String.format("%-10s", phoneNumber).replace(' ', '0');
+      or
+      String padded = (phoneNumber + "0000000000").substring(0, 10);
+
+    validation_after_padding:
+      assert padded.length() == 10: "Phone number must be 10 digits"
+      assert padded.startsWith("09"): "Phone number must start with 09"
+
+    affected_entities:
+      - Employee.phone_number (all seeded employees)
+      - Office.office_phone_number (all seeded offices)
+      - Account.username (when username is phone, rare but possible)
+
+    migration_required: YES
+      action: Audit all existing phone numbers
+      action: Apply padding to any < 10 digits
+      action: Flag any > 10 digits for manual review
+      action: Verify no phone numbers in system < 10 or > 10 digits
+
+    database_impact:
+      column_type: VARCHAR(10)
+      constraint: Enforce via database trigger or application validation
+      migration_sql: UPDATE accounts SET username = LPAD(username, 10, '0') WHERE LENGTH(username) < 10
+
+    validation_rule_updated: rule_phone_numbers section
+    added_to_context: rule_phone_numbers section
+
+  FINDING-2026-01-19-003,2026-01-19,INFORMATIONAL,Shipper Endpoints Design,RESOLVED
+    question: Why no orders in /shipper/assigned but data in /shipper/deliveries?
+    investigation: Examined OrderController + OrderRepository queries
+    root_cause: Different phases of order lifecycle
+    details:
+      /shipper/assigned: Filters status = PENDING_PICKUP (pickup workflow)
+      /shipper/deliveries: Filters status = OUT_FOR_DELIVERY (delivery workflow)
+    conclusion: NOT A BUG - Correct architectural design
+    explanation: Orders progress from PENDING_PICKUP (pickup) → in-transit → OUT_FOR_DELIVERY (delivery)
+                 Different shippers may handle different phases
+                 1-1 match would be incorrect
+    order_flow: PENDING_PICKUP → POST_PICKUP → IN_TRANSIT → ARRIVED → OUT_FOR_DELIVERY → DELIVERED
+    status: RESOLVED - behavior is correct
+    added_to_context: SHIPPER ENDPOINT INVESTIGATION section
+
+  FINDING-2026-01-19-004,2026-01-19,INFORMATIONAL,TransferRoute Topology,ACTIVE
+    issue: TransferRoute network topology is enforced as a strict linked-list chain between hubs (no direct connections except neighbors)
+    location: DataInitializer.java, RouteServiceImpl.java, TransferRouteRepository.java
+    details:
+      - DataInitializer only seeds PRIMARY routes as direct links between neighboring regions
+      - RouteServiceImpl uses BFS to find shortest hub-to-hub path, using only active TransferRoute edges
+      - TransferRouteRepository exposes only active routes for pathfinding
+      - No secondary/express routes seeded to avoid confusion; topology is a chain, not a mesh
+    impact: All inter-hub routing strictly follows the seeded chain; no direct hub-to-hub jumps
+    verified_date: 2026-01-19
+
+  FINDING-2026-01-19-005,2026-01-19,INFORMATIONAL,Shipper Location Update & Tracking,ACTIVE
+    issue: ShipperController does not handle location updates; all real-time location tracking is managed by TrackingController and TrackingService
+    location: TrackingController.java, TrackingServiceImpl.java, useLocationTracking.ts, trackingService.ts
+    details:
+      - Shipper location updates are POSTed to /api/tracking/location (role=SHIPPER)
+      - TrackingServiceImpl upserts ShipperLocation entity for each update
+      - Location is linked to Employee (shipper) and optionally to current order
+      - Real-time location is queryable by admins and customers for active deliveries
+      - ShipperController is only for CRUD on shipper accounts, not for tracking
+    impact: All location tracking logic is centralized in TrackingController/Service, not in ShipperController
+    verified_date: 2026-01-19
+
+  FINDING-2026-01-19-006,2026-01-19,INFORMATIONAL,WH_STAFF Order Access Logic,ACTIVE
+    issue: WH_STAFF (Ward Warehouse Staff) can access orders at their own warehouse, but only within their assigned office
+    location: OrderController.java, OrderServiceImpl.java, WardManagerServiceImpl.java, ProvinceAdminServiceImpl.java
+    details:
+      - getOrdersByOffice endpoint allows WH_STAFF to list orders at their current office
+      - All staff CRUD (view/update/delete) is restricted to staff in the same office as the manager/admin
+      - Role checks in OrderServiceImpl.validateStaffRole() and validatePOStaffRole() enforce access boundaries
+      - No cross-office access for WH_STAFF; all queries are filtered by current office
+    impact: WH_STAFF cannot view or modify orders outside their own warehouse
+    verified_date: 2026-01-19
+
+  FINDING-2026-01-19-007,2026-01-19,INFORMATIONAL,BatchService Auto-Batching Logic,ACTIVE
+    issue: BatchServiceImpl auto-batching uses First Fit Decreasing (FFD) algorithm to optimize batch creation by destination and weight
+    location: BatchServiceImpl.java, BatchController.java, AutoBatchRequest.java, AutoBatchResultResponse.java
+    details:
+      - Orders are grouped by destination, sorted by descending weight
+      - Existing open batches are filled first; new batches are created as needed (if allowed)
+      - Orders exceeding max batch weight are skipped with reason
+      - Result includes summary of batches created/used, skipped orders, and reasons
+      - Configurable via AutoBatchRequest (max weight, volume, min/max orders, createNewBatches flag)
+    impact: Batch consolidation is optimized for logistics efficiency and capacity constraints
+    verified_date: 2026-01-19
 ```
 
 ---
@@ -925,9 +1058,11 @@ document_lock_status: STRICT
   - Immutable historical record
   - Append-only commit policy
 
-current_version: 1.1
+current_version: 1.3
   version_1_0: 2026-01-19 initial baseline
   version_1_1: 2026-01-19 added sacred covenant + protocols
+  version_1_2: 2026-01-19 appended seeding data phone padding finding
+  version_1_3: 2026-01-19 appended shipper endpoint investigation (clarified design)
 
 next_version_triggers:
   - Any new entity discovery
@@ -1000,4 +1135,132 @@ red_flags_deviation[sign,action]:
 
 ---
 
-**Last Updated**: 2026-01-19 | **Status**: ENFORCED ✅ | **Authority**: Non-Negotiable 🔒
+---
+
+## 📲 PHONE NUMBER PADDING IMPLEMENTATION (FINDING-2026-01-19-002)
+
+**Status**: Ready for Implementation | **Priority**: CRITICAL
+
+```
+padding_utility_function{language:Java}:
+
+public class PhoneNumberValidator {
+
+  /**
+   * Pads phone number to exactly 10 digits (09XXXXXXX format)
+   * @param phoneNumber raw phone number string
+   * @return 10-digit phone number with leading zeros if needed
+   * @throws IllegalArgumentException if cannot be padded to 10 digits
+   */
+  public static String padToTenDigits(String phoneNumber) {
+    if (phoneNumber == null || phoneNumber.isBlank()) {
+      throw new IllegalArgumentException("Phone number cannot be null or blank");
+    }
+
+    String cleaned = phoneNumber.trim();
+
+    // Already 10 digits - valid
+    if (cleaned.length() == 10) {
+      return cleaned;
+    }
+
+    // Less than 10 digits - right pad with zeros
+    if (cleaned.length() < 10) {
+      return (cleaned + "0000000000").substring(0, 10);
+    }
+
+    // More than 10 digits - data integrity issue
+    if (cleaned.length() > 10) {
+      throw new IllegalArgumentException(
+        "Phone number '" + cleaned + "' is " + cleaned.length() +
+        " digits. Cannot exceed 10 digits. Data corruption suspected."
+      );
+    }
+
+    return cleaned;
+  }
+
+  /**
+   * Validates phone number is 10 digits starting with 09
+   */
+  public static boolean isValidPhoneNumber(String phoneNumber) {
+    return phoneNumber != null &&
+           phoneNumber.length() == 10 &&
+           phoneNumber.startsWith("09") &&
+           phoneNumber.matches("\\d{10}");
+  }
+}
+
+usage_in_dataInitializer:
+  // Before saving any phone numbers:
+  employee.setPhoneNumber(PhoneNumberValidator.padToTenDigits("0934610"));
+  // Result: "0934610000" (padded to 10 digits)
+```
+
+---
+
+## 🚚 SHIPPER ENDPOINT INVESTIGATION (FINDING-2026-01-19-003)
+
+**Status**: Documented | **Date**: 2026-01-19 | **Severity**: INFORMATIONAL
+
+### Observation Question
+User asked: "Why no assigned but there are deliveries? Shouldn't they match 1-1?"
+
+### Investigation Results
+
+```
+endpoint_comparison{endpoint,method,status_filter,purpose}:
+  /shipper/assigned,
+    query: findAssignedPickupOrders
+    filters: assignedShipper.id = shipper_id AND status = PENDING_PICKUP
+    purpose: Pickup workflow - shipper picks up from customer location
+
+  /shipper/deliveries,
+    query: findByAssignedShipperAccountAndStatus
+    filters: assignedShipper.account = shipper AND status = OUT_FOR_DELIVERY
+    purpose: Delivery workflow - shipper delivers to recipient
+
+order_lifecycle{phase,status,endpoint_visible,action}:
+  1,PENDING_PICKUP,/shipper/assigned,Waiting for pickup assignment
+  2,PENDING_PICKUP (assigned),/shipper/assigned,Assigned to shipper for pickup
+  3,POST_PICKUP,internal transition,Shipper marks as picked up
+  4,IN_TRANSIT,not visible,Order in batch transit
+  5,ARRIVED,not visible,Arrived at destination office
+  6,OUT_FOR_DELIVERY,/shipper/deliveries,Assigned to delivery shipper
+  7,DELIVERED,neither endpoint,Successfully delivered
+  8,FAILED,neither endpoint,Delivery failed
+
+root_cause_of_mismatch: TWO DIFFERENT PHASES
+  - assigned: PICKUP phase (customer location → shipper)
+  - deliveries: DELIVERY phase (shipper → recipient)
+  - Different shippers may be involved
+  - Orders cannot be in both phases simultaneously
+  - NOT a bug - INTENDED DESIGN
+
+example_order_journey:
+  [PENDING_PICKUP] → shipper1 assigned for pickup
+    ↓ visible in: /shipper/assigned (shipper1 only)
+  [POST_PICKUP] → order consolidated into batch
+    ↓ not visible in either endpoint (in transit)
+  [ARRIVED at dest] → order unstaged from batch
+  [OUT_FOR_DELIVERY] → shipper2 assigned for delivery
+    ↓ visible in: /shipper/deliveries (shipper2 only)
+  [DELIVERED] → order complete
+    ↓ not visible in either endpoint
+
+conclusion: NOT A BUG - ARCHITECTURAL DESIGN
+  - Endpoints are for different operational workflows
+  - 1-1 match would be incorrect
+  - Each shipper sees only their assigned tasks
+  - Pickup and delivery may use different shippers
+  - Status progression moves orders between workflows
+
+verification_locations:
+  - OrderController.java:275 (deliveries endpoint)
+  - OrderController.java:295 (assigned endpoint)
+  - OrderRepository.java:111-114 (findAssignedPickupOrders)
+  - OrderRepository.java:141-146 (findByAssignedShipperAccountAndStatus)
+  - OrderServiceImpl: getShipperDeliveryOrders() + getShipperAssignedOrders()
+```
+
+**Last Updated**: 2026-01-19 | **Status**: ENFORCED ✅ | **Authority**: Non-Negotiable 🔒 | **Version**: 1.3

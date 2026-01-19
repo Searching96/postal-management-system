@@ -355,7 +355,6 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         wardWarehouse.setOfficePhoneNumber(request.getWarehousePhoneNumber());
         wardWarehouse.setOfficeAddressLine1(request.getWarehouseAddressLine1());
         wardWarehouse.setOfficeType(OfficeType.WARD_WAREHOUSE);
-        wardWarehouse.setProvince(parentWarehouse.getProvince());
         wardWarehouse.setRegion(parentWarehouse.getRegion());
         wardWarehouse.setParent(parentWarehouse);
         wardWarehouse.setCapacity(request.getWarehouseCapacity());
@@ -368,7 +367,6 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         wardPostOffice.setOfficePhoneNumber(request.getPostOfficePhoneNumber());
         wardPostOffice.setOfficeAddressLine1(request.getPostOfficeAddressLine1());
         wardPostOffice.setOfficeType(OfficeType.WARD_POST);
-        wardPostOffice.setProvince(parentPostOffice.getProvince());
         wardPostOffice.setRegion(parentPostOffice.getRegion());
         wardPostOffice.setParent(parentPostOffice);
         wardPostOffice.setWard(ward);

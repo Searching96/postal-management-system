@@ -418,6 +418,9 @@ public class OrderController {
         if (response == null) {
             return ResponseEntity.noContent().build();
         }
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/{orderId}/accept")
     @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN')")
     @Operation(

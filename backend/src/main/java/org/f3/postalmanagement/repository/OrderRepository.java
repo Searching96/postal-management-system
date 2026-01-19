@@ -86,7 +86,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     /**
      * Find orders by province code (for province admin)
      */
-    @Query("SELECT o FROM Order o WHERE o.originOffice.province.code = :provinceCode AND " +
+    @Query("SELECT o FROM Order o WHERE o.originOffice.ward.province.code = :provinceCode AND " +
            "(:search IS NULL OR :search = '' OR " +
            "LOWER(o.trackingNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(o.senderName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

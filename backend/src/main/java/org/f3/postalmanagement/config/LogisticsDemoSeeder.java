@@ -2,233 +2,278 @@ package org.f3.postalmanagement.config;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.f3.postalmanagement.entity.actor.Customer;
+import org.f3.postalmanagement.entity.actor.Employee;
+import org.f3.postalmanagement.entity.administrative.Province;
+import org.f3.postalmanagement.entity.administrative.Ward;
+import org.f3.postalmanagement.entity.order.Order;
+import org.f3.postalmanagement.entity.order.OrderStatusHistory;
+import org.f3.postalmanagement.entity.unit.Office;
+import org.f3.postalmanagement.enums.*;
+import org.f3.postalmanagement.repository.*;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
-import java.util.*;
-import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Transactional;
 
-/**
- * LogisticsDemoSeeder seeds demo data for inter-ward, inter-province, and inter-region routing scenarios.
- * Uses real SPX data for Hà Nội and TP.HCM, creates demo orders for all major flows.
- *
- * - Wards, post offices, hubs, office pairs
- * - Demo customer and receiver
- * - Demo orders for all scenarios, tagged for UI/API verification
- */
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Component
-@Order(3)
-@Slf4j
+@org.springframework.core.annotation.Order(3) // Runs LAST
 @RequiredArgsConstructor
+@Slf4j
 public class LogisticsDemoSeeder implements CommandLineRunner {
 
-    // Inject repositories and encoder
-    private final org.f3.postalmanagement.repository.ProvinceRepository provinceRepository;
-    private final org.f3.postalmanagement.repository.WardRepository wardRepository;
-    private final org.f3.postalmanagement.repository.OfficeRepository officeRepository;
-    private final org.f3.postalmanagement.repository.OfficePairRepository officePairRepository;
-    private final org.f3.postalmanagement.repository.AccountRepository accountRepository;
-    private final org.f3.postalmanagement.repository.EmployeeRepository employeeRepository;
-    private final org.f3.postalmanagement.repository.CustomerRepository customerRepository;
-    private final org.f3.postalmanagement.repository.OrderRepository orderRepository;
-    private final org.f3.postalmanagement.repository.OrderStatusHistoryRepository orderStatusHistoryRepository;
-    private final org.f3.postalmanagement.repository.BatchPackageRepository batchPackageRepository;
-    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
-
-    // --- Real data (simulate loading from AdministrativeData.md and PostalOfficeData.md) ---
-    // In a real implementation, you would parse the JSON/MD files. Here, we simulate with hardcoded samples for brevity.
-    private static final List<Map<String, String>> HANOI_WARDS = Arrays.asList(
-        Map.of("code", "01001", "name", "Phường Phúc Xá"),
-        Map.of("code", "01002", "name", "Phường Trúc Bạch"),
-        Map.of("code", "01003", "name", "Phường Vĩnh Phúc")
-        // ... add more from AdministrativeData.md
-    );
-    private static final List<Map<String, String>> HCM_WARDS = Arrays.asList(
-        Map.of("code", "79001", "name", "Phường Tân Định"),
-        Map.of("code", "79002", "name", "Phường Đa Kao"),
-        Map.of("code", "79003", "name", "Phường Bến Nghé")
-        // ... add more from AdministrativeData.md
-    );
-    private static final List<Map<String, String>> HANOI_POST_OFFICES = Arrays.asList(
-        Map.of("email", "po.01001@f3postal.com", "name", "Bưu cục Phúc Xá", "wardCode", "01001"),
-        Map.of("email", "po.01002@f3postal.com", "name", "Bưu cục Trúc Bạch", "wardCode", "01002")
-        // ... add more from PostalOfficeData.md
-    );
-    private static final List<Map<String, String>> HCM_POST_OFFICES = Arrays.asList(
-        Map.of("email", "po.79001@f3postal.com", "name", "Bưu cục Tân Định", "wardCode", "79001"),
-        Map.of("email", "po.79002@f3postal.com", "name", "Bưu cục Đa Kao", "wardCode", "79002")
-        // ... add more from PostalOfficeData.md
-    );
-
-    // Demo constants
-    private static final String HANOI = "Hà Nội";
-    private static final String HCM = "TP. Hồ Chí Minh";
-    private static final String DEMO_CUSTOMER_PHONE = "0999999999";
-    private static final String DEMO_RECEIVER_PHONE = "0888888888";
+    private final OfficeRepository officeRepository;
+    private final OrderRepository orderRepository;
+    private final CustomerRepository customerRepository;
+    private final WardRepository wardRepository;
+    private final ProvinceRepository provinceRepository;
+    private final EmployeeRepository employeeRepository;
+    private final OrderStatusHistoryRepository orderStatusHistoryRepository;
 
     @Override
-    public void run(String... args) {
-        log.info("[LogisticsDemoSeeder] Starting real-data demo seeding for Hà Nội and TP.HCM...");
-        var hanoi = provinceRepository.findAll().stream().filter(p -> HANOI.equals(p.getName())).findFirst().orElse(null);
-        var hcm = provinceRepository.findAll().stream().filter(p -> HCM.equals(p.getName())).findFirst().orElse(null);
-        if (hanoi == null || hcm == null) {
-            log.warn("Demo provinces not found. Aborting demo seeding.");
+    @Transactional
+    public void run(String... args) throws Exception {
+        log.info("=== Starting Logistics Demo Scenario Seeding ===");
+
+        Ward hanoiWard = ensureWard("01", "Thịnh Quang");
+        Ward hcmWard = ensureWard("79", "Linh Xuân");
+        
+        if (hanoiWard == null || hcmWard == null) {
+            log.error("Missing Ward data. Skipping demo.");
             return;
         }
 
-        // 1. Load all existing wards for Hà Nội and TP.HCM
-        Map<String, org.f3.postalmanagement.entity.administrative.Ward> hanoiWardMap = wardRepository.findByProvince_Code(hanoi.getCode())
-            .stream().collect(Collectors.toMap(org.f3.postalmanagement.entity.administrative.Ward::getCode, w -> w));
-        Map<String, org.f3.postalmanagement.entity.administrative.Ward> hcmWardMap = wardRepository.findByProvince_Code(hcm.getCode())
-            .stream().collect(Collectors.toMap(org.f3.postalmanagement.entity.administrative.Ward::getCode, w -> w));
+        Office hanoiHub = ensureHub("01", "Hong Delta Hub (Hà Nội SOC)", 
+                "Lô 17, 19, 30 - số 386 đường Nguyễn Văn Linh");
+        
+        Office hcmHub = ensureHub("79", "Dong Nam Bo Hub (Củ Chi SOC)", 
+                "KCN Tân Phú Trung, Quốc lộ 22, Củ Chi");
 
-        // 2. Create all real post offices for Hà Nội and TP.HCM
-        List<org.f3.postalmanagement.entity.unit.Office> hanoiOffices = new ArrayList<>();
-        for (var poData : HANOI_POST_OFFICES) {
-            var ward = hanoiWardMap.get(poData.get("wardCode"));
-            if (ward == null) continue;
-            var office = ensureOffice(hanoi, ward, poData.get("name"), poData.get("email"), org.f3.postalmanagement.enums.OfficeType.WARD_POST);
-            hanoiOffices.add(office);
-        }
-        List<org.f3.postalmanagement.entity.unit.Office> hcmOffices = new ArrayList<>();
-        for (var poData : HCM_POST_OFFICES) {
-            var ward = hcmWardMap.get(poData.get("wardCode"));
-            if (ward == null) continue;
-            var office = ensureOffice(hcm, ward, poData.get("name"), poData.get("email"), org.f3.postalmanagement.enums.OfficeType.WARD_POST);
-            hcmOffices.add(office);
-        }
+        Office hanoiProvinceWH = getProvinceWarehouse("01");
+        Office hcmProvinceWH = getProvinceWarehouse("79");
 
-        // 3. Create OfficePairs for each office (simulate warehouse for each post office)
-        for (var office : hanoiOffices) {
-            var wh = ensureOffice(hanoi, office.getWard(), "Kho " + office.getOfficeName(), "wh." + office.getOfficeEmail(), org.f3.postalmanagement.enums.OfficeType.WARD_WAREHOUSE);
-            ensureOfficePair(wh, office);
-        }
-        for (var office : hcmOffices) {
-            var wh = ensureOffice(hcm, office.getWard(), "Kho " + office.getOfficeName(), "wh." + office.getOfficeEmail(), org.f3.postalmanagement.enums.OfficeType.WARD_WAREHOUSE);
-            ensureOfficePair(wh, office);
-        }
+        Office hanoiPost = ensurePostOffice("SPX Hà Nội - Đống Đa 5", 
+                "530 Láng, P. Láng Hạ", hanoiWard, hanoiProvinceWH);
+        
+        Office hcmPost = ensurePostOffice("SPX TP.HCM - Thủ Đức", 
+                "86 Quốc lộ 1K", hcmWard, hcmProvinceWH);
 
-        // 4. Create demo customer and receiver (assign to first ward in each city)
-        var demoCustomer = ensureDemoCustomer("Demo Customer", DEMO_CUSTOMER_PHONE, hanoiWardMap.values().stream().findFirst().orElse(null), hanoi);
-        var demoReceiver = ensureDemoCustomer("Demo Receiver", DEMO_RECEIVER_PHONE, hcmWardMap.values().stream().findFirst().orElse(null), hcm);
+        Customer sender = ensureCustomer("Phùng Thanh Độ", "0912345678", "120 P.Yên Lãng", hanoiWard);
+        Customer receiver = ensureCustomer("Trường ĐH CNTT", "02837252002", "Khu phố 34", hcmWard);
+        Employee defaultCreator = employeeRepository.findAll().stream().findFirst().orElse(null);
 
-        // 5. Create demo orders for all scenarios using real offices
-        if (!hanoiOffices.isEmpty() && !hcmOffices.isEmpty()) {
-            createDemoOrder(demoCustomer, demoReceiver, hanoiOffices.get(0), hanoiOffices.get(1 % hanoiOffices.size()), hcmOffices.get(0), hcmOffices.get(1 % hcmOffices.size()), hanoiWardMap.values().stream().findFirst().orElse(null), hcmWardMap.values().stream().findFirst().orElse(null));
-        }
+        // CREATE DEMO ORDERS
+        createInterRegionDemoOrder(sender, receiver, hanoiPost, hcmPost, hanoiHub, hcmHub, hanoiProvinceWH, hcmProvinceWH, defaultCreator);
+        createInterProvinceDemoOrder(sender, hanoiPost, hanoiHub, defaultCreator);
+        createInterWardDemoOrder(sender, hanoiPost, defaultCreator);
 
-        log.info("[LogisticsDemoSeeder] Real-data demo seeding complete.");
+        log.info("=== Logistics Demo Scenarios Created Successfully ===");
     }
 
-    private org.f3.postalmanagement.entity.administrative.Ward ensureWard(org.f3.postalmanagement.entity.administrative.Province province, String name, String code) {
-        return wardRepository.findById(code).orElseGet(() -> {
-            var ward = new org.f3.postalmanagement.entity.administrative.Ward();
-            ward.setCode(code);
-            ward.setName(name);
-            ward.setProvince(province);
-            return wardRepository.save(ward);
-        });
-    }
+    private void createInterRegionDemoOrder(Customer sender, Customer receiver, 
+                                            Office originPost, Office destPost, 
+                                            Office hubOrigin, Office hubDest, 
+                                            Office provinceOrigin, Office provinceDest,
+                                            Employee creator) {
+        // Ensure short unique tracking number < 15 chars
+        String trackingNum = "DEMO-HN-HCM-01"; 
+        if (orderRepository.existsByTrackingNumber(trackingNum)) return;
 
-    private org.f3.postalmanagement.entity.unit.Office ensureOffice(org.f3.postalmanagement.entity.administrative.Province province,
-            org.f3.postalmanagement.entity.administrative.Ward ward, String name, String email, org.f3.postalmanagement.enums.OfficeType type) {
-        return officeRepository.findByOfficeEmail(email).orElseGet(() -> {
-            var office = new org.f3.postalmanagement.entity.unit.Office();
-            office.setOfficeName(name);
-            office.setOfficeEmail(email);
-            office.setOfficePhoneNumber("0912345678");
-            office.setOfficeAddressLine1("Demo Address " + name);
-            office.setRegion(province.getAdministrativeRegion());
-            office.setProvince(province);
-            office.setWard(ward);
-            office.setOfficeType(type);
-            office.setCapacity(1000);
-            office.setIsAcceptingOrders(true);
-            office.setWorkingHours("08:00-17:00");
-            return officeRepository.save(office);
-        });
-    }
-
-    private void ensureOfficePair(org.f3.postalmanagement.entity.unit.Office wh, org.f3.postalmanagement.entity.unit.Office po) {
-        officePairRepository.findByWhOffice(wh).orElseGet(() -> {
-            var pair = new org.f3.postalmanagement.entity.unit.OfficePair();
-            pair.setWhOffice(wh);
-            pair.setPoOffice(po);
-            return officePairRepository.save(pair);
-        });
-    }
-
-    private org.f3.postalmanagement.entity.actor.Customer ensureDemoCustomer(String name, String phone, org.f3.postalmanagement.entity.administrative.Ward ward, org.f3.postalmanagement.entity.administrative.Province province) {
-        return customerRepository.findAll().stream().filter(c -> phone.equals(c.getPhoneNumber())).findFirst().orElseGet(() -> {
-            var account = new org.f3.postalmanagement.entity.actor.Account();
-            account.setUsername(phone);
-            account.setPassword(passwordEncoder.encode("123456"));
-            account.setRole(org.f3.postalmanagement.enums.Role.CUSTOMER);
-            account.setEmail(phone + "@demo.com");
-            account.setActive(true);
-            account = accountRepository.save(account);
-
-            var customer = new org.f3.postalmanagement.entity.actor.Customer();
-            customer.setAccount(account);
-            customer.setFullName(name);
-            customer.setPhoneNumber(phone);
-            customer.setAddressLine1("Demo Address for " + name);
-            customer.setWard(ward);
-            customer.setProvince(province);
-            customer.setSubscriptionPlan(org.f3.postalmanagement.enums.SubscriptionPlan.BASIC);
-            return customerRepository.save(customer);
-        });
-    }
-
-    private void createDemoOrder(org.f3.postalmanagement.entity.actor.Customer demoCustomer,
-                                 org.f3.postalmanagement.entity.actor.Customer demoReceiver,
-                                 org.f3.postalmanagement.entity.unit.Office hanoiPo,
-                                 org.f3.postalmanagement.entity.unit.Office hanoiWh,
-                                 org.f3.postalmanagement.entity.unit.Office hcmPo,
-                                 org.f3.postalmanagement.entity.unit.Office hcmWh,
-                                 org.f3.postalmanagement.entity.administrative.Ward hanoiWard,
-                                 org.f3.postalmanagement.entity.administrative.Ward hcmWard) {
-        // Inter-ward (same province, different ward)
-        createOrder("DEMO-INTER-WARD", demoCustomer, demoReceiver, hanoiPo, hanoiWh, hanoiWard, hanoiWard, "Inter-ward demo order", "DEMO:INTER_WARD");
-        // Inter-province (Hà Nội → TP.HCM)
-        createOrder("DEMO-INTER-PROVINCE", demoCustomer, demoReceiver, hanoiPo, hcmPo, hanoiWard, hcmWard, "Inter-province demo order", "DEMO:INTER_PROVINCE");
-        // Inter-region (Hà Nội → TP.HCM, different regions)
-        createOrder("DEMO-INTER-REGION", demoCustomer, demoReceiver, hanoiPo, hcmPo, hanoiWard, hcmWard, "Inter-region demo order", "DEMO:INTER_REGION");
-    }
-
-    private void createOrder(String trackingNumber,
-                             org.f3.postalmanagement.entity.actor.Customer sender,
-                             org.f3.postalmanagement.entity.actor.Customer receiver,
-                             org.f3.postalmanagement.entity.unit.Office originOffice,
-                             org.f3.postalmanagement.entity.unit.Office destOffice,
-                             org.f3.postalmanagement.entity.administrative.Ward senderWard,
-                             org.f3.postalmanagement.entity.administrative.Ward receiverWard,
-                             String description,
-                             String tag) {
-        if (orderRepository.findByTrackingNumber(trackingNumber).isPresent()) return;
-        var order = new org.f3.postalmanagement.entity.order.Order();
-        order.setTrackingNumber(trackingNumber);
+        Order order = new Order();
+        order.setTrackingNumber(trackingNum);
         order.setSenderCustomer(sender);
         order.setSenderName(sender.getFullName());
         order.setSenderPhone(sender.getPhoneNumber());
         order.setSenderAddressLine1(sender.getAddressLine1());
-        order.setSenderWard(senderWard);
+        order.setSenderWard(sender.getWard());
+
+        order.setReceiverCustomer(receiver);
         order.setReceiverName(receiver.getFullName());
         order.setReceiverPhone(receiver.getPhoneNumber());
         order.setReceiverAddressLine1(receiver.getAddressLine1());
-        order.setReceiverWard(receiverWard);
-        order.setOriginOffice(originOffice);
-        order.setDestinationOffice(destOffice);
-        order.setCreatedByEmployee(employeeRepository.findAll().stream().findFirst().orElse(null));
-        order.setPackageType(org.f3.postalmanagement.enums.PackageType.BOX);
-        order.setWeightKg(java.math.BigDecimal.valueOf(1.0));
-        order.setChargeableWeightKg(java.math.BigDecimal.valueOf(1.0));
-        order.setServiceType(org.f3.postalmanagement.enums.ServiceType.EXPRESS);
-        order.setShippingFee(java.math.BigDecimal.valueOf(30000));
-        order.setTotalAmount(java.math.BigDecimal.valueOf(31000));
-        order.setStatus(org.f3.postalmanagement.enums.OrderStatus.CREATED);
-        order.setDeliveryInstructions(tag);
-        order.setInternalNotes(description);
-        orderRepository.save(order);
+        order.setReceiverWard(receiver.getWard());
+        order.setInternalNotes("DEMO:INTER_REGION"); 
+
+        order.setOriginOffice(originPost);
+        order.setDestinationOffice(destPost);
+        order.setCreatedByEmployee(creator);
+        
+        // MANDATORY FIELDS
+        order.setPackageType(PackageType.BOX);
+        order.setServiceType(ServiceType.STANDARD);
+        order.setWeightKg(BigDecimal.valueOf(2.5));
+        order.setChargeableWeightKg(BigDecimal.valueOf(2.5));
+        order.setShippingFee(BigDecimal.valueOf(45000));
+        order.setTotalAmount(BigDecimal.valueOf(45000));
+        order.setCodAmount(BigDecimal.ZERO);
+        order.setInsuranceFee(BigDecimal.ZERO);
+        
+        order.setStatus(OrderStatus.OUT_FOR_DELIVERY);
+        order.setCurrentOffice(destPost);
+
+        Order savedOrder = orderRepository.save(order);
+        
+        // Create History
+        LocalDateTime t = LocalDateTime.now().minusHours(48);
+        createHistory(savedOrder, OrderStatus.CREATED, originPost, t, "Created");
+        createHistory(savedOrder, OrderStatus.AT_ORIGIN_OFFICE, originPost, t.plusMinutes(30), "At Origin");
+        createHistory(savedOrder, OrderStatus.IN_TRANSIT_TO_OFFICE, originPost, t.plusHours(2), "To Province WH");
+        createHistory(savedOrder, OrderStatus.AT_ORIGIN_OFFICE, provinceOrigin, t.plusHours(3), "At Province WH");
+        createHistory(savedOrder, OrderStatus.IN_TRANSIT_TO_HUB, provinceOrigin, t.plusHours(4), "To Hub");
+        createHistory(savedOrder, OrderStatus.AT_HUB, hubOrigin, t.plusHours(5), "At Origin Hub");
+        createHistory(savedOrder, OrderStatus.IN_TRANSIT_TO_DESTINATION, hubOrigin, t.plusHours(10), "To Dest Hub");
+        createHistory(savedOrder, OrderStatus.AT_DESTINATION_HUB, hubDest, t.plusHours(36), "At Dest Hub");
+        createHistory(savedOrder, OrderStatus.IN_TRANSIT_TO_OFFICE, hubDest, t.plusHours(38), "To Province WH");
+        createHistory(savedOrder, OrderStatus.AT_DESTINATION_OFFICE, provinceDest, t.plusHours(39), "At Dest Province WH");
+        createHistory(savedOrder, OrderStatus.IN_TRANSIT_TO_OFFICE, provinceDest, t.plusHours(40), "To Post Office");
+        createHistory(savedOrder, OrderStatus.AT_DESTINATION_OFFICE, destPost, t.plusHours(41), "At Dest Post");
+        createHistory(savedOrder, OrderStatus.OUT_FOR_DELIVERY, destPost, LocalDateTime.now().minusMinutes(15), "Out for delivery");
+    }
+
+    private void createInterProvinceDemoOrder(Customer sender, Office origin, Office hub, Employee creator) {
+        String trackingNum = "DEMO-PROV-02";
+        if (orderRepository.existsByTrackingNumber(trackingNum)) return;
+        
+        Order order = new Order();
+        order.setTrackingNumber(trackingNum);
+        order.setSenderCustomer(sender);
+        order.setSenderName(sender.getFullName());
+        order.setSenderPhone(sender.getPhoneNumber());
+        order.setSenderAddressLine1(sender.getAddressLine1());
+        order.setSenderWard(sender.getWard());
+        
+        order.setReceiverCustomer(sender); 
+        order.setReceiverName("Khách Quảng Ninh");
+        order.setReceiverPhone("0988888888");
+        order.setReceiverAddressLine1("Hạ Long");
+        order.setInternalNotes("DEMO:INTER_PROVINCE");
+        
+        order.setOriginOffice(origin);
+        order.setCreatedByEmployee(creator);
+        
+        // MANDATORY FIELDS
+        order.setPackageType(PackageType.DOCUMENT);
+        order.setServiceType(ServiceType.STANDARD);
+        order.setWeightKg(BigDecimal.valueOf(0.5));
+        order.setChargeableWeightKg(BigDecimal.valueOf(0.5));
+        order.setShippingFee(BigDecimal.valueOf(30000));
+        order.setTotalAmount(BigDecimal.valueOf(30000));
+        order.setCodAmount(BigDecimal.ZERO);
+        order.setInsuranceFee(BigDecimal.ZERO);
+
+        order.setStatus(OrderStatus.IN_TRANSIT_TO_HUB);
+        order.setCurrentOffice(origin.getParent());
+        
+        Order saved = orderRepository.save(order);
+        createHistory(saved, OrderStatus.CREATED, origin, LocalDateTime.now().minusHours(5), "Created");
+    }
+
+    private void createInterWardDemoOrder(Customer sender, Office origin, Employee creator) {
+        String trackingNum = "DEMO-WARD-03";
+        if (orderRepository.existsByTrackingNumber(trackingNum)) return;
+
+        Order order = new Order();
+        order.setTrackingNumber(trackingNum);
+        order.setSenderCustomer(sender);
+        order.setSenderName(sender.getFullName());
+        order.setSenderPhone(sender.getPhoneNumber());
+        order.setSenderAddressLine1(sender.getAddressLine1());
+        order.setSenderWard(sender.getWard());
+        
+        order.setReceiverCustomer(sender);
+        order.setReceiverName("Khách Đống Đa");
+        order.setReceiverPhone("0977777777");
+        order.setReceiverAddressLine1("Láng Hạ");
+        order.setInternalNotes("DEMO:INTER_WARD");
+
+        order.setOriginOffice(origin);
+        order.setDestinationOffice(origin);
+        order.setCreatedByEmployee(creator);
+        
+        // MANDATORY FIELDS
+        order.setPackageType(PackageType.BOX);
+        order.setServiceType(ServiceType.EXPRESS);
+        order.setWeightKg(BigDecimal.valueOf(1.0));
+        order.setChargeableWeightKg(BigDecimal.valueOf(1.0));
+        order.setShippingFee(BigDecimal.valueOf(16000));
+        order.setTotalAmount(BigDecimal.valueOf(16000));
+        order.setCodAmount(BigDecimal.ZERO);
+        order.setInsuranceFee(BigDecimal.ZERO);
+
+        order.setStatus(OrderStatus.AT_ORIGIN_OFFICE);
+        order.setCurrentOffice(origin);
+
+        Order saved = orderRepository.save(order);
+        createHistory(saved, OrderStatus.CREATED, origin, LocalDateTime.now().minusMinutes(30), "Created");
+    }
+
+    // Helpers
+    private Office ensureHub(String provinceCode, String name, String address) {
+        Province prov = provinceRepository.findById(provinceCode).orElse(null);
+        if (prov == null) return null;
+        
+        return officeRepository.findByOfficeName(name).orElseGet(() -> {
+            Office hub = new Office();
+            hub.setOfficeName(name);
+            hub.setOfficeAddressLine1(address);
+            hub.setOfficeType(OfficeType.HUB);
+            hub.setRegion(prov.getAdministrativeRegion());
+            hub.setOfficeEmail("hub." + provinceCode + "@f3postal.com");
+            hub.setOfficePhoneNumber("024" + provinceCode);
+            hub.setCapacity(50000);
+            hub.setWard(wardRepository.findByProvince_Code(provinceCode).stream().findFirst().orElse(null));
+            log.info("Created Demo Hub: {}", name);
+            return officeRepository.save(hub);
+        });
+    }
+
+    private Office ensurePostOffice(String officeName, String address, Ward ward, Office parent) {
+        return officeRepository.findByOfficeName(officeName).orElseGet(() -> {
+            Office office = new Office();
+            office.setOfficeName(officeName);
+            office.setOfficeAddressLine1(address);
+            office.setWard(ward);
+            office.setRegion(ward.getProvince().getAdministrativeRegion());
+            office.setOfficeType(OfficeType.WARD_POST);
+            office.setParent(parent);
+            office.setOfficeEmail("po." + ward.getCode() + "@f3postal.com");
+            office.setOfficePhoneNumber("09" + ward.getCode());
+            return officeRepository.save(office);
+        });
+    }
+
+    private Customer ensureCustomer(String name, String phone, String address, Ward ward) {
+        return customerRepository.findByPhoneNumber(phone).orElseGet(() -> {
+            Customer c = new Customer();
+            c.setFullName(name);
+            c.setPhoneNumber(phone);
+            c.setAddressLine1(address);
+            c.setWard(ward);
+            return customerRepository.save(c);
+        });
+    }
+
+    private Ward ensureWard(String provinceCode, String wardName) {
+        return wardRepository.findByProvince_Code(provinceCode).stream()
+                .filter(w -> w.getName().contains(wardName))
+                .findFirst().orElse(wardRepository.findByProvince_Code(provinceCode).stream().findFirst().orElse(null));
+    }
+
+    private Office getProvinceWarehouse(String provinceCode) {
+        return officeRepository.findByProvinceCodeAndOfficeType(provinceCode, OfficeType.PROVINCE_WAREHOUSE)
+                .stream().findFirst().orElse(null);
+    }
+
+    private void createHistory(Order order, OrderStatus status, Office office, LocalDateTime time, String desc) {
+        OrderStatusHistory h = new OrderStatusHistory();
+        h.setOrder(order);
+        h.setStatus(status);
+        h.setOffice(office);
+        h.setCreatedAt(time);
+        h.setDescription(desc);
+        orderStatusHistoryRepository.save(h);
     }
 }

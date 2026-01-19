@@ -41,19 +41,21 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
                                                     @Param("search") String search, 
                                                     Pageable pageable);
 
-    @Query("SELECT e FROM Employee e WHERE e.office.province.code = :provinceCode AND e.account.role = :role AND " +
-           "e.office.officeType IN :officeTypes AND " +
-           "(:search IS NULL OR :search = '' OR " +
-           "LOWER(e.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(e.phoneNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(e.account.email) LIKE LOWER(CONCAT('%', :search, '%'))) " +
-           "ORDER BY e.fullName ASC")
-    Page<Employee> findByProvinceCodeAndRoleAndOfficeTypesWithSearch(
-            @Param("provinceCode") String provinceCode, 
-            @Param("role") Role role,
-            @Param("officeTypes") List<OfficeType> officeTypes,
-            @Param("search") String search, 
-            Pageable pageable);
+    @Query("SELECT e FROM Employee e WHERE e.office.ward.province.code = :provinceCode " +
+           "AND e.account.role = :role " +
+           "AND e.office.officeType IN :officeTypes " +
+           "AND (:search IS NULL OR :search = '' " +
+           "OR LOWER(e.fullName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(e.phoneNumber) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(e.account.email) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+       "ORDER BY e.fullName ASC")
+Page<Employee> findByProvinceCodeAndRoleAndOfficeTypesWithSearch(
+       @Param("provinceCode") String provinceCode,
+       @Param("role") Role role,
+       @Param("officeTypes") List<OfficeType> officeTypes,
+       @Param("search") String search,
+       Pageable pageable
+);
 
     @Query("SELECT e FROM Employee e WHERE e.office.id = :officeId AND e.account.role = :role AND " +
            "(:search IS NULL OR :search = '' OR " +
@@ -66,7 +68,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
                                                     @Param("search") String search, 
                                                     Pageable pageable);
 
-    @Query("SELECT e FROM Employee e WHERE e.office.province.code = :provinceCode AND " +
+    @Query("SELECT e FROM Employee e WHERE e.office.ward.province.code = :provinceCode AND " +
            "(:search IS NULL OR :search = '' OR " +
            "LOWER(e.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(e.phoneNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
