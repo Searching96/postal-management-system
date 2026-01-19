@@ -829,6 +829,669 @@ def generate_full_report(bundles, container, container_placements, filename="Ful
     
     print(f"✅ Report saved to: {filename}")
 
+
+def generate_animated_report(bundles, container, container_placements, filename="Packing_Animation.html"):
+    """
+    Generate animated packing visualization with timeline controls.
+    Features:
+    - Items appear outside bundle with ID label
+    - Animate sliding into position
+    - Timeline slider to step through placements
+    - Same for bundles into container
+    """
+    print(f"\n🎬 Generating Animated Report...")
+    
+    # Prepare placement data with order (placement order = animation order)
+    bundle_animations = []
+    for b in bundles:
+        if len(b.items) == 0:
+            continue
+        dims = b.as_box()
+        # Each placement has order based on when it was added
+        placements_data = []
+        for idx, p in enumerate(b.packer.placements):
+            placements_data.append({
+                "order": idx,
+                "id": p.box.id,
+                "x": p.x, "y": p.y, "z": p.z,
+                "l": p.box.l, "w": p.box.w, "h": p.box.h,
+                "color": p.box.color if hasattr(p.box, 'color') else '#3498db'
+            })
+        bundle_animations.append({
+            "id": b.id,
+            "type": b.bundle_type,
+            "dim_l": dims.l, "dim_w": dims.w, "dim_h": dims.h,
+            "items": len(b.items),
+            "fill_rate": f"{b.fill_rate*100:.1f}%",
+            "placements": placements_data
+        })
+    
+    # Container placements (bundles)
+    container_animation = []
+    for idx, p in enumerate(container_placements):
+        original_bundle = next((b for b in bundles if b.id == p.box.id), None)
+        container_animation.append({
+            "order": idx,
+            "id": p.box.id,
+            "x": p.x, "y": p.y, "z": p.z,
+            "l": p.box.l, "w": p.box.w, "h": p.box.h,
+            "color": p.box.color if hasattr(p.box, 'color') else '#FF9800',
+            "type": original_bundle.bundle_type if original_bundle else "UNKNOWN",
+            "items": len(original_bundle.items) if original_bundle else 0
+        })
+    
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Animated Packing Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{ 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }}
+        .container {{ max-width: 1400px; margin: 0 auto; }}
+        .header {{ 
+            text-align: center;
+            margin-bottom: 30px;
+        }}
+        .header h1 {{ 
+            font-size: 2.5em; 
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }}
+        .header p {{ color: #888; }}
+        .main-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }}
+        @media (max-width: 1200px) {{
+            .main-grid {{ grid-template-columns: 1fr; }}
+        }}
+        .panel {{ 
+            background: rgba(255,255,255,0.05); 
+            border-radius: 16px; 
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }}
+        .panel-title {{ 
+            font-size: 1.3em; 
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .viz-container {{ 
+            height: 450px; 
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            overflow: hidden;
+        }}
+        .controls {{
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+        }}
+        .timeline {{
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }}
+        .timeline input[type="range"] {{
+            flex: 1;
+            height: 8px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            outline: none;
+        }}
+        .timeline input[type="range"]::-webkit-slider-thumb {{
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            border-radius: 50%;
+            cursor: pointer;
+        }}
+        .step-display {{
+            background: rgba(0,217,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            min-width: 100px;
+            text-align: center;
+        }}
+        .btn-group {{
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }}
+        .btn {{
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }}
+        .btn:hover {{ 
+            background: rgba(0,217,255,0.3);
+            border-color: #00d9ff;
+        }}
+        .btn.primary {{
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            border: none;
+            color: #1a1a2e;
+            font-weight: 600;
+        }}
+        .btn.primary:hover {{ opacity: 0.9; }}
+        .info-bar {{
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }}
+        .info-item {{
+            background: rgba(255,255,255,0.1);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }}
+        .info-item .label {{ color: #888; margin-right: 5px; }}
+        .info-item .value {{ color: #00d9ff; font-weight: 600; }}
+        .bundle-selector {{
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }}
+        .bundle-btn {{
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.3s ease;
+        }}
+        .bundle-btn:hover {{ border-color: #00d9ff; }}
+        .bundle-btn.active {{
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            color: #1a1a2e;
+            border: none;
+            font-weight: 600;
+        }}
+        .speed-control {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: center;
+        }}
+        .speed-control label {{ color: #888; }}
+        .speed-control select {{
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Animated Packing Visualization</h1>
+            <p>Watch items slide into bundles and bundles load into container</p>
+        </div>
+        
+        <div class="main-grid">
+            <!-- Left Panel: Bundle Animation -->
+            <div class="panel">
+                <div class="panel-title">📦 Bundle Packing</div>
+                <div class="bundle-selector" id="bundle-selector"></div>
+                <div id="bundle-viz" class="viz-container"></div>
+                <div class="controls">
+                    <div class="timeline">
+                        <span>Step</span>
+                        <input type="range" id="bundle-slider" min="0" max="10" value="0">
+                        <span id="bundle-step" class="step-display">0 / 0</span>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn" onclick="bundleStepBack()">⏮ Back</button>
+                        <button class="btn primary" onclick="bundlePlayPause()">▶ Play</button>
+                        <button class="btn" onclick="bundleStepForward()">Next ⏭</button>
+                        <button class="btn" onclick="bundleReset()">↺ Reset</button>
+                    </div>
+                    <div class="speed-control">
+                        <label>Speed:</label>
+                        <select id="bundle-speed">
+                            <option value="1000">Slow</option>
+                            <option value="500" selected>Normal</option>
+                            <option value="200">Fast</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="info-bar" id="bundle-info"></div>
+            </div>
+            
+            <!-- Right Panel: Container Animation -->
+            <div class="panel">
+                <div class="panel-title">🚛 Container Loading</div>
+                <div id="container-viz" class="viz-container"></div>
+                <div class="controls">
+                    <div class="timeline">
+                        <span>Step</span>
+                        <input type="range" id="container-slider" min="0" max="{len(container_animation)}" value="0">
+                        <span id="container-step" class="step-display">0 / {len(container_animation)}</span>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn" onclick="containerStepBack()">⏮ Back</button>
+                        <button class="btn primary" onclick="containerPlayPause()">▶ Play</button>
+                        <button class="btn" onclick="containerStepForward()">Next ⏭</button>
+                        <button class="btn" onclick="containerReset()">↺ Reset</button>
+                    </div>
+                    <div class="speed-control">
+                        <label>Speed:</label>
+                        <select id="container-speed">
+                            <option value="1000">Slow</option>
+                            <option value="500" selected>Normal</option>
+                            <option value="200">Fast</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="info-bar" id="container-info">
+                    <div class="info-item"><span class="label">Container:</span><span class="value">{container.l}x{container.w}x{container.h}mm</span></div>
+                    <div class="info-item"><span class="label">Total Bundles:</span><span class="value">{len(container_animation)}</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data
+        const bundleData = {bundle_animations};
+        const containerData = {container_animation};
+        const containerDims = {{l: {container.l}, w: {container.w}, h: {container.h}}};
+        
+        // Color palette for items (distinct colors)
+        const colorPalette = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', 
+            '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+            '#F8B500', '#00CED1', '#FF7F50', '#9370DB', '#3CB371',
+            '#FF69B4', '#20B2AA', '#FFD700', '#87CEEB', '#FFA07A',
+            '#8FBC8F', '#DEB887', '#5F9EA0', '#D2691E', '#6495ED',
+            '#DC143C', '#00FFFF', '#FFE4B5', '#ADFF2F', '#FF1493'
+        ];
+        
+        function getItemColor(index) {{
+            return colorPalette[index % colorPalette.length];
+        }}
+        
+        // State
+        let currentBundleIdx = 0;
+        let bundleStep = 0;
+        let bundlePlaying = false;
+        let bundleInterval = null;
+        
+        let containerStep = 0;
+        let containerPlaying = false;
+        let containerInterval = null;
+        
+        // ==================== BUNDLE ANIMATION ====================
+        
+        function initBundleSelector() {{
+            const selector = document.getElementById('bundle-selector');
+            bundleData.forEach((b, idx) => {{
+                const btn = document.createElement('button');
+                btn.className = 'bundle-btn' + (idx === 0 ? ' active' : '');
+                btn.textContent = `#${{b.id}} (${{b.type}})`;
+                btn.onclick = () => selectBundle(idx);
+                selector.appendChild(btn);
+            }});
+        }}
+        
+        function selectBundle(idx) {{
+            currentBundleIdx = idx;
+            bundleStep = 0;
+            
+            // Update buttons
+            document.querySelectorAll('.bundle-btn').forEach((btn, i) => {{
+                btn.classList.toggle('active', i === idx);
+            }});
+            
+            // Update slider
+            const bundle = bundleData[idx];
+            const slider = document.getElementById('bundle-slider');
+            slider.max = bundle.placements.length;
+            slider.value = 0;
+            
+            // Update info
+            updateBundleInfo();
+            renderBundleAtStep(0);
+        }}
+        
+        function updateBundleInfo() {{
+            const bundle = bundleData[currentBundleIdx];
+            const info = document.getElementById('bundle-info');
+            info.innerHTML = `
+                <div class="info-item"><span class="label">Bundle:</span><span class="value">#${{bundle.id}} (${{bundle.type}})</span></div>
+                <div class="info-item"><span class="label">Size:</span><span class="value">${{bundle.dim_l}}x${{bundle.dim_w}}x${{bundle.dim_h}}mm</span></div>
+                <div class="info-item"><span class="label">Items:</span><span class="value">${{bundle.items}}</span></div>
+                <div class="info-item"><span class="label">Fill:</span><span class="value">${{bundle.fill_rate}}</span></div>
+            `;
+        }}
+        
+        function renderBundleAtStep(step) {{
+            const bundle = bundleData[currentBundleIdx];
+            const placements = bundle.placements.slice(0, step);
+            
+            // Update step display
+            document.getElementById('bundle-step').textContent = `${{step}} / ${{bundle.placements.length}}`;
+            document.getElementById('bundle-slider').value = step;
+            
+            const traces = [];
+            
+            // Container frame (bundle boundary)
+            traces.push({{
+                type: 'mesh3d',
+                x: [0, bundle.dim_l, bundle.dim_l, 0, 0, bundle.dim_l, bundle.dim_l, 0],
+                y: [0, 0, bundle.dim_w, bundle.dim_w, 0, 0, bundle.dim_w, bundle.dim_w],
+                z: [0, 0, 0, 0, bundle.dim_h, bundle.dim_h, bundle.dim_h, bundle.dim_h],
+                i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                color: 'rgba(100,100,100,0.1)',
+                flatshading: true,
+                hoverinfo: 'skip'
+            }});
+            
+            // Placed items - each with unique color from palette
+            placements.forEach((p, i) => {{
+                const isLatest = i === placements.length - 1;
+                const itemColor = getItemColor(i);  // Unique color per item
+                traces.push({{
+                    type: 'mesh3d',
+                    x: [p.x, p.x+p.l, p.x+p.l, p.x, p.x, p.x+p.l, p.x+p.l, p.x],
+                    y: [p.y, p.y, p.y+p.w, p.y+p.w, p.y, p.y, p.y+p.w, p.y+p.w],
+                    z: [p.z, p.z, p.z, p.z, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h],
+                    i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                    j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                    k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                    color: itemColor,
+                    opacity: isLatest ? 1 : 0.8,
+                    flatshading: true,
+                    name: `Item ${{p.id}}`,
+                    hovertemplate: `<b>Item #${{p.id}}</b><br>Size: ${{p.l}}x${{p.w}}x${{p.h}}<br>Pos: (${{p.x}}, ${{p.y}}, ${{p.z}})<extra></extra>`
+                }});
+                
+                // Wireframe for latest item (highlight effect)
+                if (isLatest) {{
+                    const lx = [p.x, p.x+p.l, p.x+p.l, p.x, p.x, null, p.x, p.x, null, p.x+p.l, p.x+p.l, null, p.x+p.l, p.x+p.l, null, p.x, p.x, p.x+p.l, p.x+p.l, p.x, p.x];
+                    const ly = [p.y, p.y, p.y+p.w, p.y+p.w, p.y, null, p.y, p.y, null, p.y, p.y, null, p.y+p.w, p.y+p.w, null, p.y+p.w, p.y+p.w, p.y, p.y, p.y+p.w, p.y+p.w];
+                    const lz = [p.z, p.z, p.z, p.z, p.z, null, p.z, p.z+p.h, null, p.z, p.z+p.h, null, p.z, p.z+p.h, null, p.z, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h];
+                    traces.push({{
+                        type: 'scatter3d',
+                        x: lx, y: ly, z: lz,
+                        mode: 'lines',
+                        line: {{ color: '#00ff88', width: 6 }},
+                        hoverinfo: 'skip'
+                    }});
+                    // Label
+                    traces.push({{
+                        type: 'scatter3d',
+                        x: [p.x + p.l/2],
+                        y: [p.y + p.w/2],
+                        z: [p.z + p.h + 20],
+                        mode: 'text',
+                        text: [`#${{p.id}}`],
+                        textfont: {{ size: 14, color: '#00ff88' }},
+                        hoverinfo: 'skip'
+                    }});
+                }}
+            }});
+            
+            Plotly.react('bundle-viz', traces, {{
+                scene: {{
+                    xaxis: {{ title: 'L', range: [0, bundle.dim_l] }},
+                    yaxis: {{ title: 'W', range: [0, bundle.dim_w] }},
+                    zaxis: {{ title: 'H', range: [0, bundle.dim_h] }},
+                    aspectmode: 'data',
+                    camera: {{ eye: {{ x: 1.5, y: 1.5, z: 1.2 }} }}
+                }},
+                margin: {{ l: 0, r: 0, t: 0, b: 0 }},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: false
+            }}, {{ responsive: true }});
+        }}
+        
+        function bundleStepForward() {{
+            const bundle = bundleData[currentBundleIdx];
+            if (bundleStep < bundle.placements.length) {{
+                bundleStep++;
+                renderBundleAtStep(bundleStep);
+            }}
+        }}
+        
+        function bundleStepBack() {{
+            if (bundleStep > 0) {{
+                bundleStep--;
+                renderBundleAtStep(bundleStep);
+            }}
+        }}
+        
+        function bundlePlayPause() {{
+            const btn = event.target;
+            if (bundlePlaying) {{
+                clearInterval(bundleInterval);
+                bundlePlaying = false;
+                btn.textContent = '▶ Play';
+            }} else {{
+                bundlePlaying = true;
+                btn.textContent = '⏸ Pause';
+                const speed = parseInt(document.getElementById('bundle-speed').value);
+                bundleInterval = setInterval(() => {{
+                    const bundle = bundleData[currentBundleIdx];
+                    if (bundleStep < bundle.placements.length) {{
+                        bundleStep++;
+                        renderBundleAtStep(bundleStep);
+                    }} else {{
+                        clearInterval(bundleInterval);
+                        bundlePlaying = false;
+                        btn.textContent = '▶ Play';
+                    }}
+                }}, speed);
+            }}
+        }}
+        
+        function bundleReset() {{
+            bundleStep = 0;
+            renderBundleAtStep(0);
+            if (bundlePlaying) {{
+                clearInterval(bundleInterval);
+                bundlePlaying = false;
+                document.querySelector('.panel:first-child .btn.primary').textContent = '▶ Play';
+            }}
+        }}
+        
+        // Bundle slider event
+        document.getElementById('bundle-slider').addEventListener('input', (e) => {{
+            bundleStep = parseInt(e.target.value);
+            renderBundleAtStep(bundleStep);
+        }});
+        
+        // ==================== CONTAINER ANIMATION ====================
+        
+        function renderContainerAtStep(step) {{
+            const placements = containerData.slice(0, step);
+            
+            // Update step display
+            document.getElementById('container-step').textContent = `${{step}} / ${{containerData.length}}`;
+            document.getElementById('container-slider').value = step;
+            
+            const traces = [];
+            
+            // Container frame
+            traces.push({{
+                type: 'mesh3d',
+                x: [0, containerDims.l, containerDims.l, 0, 0, containerDims.l, containerDims.l, 0],
+                y: [0, 0, containerDims.w, containerDims.w, 0, 0, containerDims.w, containerDims.w],
+                z: [0, 0, 0, 0, containerDims.h, containerDims.h, containerDims.h, containerDims.h],
+                i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                color: 'rgba(100,100,100,0.1)',
+                flatshading: true,
+                hoverinfo: 'skip'
+            }});
+            
+            // Loaded bundles - each with unique color based on type + index
+            placements.forEach((p, i) => {{
+                const isLatest = i === placements.length - 1;
+                // Base color by type, vary shade by index
+                const baseColors = {{ SMALL: '#FFC107', MEDIUM: '#FF9800', LARGE: '#FF5722' }};
+                const bundleColor = getItemColor(i);  // Unique color per bundle
+                traces.push({{
+                    type: 'mesh3d',
+                    x: [p.x, p.x+p.l, p.x+p.l, p.x, p.x, p.x+p.l, p.x+p.l, p.x],
+                    y: [p.y, p.y, p.y+p.w, p.y+p.w, p.y, p.y, p.y+p.w, p.y+p.w],
+                    z: [p.z, p.z, p.z, p.z, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h],
+                    i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                    j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                    k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                    color: bundleColor,
+                    opacity: isLatest ? 1 : 0.8,
+                    flatshading: true,
+                    name: `Bundle ${{p.id}}`,
+                    hovertemplate: `<b>Bundle #${{p.id}}</b><br>Type: ${{p.type}}<br>Items: ${{p.items}}<br>Size: ${{p.l}}x${{p.w}}x${{p.h}}<extra></extra>`
+                }});
+                
+                // Wireframe for latest bundle (highlight effect)
+                if (isLatest) {{
+                    const lx = [p.x, p.x+p.l, p.x+p.l, p.x, p.x, null, p.x, p.x, null, p.x+p.l, p.x+p.l, null, p.x+p.l, p.x+p.l, null, p.x, p.x, p.x+p.l, p.x+p.l, p.x, p.x];
+                    const ly = [p.y, p.y, p.y+p.w, p.y+p.w, p.y, null, p.y, p.y, null, p.y, p.y, null, p.y+p.w, p.y+p.w, null, p.y+p.w, p.y+p.w, p.y, p.y, p.y+p.w, p.y+p.w];
+                    const lz = [p.z, p.z, p.z, p.z, p.z, null, p.z, p.z+p.h, null, p.z, p.z+p.h, null, p.z, p.z+p.h, null, p.z, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h];
+                    traces.push({{
+                        type: 'scatter3d',
+                        x: lx, y: ly, z: lz,
+                        mode: 'lines',
+                        line: {{ color: '#00ff88', width: 6 }},
+                        hoverinfo: 'skip'
+                    }});
+                    // Label
+                    traces.push({{
+                        type: 'scatter3d',
+                        x: [p.x + p.l/2],
+                        y: [p.y + p.w/2],
+                        z: [p.z + p.h + 50],
+                        mode: 'text',
+                        text: [`#${{p.id}} (${{p.type}})`],
+                        textfont: {{ size: 14, color: '#00ff88' }},
+                        hoverinfo: 'skip'
+                    }});
+                }}
+            }});
+            
+            Plotly.react('container-viz', traces, {{
+                scene: {{
+                    xaxis: {{ title: 'L', range: [0, containerDims.l] }},
+                    yaxis: {{ title: 'W', range: [0, containerDims.w] }},
+                    zaxis: {{ title: 'H', range: [0, containerDims.h] }},
+                    aspectmode: 'data',
+                    camera: {{ eye: {{ x: 1.5, y: 1.5, z: 1.0 }} }}
+                }},
+                margin: {{ l: 0, r: 0, t: 0, b: 0 }},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: false
+            }}, {{ responsive: true }});
+        }}
+        
+        function containerStepForward() {{
+            if (containerStep < containerData.length) {{
+                containerStep++;
+                renderContainerAtStep(containerStep);
+            }}
+        }}
+        
+        function containerStepBack() {{
+            if (containerStep > 0) {{
+                containerStep--;
+                renderContainerAtStep(containerStep);
+            }}
+        }}
+        
+        function containerPlayPause() {{
+            const btn = event.target;
+            if (containerPlaying) {{
+                clearInterval(containerInterval);
+                containerPlaying = false;
+                btn.textContent = '▶ Play';
+            }} else {{
+                containerPlaying = true;
+                btn.textContent = '⏸ Pause';
+                const speed = parseInt(document.getElementById('container-speed').value);
+                containerInterval = setInterval(() => {{
+                    if (containerStep < containerData.length) {{
+                        containerStep++;
+                        renderContainerAtStep(containerStep);
+                    }} else {{
+                        clearInterval(containerInterval);
+                        containerPlaying = false;
+                        btn.textContent = '▶ Play';
+                    }}
+                }}, speed);
+            }}
+        }}
+        
+        function containerReset() {{
+            containerStep = 0;
+            renderContainerAtStep(0);
+            if (containerPlaying) {{
+                clearInterval(containerInterval);
+                containerPlaying = false;
+                document.querySelector('.panel:last-child .btn.primary').textContent = '▶ Play';
+            }}
+        }}
+        
+        // Container slider event
+        document.getElementById('container-slider').addEventListener('input', (e) => {{
+            containerStep = parseInt(e.target.value);
+            renderContainerAtStep(containerStep);
+        }});
+        
+        // ==================== INIT ====================
+        initBundleSelector();
+        if (bundleData.length > 0) {{
+            selectBundle(0);
+        }}
+        renderContainerAtStep(0);
+    </script>
+</body>
+</html>"""
+    
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(html_content)
+    
+    print(f"✅ Animated report saved to: {filename}")
+
 # ==========================================================
 # 4. LOGIC
 # ==========================================================
@@ -1121,6 +1784,10 @@ def run_packing(items: List[Box], vehicle_type: str = "INTER_REGION", auto_bundl
     # Tạo báo cáo HTML - Interactive Plotly (fast, no Kaleido)
     generate_full_report(bundles, container, container_packer.placements, 
                         f"Packing_Report_{vehicle_type}.html")
+    
+    # Tạo animated report
+    generate_animated_report(bundles, container, container_packer.placements,
+                            f"Packing_Animation_{vehicle_type}.html")
     
     return {
         "bundles": bundles,

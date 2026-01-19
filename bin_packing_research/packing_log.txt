@@ -126,6 +126,9 @@ Scenario: Thu gom 600 bưu phẩm từ 1 ward
 📊 Generating Interactive Report...
 ✅ Report saved to: Packing_Report_COLLECTION.html
 
+🎬 Generating Animated Report...
+✅ Animated report saved to: Packing_Animation_COLLECTION.html
+
 ======================================================================
 🚛 TEST 2: INTER-DISTRICT TRUCK - Xe liên tỉnh (District → Province Hub)
 ======================================================================
@@ -261,6 +264,9 @@ Scenario: Vận chuyển 1500 bưu phẩm từ district hub
 
 📊 Generating Interactive Report...
 ✅ Report saved to: Packing_Report_INTER_DISTRICT.html
+
+🎬 Generating Animated Report...
+✅ Animated report saved to: Packing_Animation_INTER_DISTRICT.html
 
 ======================================================================
 🚛 TEST 3: INTER-REGION TRUCK - Xe liên miền (Province → Regional Hub)
@@ -430,6 +436,9 @@ Scenario: Vận chuyển 3000 bưu phẩm từ province hub
 
 📊 Generating Interactive Report...
 ✅ Report saved to: Packing_Report_INTER_REGION.html
+
+🎬 Generating Animated Report...
+✅ Animated report saved to: Packing_Animation_INTER_REGION.html
 
 ======================================================================
 📊 COMPARISON SUMMARY

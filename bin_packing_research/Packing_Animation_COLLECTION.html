@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Animated Packing Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { 
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 { 
+            font-size: 2.5em; 
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        .header p { color: #888; }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 1200px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+        .panel { 
+            background: rgba(255,255,255,0.05); 
+            border-radius: 16px; 
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .panel-title { 
+            font-size: 1.3em; 
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .viz-container { 
+            height: 450px; 
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .controls {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+        .timeline {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .timeline input[type="range"] {
+            flex: 1;
+            height: 8px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            outline: none;
+        }
+        .timeline input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .step-display {
+            background: rgba(0,217,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            min-width: 100px;
+            text-align: center;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn:hover { 
+            background: rgba(0,217,255,0.3);
+            border-color: #00d9ff;
+        }
+        .btn.primary {
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            border: none;
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+        .btn.primary:hover { opacity: 0.9; }
+        .info-bar {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .info-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+        .info-item .label { color: #888; margin-right: 5px; }
+        .info-item .value { color: #00d9ff; font-weight: 600; }
+        .bundle-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .bundle-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.3s ease;
+        }
+        .bundle-btn:hover { border-color: #00d9ff; }
+        .bundle-btn.active {
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            color: #1a1a2e;
+            border: none;
+            font-weight: 600;
+        }
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        .speed-control label { color: #888; }
+        .speed-control select {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Animated Packing Visualization</h1>
+            <p>Watch items slide into bundles and bundles load into container</p>
+        </div>
+        
+        <div class="main-grid">
+            <!-- Left Panel: Bundle Animation -->
+            <div class="panel">
+                <div class="panel-title">📦 Bundle Packing</div>
+                <div class="bundle-selector" id="bundle-selector"></div>
+                <div id="bundle-viz" class="viz-container"></div>
+                <div class="controls">
+                    <div class="timeline">
+                        <span>Step</span>
+                        <input type="range" id="bundle-slider" min="0" max="10" value="0">
+                        <span id="bundle-step" class="step-display">0 / 0</span>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn" onclick="bundleStepBack()">⏮ Back</button>
+                        <button class="btn primary" onclick="bundlePlayPause()">▶ Play</button>
+                        <button class="btn" onclick="bundleStepForward()">Next ⏭</button>
+                        <button class="btn" onclick="bundleReset()">↺ Reset</button>
+                    </div>
+                    <div class="speed-control">
+                        <label>Speed:</label>
+                        <select id="bundle-speed">
+                            <option value="1000">Slow</option>
+                            <option value="500" selected>Normal</option>
+                            <option value="200">Fast</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="info-bar" id="bundle-info"></div>
+            </div>
+            
+            <!-- Right Panel: Container Animation -->
+            <div class="panel">
+                <div class="panel-title">🚛 Container Loading</div>
+                <div id="container-viz" class="viz-container"></div>
+                <div class="controls">
+                    <div class="timeline">
+                        <span>Step</span>
+                        <input type="range" id="container-slider" min="0" max="22" value="0">
+                        <span id="container-step" class="step-display">0 / 22</span>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn" onclick="containerStepBack()">⏮ Back</button>
+                        <button class="btn primary" onclick="containerPlayPause()">▶ Play</button>
+                        <button class="btn" onclick="containerStepForward()">Next ⏭</button>
+                        <button class="btn" onclick="containerReset()">↺ Reset</button>
+                    </div>
+                    <div class="speed-control">
+                        <label>Speed:</label>
+                        <select id="container-speed">
+                            <option value="1000">Slow</option>
+                            <option value="500" selected>Normal</option>
+                            <option value="200">Fast</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="info-bar" id="container-info">
+                    <div class="info-item"><span class="label">Container:</span><span class="value">2700x1500x1400mm</span></div>
+                    <div class="info-item"><span class="label">Total Bundles:</span><span class="value">22</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data
+        const bundleData = [{'id': 0, 'type': 'LARGE', 'dim_l': 900, 'dim_w': 750, 'dim_h': 400, 'items': 1, 'fill_rate': '59.9%', 'placements': [{'order': 0, 'id': 2992, 'x': 0, 'y': 0, 'z': 0, 'l': 800, 'w': 650, 'h': 350, 'color': '#1E88E5'}]}, {'id': 1, 'type': 'LARGE', 'dim_l': 900, 'dim_w': 750, 'dim_h': 491, 'items': 7, 'fill_rate': '71.6%', 'placements': [{'order': 0, 'id': 2984, 'x': 0, 'y': 0, 'z': 0, 'l': 800, 'w': 650, 'h': 275, 'color': '#1E88E5'}, {'order': 1, 'id': 2124, 'x': 0, 'y': 0, 'z': 275, 'l': 337, 'w': 300, 'h': 137, 'color': '#90CAF9'}, {'order': 2, 'id': 2447, 'x': 337, 'y': 0, 'z': 275, 'l': 337, 'w': 300, 'h': 137, 'color': '#64B5F6'}, {'order': 3, 'id': 2754, 'x': 0, 'y': 300, 'z': 275, 'l': 337, 'w': 300, 'h': 137, 'color': '#64B5F6'}, {'order': 4, 'id': 2568, 'x': 337, 'y': 300, 'z': 275, 'l': 337, 'w': 300, 'h': 137, 'color': '#64B5F6'}, {'order': 5, 'id': 1902, 'x': 674, 'y': 0, 'z': 275, 'l': 183, 'w': 400, 'h': 166, 'color': '#90CAF9'}, {'order': 6, 'id': 2183, 'x': 674, 'y': 400, 'z': 275, 'l': 183, 'w': 225, 'h': 166, 'color': '#90CAF9'}]}, {'id': 2, 'type': 'LARGE', 'dim_l': 900, 'dim_w': 750, 'dim_h': 500, 'items': 6, 'fill_rate': '78.2%', 'placements': [{'order': 0, 'id': 2997, 'x': 0, 'y': 0, 'z': 0, 'l': 600, 'w': 600, 'h': 350, 'color': '#1E88E5'}, {'order': 1, 'id': 2872, 'x': 600, 'y': 0, 'z': 0, 'l': 220, 'w': 500, 'h': 450, 'color': '#42A5F5'}, {'order': 2, 'id': 2827, 'x': 0, 'y': 600, 'z': 0, 'l': 450, 'w': 137, 'h': 450, 'color': '#42A5F5'}, {'order': 3, 'id': 2677, 'x': 600, 'y': 500, 'z': 0, 'l': 300, 'w': 220, 'h': 400, 'color': '#64B5F6'}, {'order': 4, 'id': 999, 'x': 450, 'y': 600, 'z': 0, 'l': 110, 'w': 150, 'h': 300, 'color': '#BBDEFB'}, {'order': 5, 'id': 1531, 'x': 450, 'y': 600, 'z': 300, 'l': 150, 'w': 150, 'h': 137, 'color': '#BBDEFB'}]}, {'id': 3, 'type': 'LARGE', 'dim_l': 900, 'dim_w': 750, 'dim_h': 500, 'items': 4, 'fill_rate': '81.0%', 'placements': [{'order': 0, 'id': 2943, 'x': 0, 'y': 0, 'z': 0, 'l': 700, 'w': 500, 'h': 350, 'color': '#1E88E5'}, {'order': 1, 'id': 2892, 'x': 0, 'y': 500, 'z': 0, 'l': 500, 'w': 220, 'h': 450, 'color': '#42A5F5'}, {'order': 2, 'id': 2938, 'x': 500, 'y': 500, 'z': 0, 'l': 375, 'w': 220, 'h': 450, 'color': '#42A5F5'}, {'order': 3, 'id': 2778, 'x': 700, 'y': 0, 'z': 0, 'l': 183, 'w': 450, 'h': 450, 'color': '#42A5F5'}]}, {'id': 4, 'type': 'LARGE', 'dim_l': 900, 'dim_w': 750, 'dim_h': 500, 'items': 8, 'fill_rate': '84.4%', 'placements': [{'order': 0, 'id': 2946, 'x': 0, 'y': 0, 'z': 0, 'l': 800, 'w': 600, 'h': 220, 'color': '#1E88E5'}, {'order': 1, 'id': 2956, 'x': 0, 'y': 0, 'z': 220, 'l': 700, 'w': 500, 'h': 220, 'color': '#1E88E5'}, {'order': 2, 'id': 2917, 'x': 0, 'y': 600, 'z': 0, 'l': 500, 'w': 137, 'h': 450, 'color': '#42A5F5'}, {'order': 3, 'id': 1809, 'x': 500, 'y': 600, 'z': 0, 'l': 400, 'w': 137, 'h': 250, 'color': '#90CAF9'}, {'order': 4, 'id': 2174, 'x': 700, 'y': 0, 'z': 220, 'l': 166, 'w': 400, 'h': 183, 'color': '#90CAF9'}, {'order': 5, 'id': 2118, 'x': 700, 'y': 400, 'z': 220, 'l': 166, 'w': 183, 'h': 225, 'color': '#90CAF9'}, {'order': 6, 'id': 1452, 'x': 500, 'y': 600, 'z': 250, 'l': 225, 'w': 137, 'h': 200, 'color': '#BBDEFB'}, {'order': 7, 'id': 790, 'x': 725, 'y': 600, 'z': 250, 'l': 137, 'w': 150, 'h': 200, 'color': '#BBDEFB'}]}, {'id': 5, 'type': 'LARGE', 'dim_l': 900, 'dim_w': 750, 'dim_h': 500, 'items': 7, 'fill_rate': '86.3%', 'placements': [{'order': 0, 'id': 2985, 'x': 0, 'y': 0, 'z': 0, 'l': 600, 'w': 500, 'h': 220, 'color': '#1E88E5'}, {'order': 1, 'id': 2852, 'x': 600, 'y': 0, 'z': 0, 'l': 220, 'w': 500, 'h': 450, 'color': '#42A5F5'}, {'order': 2, 'id': 2774, 'x': 0, 'y': 500, 'z': 0, 'l': 500, 'w': 220, 'h': 450, 'color': '#42A5F5'}, {'order': 3, 'id': 2787, 'x': 0, 'y': 0, 'z': 220, 'l': 450, 'w': 450, 'h': 220, 'color': '#42A5F5'}, {'order': 4, 'id': 2775, 'x': 500, 'y': 500, 'z': 0, 'l': 375, 'w': 220, 'h': 450, 'color': '#42A5F5'}, {'order': 5, 'id': 2055, 'x': 450, 'y': 0, 'z': 220, 'l': 137, 'w': 300, 'h': 225, 'color': '#90CAF9'}, {'order': 6, 'id': 998, 'x': 450, 'y': 300, 'z': 220, 'l': 137, 'w': 200, 'h': 225, 'color': '#BBDEFB'}]}, {'id': 6, 'type': 'LARGE', 'dim_l': 900, 'dim_w': 750, 'dim_h': 490, 'items': 7, 'fill_rate': '88.7%', 'placements': [{'order': 0, 'id': 2832, 'x': 0, 'y': 0, 'z': 0, 'l': 450, 'w': 450, 'h': 220, 'color': '#42A5F5'}, {'order': 1, 'id': 2932, 'x': 450, 'y': 0, 'z': 0, 'l': 450, 'w': 450, 'h': 220, 'color': '#42A5F5'}, {'order': 2, 'id': 2530, 'x': 0, 'y': 450, 'z': 0, 'l': 500, 'w': 220, 'h': 400, 'color': '#64B5F6'}, {'order': 3, 'id': 2625, 'x': 0, 'y': 0, 'z': 220, 'l': 500, 'w': 400, 'h': 220, 'color': '#64B5F6'}, {'order': 4, 'id': 2542, 'x': 500, 'y': 0, 'z': 220, 'l': 400, 'w': 500, 'h': 220, 'color': '#64B5F6'}, {'order': 5, 'id': 2484, 'x': 500, 'y': 450, 'z': 0, 'l': 400, 'w': 300, 'h': 220, 'color': '#64B5F6'}, {'order': 6, 'id': 2723, 'x': 500, 'y': 500, 'z': 220, 'l': 400, 'w': 250, 'h': 220, 'color': '#64B5F6'}]}, {'id': 7, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 32, 'fill_rate': '92.1%', 'placements': [{'order': 0, 'id': 2450, 'x': 0, 'y': 0, 'z': 0, 'l': 500, 'w': 400, 'h': 220, 'color': '#64B5F6'}, {'order': 1, 'id': 2779, 'x': 500, 'y': 0, 'z': 0, 'l': 137, 'w': 450, 'h': 350, 'color': '#42A5F5'}, {'order': 2, 'id': 2856, 'x': 0, 'y': 0, 'z': 220, 'l': 450, 'w': 350, 'h': 137, 'color': '#42A5F5'}, {'order': 3, 'id': 1003, 'x': 0, 'y': 400, 'z': 0, 'l': 300, 'w': 91, 'h': 200, 'color': '#BBDEFB'}, {'order': 4, 'id': 1511, 'x': 300, 'y': 400, 'z': 0, 'l': 200, 'w': 91, 'h': 300, 'color': '#BBDEFB'}, {'order': 5, 'id': 1536, 'x': 0, 'y': 400, 'z': 200, 'l': 300, 'w': 91, 'h': 200, 'color': '#BBDEFB'}, {'order': 6, 'id': 1195, 'x': 300, 'y': 400, 'z': 300, 'l': 150, 'w': 100, 'h': 91, 'color': '#BBDEFB'}, {'order': 7, 'id': 600, 'x': 500, 'y': 450, 'z': 0, 'l': 120, 'w': 48, 'h': 180, 'color': '#E3F2FD'}, {'order': 8, 'id': 224, 'x': 500, 'y': 450, 'z': 180, 'l': 100, 'w': 46, 'h': 220, 'color': '#E3F2FD'}, {'order': 9, 'id': 681, 'x': 450, 'y': 0, 'z': 220, 'l': 42, 'w': 180, 'h': 120, 'color': '#E3F2FD'}, {'order': 10, 'id': 24, 'x': 637, 'y': 0, 'z': 0, 'l': 33, 'w': 180, 'h': 150, 'color': '#E3F2FD'}, {'order': 11, 'id': 450, 'x': 450, 'y': 180, 'z': 220, 'l': 49, 'w': 180, 'h': 100, 'color': '#E3F2FD'}, {'order': 12, 'id': 446, 'x': 0, 'y': 350, 'z': 220, 'l': 220, 'w': 39, 'h': 100, 'color': '#E3F2FD'}, {'order': 13, 'id': 723, 'x': 637, 'y': 180, 'z': 0, 'l': 32, 'w': 220, 'h': 120, 'color': '#E3F2FD'}, {'order': 14, 'id': 236, 'x': 637, 'y': 180, 'z': 120, 'l': 37, 'w': 150, 'h': 150, 'color': '#E3F2FD'}, {'order': 15, 'id': 46, 'x': 637, 'y': 400, 'z': 0, 'l': 37, 'w': 100, 'h': 220, 'color': '#E3F2FD'}, {'order': 16, 'id': 730, 'x': 220, 'y': 350, 'z': 220, 'l': 150, 'w': 45, 'h': 120, 'color': '#E3F2FD'}, {'order': 17, 'id': 372, 'x': 500, 'y': 0, 'z': 350, 'l': 120, 'w': 150, 'h': 45, 'color': '#E3F2FD'}, {'order': 18, 'id': 101, 'x': 637, 'y': 0, 'z': 150, 'l': 37, 'w': 180, 'h': 120, 'color': '#E3F2FD'}, {'order': 19, 'id': 515, 'x': 637, 'y': 0, 'z': 270, 'l': 37, 'w': 180, 'h': 120, 'color': '#E3F2FD'}, {'order': 20, 'id': 607, 'x': 637, 'y': 180, 'z': 270, 'l': 35, 'w': 180, 'h': 120, 'color': '#E3F2FD'}, {'order': 21, 'id': 741, 'x': 500, 'y': 150, 'z': 350, 'l': 120, 'w': 150, 'h': 42, 'color': '#E3F2FD'}, {'order': 22, 'id': 274, 'x': 0, 'y': 0, 'z': 357, 'l': 180, 'w': 100, 'h': 41, 'color': '#E3F2FD'}, {'order': 23, 'id': 599, 'x': 180, 'y': 0, 'z': 357, 'l': 180, 'w': 120, 'h': 34, 'color': '#E3F2FD'}, {'order': 24, 'id': 633, 'x': 500, 'y': 300, 'z': 350, 'l': 100, 'w': 150, 'h': 48, 'color': '#E3F2FD'}, {'order': 25, 'id': 385, 'x': 360, 'y': 0, 'z': 357, 'l': 120, 'w': 150, 'h': 40, 'color': '#E3F2FD'}, {'order': 26, 'id': 555, 'x': 0, 'y': 100, 'z': 357, 'l': 180, 'w': 100, 'h': 39, 'color': '#E3F2FD'}, {'order': 27, 'id': 135, 'x': 180, 'y': 120, 'z': 357, 'l': 100, 'w': 220, 'h': 31, 'color': '#E3F2FD'}, {'order': 28, 'id': 156, 'x': 0, 'y': 200, 'z': 357, 'l': 180, 'w': 150, 'h': 25, 'color': '#E3F2FD'}, {'order': 29, 'id': 169, 'x': 360, 'y': 150, 'z': 357, 'l': 120, 'w': 180, 'h': 30, 'color': '#E3F2FD'}, {'order': 30, 'id': 384, 'x': 637, 'y': 400, 'z': 220, 'l': 36, 'w': 100, 'h': 180, 'color': '#E3F2FD'}, {'order': 31, 'id': 564, 'x': 0, 'y': 200, 'z': 382, 'l': 180, 'w': 150, 'h': 15, 'color': '#E3F2FD'}]}, {'id': 8, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 44, 'fill_rate': '89.4%', 'placements': [{'order': 0, 'id': 2449, 'x': 0, 'y': 0, 'z': 0, 'l': 500, 'w': 400, 'h': 220, 'color': '#64B5F6'}, {'order': 1, 'id': 2810, 'x': 500, 'y': 0, 'z': 0, 'l': 137, 'w': 450, 'h': 350, 'color': '#42A5F5'}, {'order': 2, 'id': 2741, 'x': 0, 'y': 0, 'z': 220, 'l': 500, 'w': 300, 'h': 137, 'color': '#64B5F6'}, {'order': 3, 'id': 2286, 'x': 0, 'y': 300, 'z': 220, 'l': 400, 'w': 137, 'h': 166, 'color': '#90CAF9'}, {'order': 4, 'id': 915, 'x': 0, 'y': 400, 'z': 0, 'l': 300, 'w': 100, 'h': 137, 'color': '#BBDEFB'}, {'order': 5, 'id': 946, 'x': 300, 'y': 400, 'z': 0, 'l': 200, 'w': 91, 'h': 150, 'color': '#BBDEFB'}, {'order': 6, 'id': 1048, 'x': 400, 'y': 300, 'z': 220, 'l': 91, 'w': 150, 'h': 150, 'color': '#BBDEFB'}, {'order': 7, 'id': 748, 'x': 637, 'y': 0, 'z': 0, 'l': 29, 'w': 150, 'h': 150, 'color': '#E3F2FD'}, {'order': 8, 'id': 254, 'x': 637, 'y': 150, 'z': 0, 'l': 29, 'w': 220, 'h': 100, 'color': '#E3F2FD'}, {'order': 9, 'id': 6, 'x': 500, 'y': 450, 'z': 0, 'l': 100, 'w': 42, 'h': 150, 'color': '#E3F2FD'}, {'order': 10, 'id': 284, 'x': 637, 'y': 370, 'z': 0, 'l': 35, 'w': 100, 'h': 180, 'color': '#E3F2FD'}, {'order': 11, 'id': 26, 'x': 637, 'y': 150, 'z': 100, 'l': 27, 'w': 150, 'h': 150, 'color': '#E3F2FD'}, {'order': 12, 'id': 519, 'x': 0, 'y': 400, 'z': 137, 'l': 150, 'w': 100, 'h': 40, 'color': '#E3F2FD'}, {'order': 13, 'id': 463, 'x': 300, 'y': 400, 'z': 150, 'l': 180, 'w': 100, 'h': 33, 'color': '#E3F2FD'}, {'order': 14, 'id': 417, 'x': 150, 'y': 400, 'z': 137, 'l': 150, 'w': 100, 'h': 38, 'color': '#E3F2FD'}, {'order': 15, 'id': 270, 'x': 637, 'y': 0, 'z': 150, 'l': 25, 'w': 120, 'h': 180, 'color': '#E3F2FD'}, {'order': 16, 'id': 62, 'x': 500, 'y': 450, 'z': 150, 'l': 120, 'w': 25, 'h': 180, 'color': '#E3F2FD'}, {'order': 17, 'id': 154, 'x': 150, 'y': 400, 'z': 175, 'l': 150, 'w': 100, 'h': 36, 'color': '#E3F2FD'}, {'order': 18, 'id': 443, 'x': 0, 'y': 400, 'z': 177, 'l': 150, 'w': 100, 'h': 35, 'color': '#E3F2FD'}, {'order': 19, 'id': 542, 'x': 637, 'y': 370, 'z': 180, 'l': 28, 'w': 100, 'h': 180, 'color': '#E3F2FD'}, {'order': 20, 'id': 520, 'x': 300, 'y': 400, 'z': 183, 'l': 150, 'w': 100, 'h': 32, 'color': '#E3F2FD'}, {'order': 21, 'id': 382, 'x': 500, 'y': 475, 'z': 150, 'l': 120, 'w': 22, 'h': 180, 'color': '#E3F2FD'}, {'order': 22, 'id': 445, 'x': 637, 'y': 150, 'z': 250, 'l': 26, 'w': 180, 'h': 100, 'color': '#E3F2FD'}, {'order': 23, 'id': 155, 'x': 500, 'y': 0, 'z': 350, 'l': 100, 'w': 150, 'h': 31, 'color': '#E3F2FD'}, {'order': 24, 'id': 150, 'x': 500, 'y': 150, 'z': 350, 'l': 100, 'w': 180, 'h': 25, 'color': '#E3F2FD'}, {'order': 25, 'id': 22, 'x': 0, 'y': 0, 'z': 357, 'l': 180, 'w': 100, 'h': 24, 'color': '#E3F2FD'}, {'order': 26, 'id': 325, 'x': 180, 'y': 0, 'z': 357, 'l': 180, 'w': 100, 'h': 24, 'color': '#E3F2FD'}, {'order': 27, 'id': 297, 'x': 500, 'y': 330, 'z': 350, 'l': 100, 'w': 150, 'h': 28, 'color': '#E3F2FD'}, {'order': 28, 'id': 373, 'x': 360, 'y': 0, 'z': 357, 'l': 120, 'w': 150, 'h': 22, 'color': '#E3F2FD'}, {'order': 29, 'id': 677, 'x': 0, 'y': 100, 'z': 357, 'l': 220, 'w': 100, 'h': 18, 'color': '#E3F2FD'}, {'order': 30, 'id': 648, 'x': 220, 'y': 100, 'z': 357, 'l': 120, 'w': 180, 'h': 18, 'color': '#E3F2FD'}, {'order': 31, 'id': 721, 'x': 360, 'y': 150, 'z': 357, 'l': 120, 'w': 150, 'h': 21, 'color': '#E3F2FD'}, {'order': 32, 'id': 706, 'x': 0, 'y': 200, 'z': 357, 'l': 150, 'w': 100, 'h': 25, 'color': '#E3F2FD'}, {'order': 33, 'id': 144, 'x': 0, 'y': 100, 'z': 375, 'l': 220, 'w': 100, 'h': 17, 'color': '#E3F2FD'}, {'order': 34, 'id': 665, 'x': 360, 'y': 0, 'z': 379, 'l': 120, 'w': 220, 'h': 14, 'color': '#E3F2FD'}, {'order': 35, 'id': 335, 'x': 220, 'y': 100, 'z': 375, 'l': 120, 'w': 180, 'h': 17, 'color': '#E3F2FD'}, {'order': 36, 'id': 560, 'x': 500, 'y': 150, 'z': 375, 'l': 120, 'w': 150, 'h': 20, 'color': '#E3F2FD'}, {'order': 37, 'id': 43, 'x': 400, 'y': 300, 'z': 370, 'l': 100, 'w': 180, 'h': 18, 'color': '#E3F2FD'}, {'order': 38, 'id': 585, 'x': 0, 'y': 300, 'z': 386, 'l': 180, 'w': 120, 'h': 14, 'color': '#E3F2FD'}, {'order': 39, 'id': 645, 'x': 500, 'y': 330, 'z': 378, 'l': 150, 'w': 120, 'h': 16, 'color': '#E3F2FD'}, {'order': 40, 'id': 562, 'x': 500, 'y': 0, 'z': 381, 'l': 120, 'w': 150, 'h': 16, 'color': '#E3F2FD'}, {'order': 41, 'id': 579, 'x': 180, 'y': 300, 'z': 386, 'l': 150, 'w': 120, 'h': 14, 'color': '#E3F2FD'}, {'order': 42, 'id': 307, 'x': 0, 'y': 0, 'z': 381, 'l': 180, 'w': 100, 'h': 14, 'color': '#E3F2FD'}, {'order': 43, 'id': 509, 'x': 180, 'y': 0, 'z': 381, 'l': 150, 'w': 100, 'h': 15, 'color': '#E3F2FD'}]}, {'id': 9, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 11, 'fill_rate': '82.2%', 'placements': [{'order': 0, 'id': 2874, 'x': 0, 'y': 0, 'z': 0, 'l': 500, 'w': 375, 'h': 220, 'color': '#42A5F5'}, {'order': 1, 'id': 2790, 'x': 500, 'y': 0, 'z': 0, 'l': 137, 'w': 400, 'h': 350, 'color': '#42A5F5'}, {'order': 2, 'id': 2878, 'x': 0, 'y': 0, 'z': 220, 'l': 400, 'w': 350, 'h': 137, 'color': '#42A5F5'}, {'order': 3, 'id': 1690, 'x': 0, 'y': 375, 'z': 0, 'l': 400, 'w': 110, 'h': 300, 'color': '#90CAF9'}, {'order': 4, 'id': 1421, 'x': 500, 'y': 400, 'z': 0, 'l': 150, 'w': 91, 'h': 300, 'color': '#BBDEFB'}, {'order': 5, 'id': 1344, 'x': 400, 'y': 0, 'z': 220, 'l': 91, 'w': 300, 'h': 150, 'color': '#BBDEFB'}, {'order': 6, 'id': 1291, 'x': 400, 'y': 375, 'z': 0, 'l': 100, 'w': 110, 'h': 300, 'color': '#BBDEFB'}, {'order': 7, 'id': 1626, 'x': 0, 'y': 375, 'z': 300, 'l': 300, 'w': 110, 'h': 100, 'color': '#BBDEFB'}, {'order': 8, 'id': 783, 'x': 300, 'y': 375, 'z': 300, 'l': 150, 'w': 110, 'h': 100, 'color': '#BBDEFB'}, {'order': 9, 'id': 897, 'x': 500, 'y': 400, 'z': 300, 'l': 150, 'w': 100, 'h': 91, 'color': '#BBDEFB'}, {'order': 10, 'id': 510, 'x': 637, 'y': 0, 'z': 0, 'l': 16, 'w': 150, 'h': 120, 'color': '#E3F2FD'}]}, {'id': 10, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 441, 'items': 8, 'fill_rate': '76.6%', 'placements': [{'order': 0, 'id': 2767, 'x': 0, 'y': 0, 'z': 0, 'l': 500, 'w': 375, 'h': 220, 'color': '#42A5F5'}, {'order': 1, 'id': 2785, 'x': 500, 'y': 0, 'z': 0, 'l': 137, 'w': 400, 'h': 350, 'color': '#42A5F5'}, {'order': 2, 'id': 2591, 'x': 0, 'y': 0, 'z': 220, 'l': 337, 'w': 400, 'h': 137, 'color': '#64B5F6'}, {'order': 3, 'id': 2060, 'x': 337, 'y': 0, 'z': 220, 'l': 137, 'w': 400, 'h': 166, 'color': '#90CAF9'}, {'order': 4, 'id': 958, 'x': 0, 'y': 375, 'z': 0, 'l': 300, 'w': 110, 'h': 200, 'color': '#BBDEFB'}, {'order': 5, 'id': 1516, 'x': 500, 'y': 400, 'z': 0, 'l': 150, 'w': 91, 'h': 300, 'color': '#BBDEFB'}, {'order': 6, 'id': 1340, 'x': 300, 'y': 375, 'z': 0, 'l': 200, 'w': 110, 'h': 150, 'color': '#BBDEFB'}, {'order': 7, 'id': 1351, 'x': 500, 'y': 400, 'z': 300, 'l': 150, 'w': 100, 'h': 91, 'color': '#BBDEFB'}]}, {'id': 11, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 441, 'items': 10, 'fill_rate': '82.1%', 'placements': [{'order': 0, 'id': 2786, 'x': 0, 'y': 0, 'z': 0, 'l': 500, 'w': 350, 'h': 220, 'color': '#42A5F5'}, {'order': 1, 'id': 2675, 'x': 500, 'y': 0, 'z': 0, 'l': 137, 'w': 400, 'h': 300, 'color': '#64B5F6'}, {'order': 2, 'id': 2298, 'x': 0, 'y': 350, 'z': 0, 'l': 337, 'w': 137, 'h': 300, 'color': '#90CAF9'}, {'order': 3, 'id': 2176, 'x': 0, 'y': 0, 'z': 220, 'l': 337, 'w': 300, 'h': 137, 'color': '#90CAF9'}, {'order': 4, 'id': 1684, 'x': 337, 'y': 0, 'z': 220, 'l': 137, 'w': 400, 'h': 166, 'color': '#90CAF9'}, {'order': 5, 'id': 1437, 'x': 337, 'y': 350, 'z': 0, 'l': 137, 'w': 150, 'h': 200, 'color': '#BBDEFB'}, {'order': 6, 'id': 1415, 'x': 500, 'y': 400, 'z': 0, 'l': 150, 'w': 91, 'h': 300, 'color': '#BBDEFB'}, {'order': 7, 'id': 1429, 'x': 0, 'y': 350, 'z': 300, 'l': 300, 'w': 150, 'h': 91, 'color': '#BBDEFB'}, {'order': 8, 'id': 962, 'x': 500, 'y': 0, 'z': 300, 'l': 150, 'w': 300, 'h': 91, 'color': '#BBDEFB'}, {'order': 9, 'id': 1638, 'x': 500, 'y': 300, 'z': 300, 'l': 150, 'w': 200, 'h': 91, 'color': '#BBDEFB'}]}, {'id': 12, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 9, 'fill_rate': '82.0%', 'placements': [{'order': 0, 'id': 2926, 'x': 0, 'y': 0, 'z': 0, 'l': 500, 'w': 350, 'h': 220, 'color': '#42A5F5'}, {'order': 1, 'id': 2347, 'x': 500, 'y': 0, 'z': 0, 'l': 137, 'w': 337, 'h': 300, 'color': '#90CAF9'}, {'order': 2, 'id': 2655, 'x': 0, 'y': 350, 'z': 0, 'l': 337, 'w': 137, 'h': 300, 'color': '#64B5F6'}, {'order': 3, 'id': 2742, 'x': 337, 'y': 350, 'z': 0, 'l': 337, 'w': 137, 'h': 300, 'color': '#64B5F6'}, {'order': 4, 'id': 2095, 'x': 0, 'y': 0, 'z': 220, 'l': 337, 'w': 300, 'h': 137, 'color': '#90CAF9'}, {'order': 5, 'id': 1584, 'x': 337, 'y': 0, 'z': 220, 'l': 150, 'w': 300, 'h': 137, 'color': '#BBDEFB'}, {'order': 6, 'id': 1016, 'x': 0, 'y': 350, 'z': 300, 'l': 300, 'w': 150, 'h': 91, 'color': '#BBDEFB'}, {'order': 7, 'id': 1540, 'x': 500, 'y': 0, 'z': 300, 'l': 110, 'w': 300, 'h': 100, 'color': '#BBDEFB'}, {'order': 8, 'id': 1461, 'x': 300, 'y': 350, 'z': 300, 'l': 300, 'w': 110, 'h': 100, 'color': '#BBDEFB'}]}, {'id': 13, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 425, 'items': 5, 'fill_rate': '82.6%', 'placements': [{'order': 0, 'id': 2851, 'x': 0, 'y': 0, 'z': 0, 'l': 450, 'w': 375, 'h': 220, 'color': '#42A5F5'}, {'order': 1, 'id': 2834, 'x': 450, 'y': 0, 'z': 0, 'l': 220, 'w': 450, 'h': 375, 'color': '#42A5F5'}, {'order': 2, 'id': 2485, 'x': 0, 'y': 0, 'z': 220, 'l': 400, 'w': 500, 'h': 137, 'color': '#64B5F6'}, {'order': 3, 'id': 1645, 'x': 0, 'y': 375, 'z': 0, 'l': 300, 'w': 110, 'h': 200, 'color': '#BBDEFB'}, {'order': 4, 'id': 814, 'x': 300, 'y': 375, 'z': 0, 'l': 150, 'w': 110, 'h': 200, 'color': '#BBDEFB'}]}, {'id': 14, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 7, 'fill_rate': '85.4%', 'placements': [{'order': 0, 'id': 2598, 'x': 0, 'y': 0, 'z': 0, 'l': 500, 'w': 400, 'h': 183, 'color': '#64B5F6'}, {'order': 1, 'id': 2543, 'x': 0, 'y': 0, 'z': 183, 'l': 500, 'w': 400, 'h': 183, 'color': '#64B5F6'}, {'order': 2, 'id': 2811, 'x': 500, 'y': 0, 'z': 0, 'l': 137, 'w': 500, 'h': 375, 'color': '#42A5F5'}, {'order': 3, 'id': 1104, 'x': 0, 'y': 400, 'z': 0, 'l': 225, 'w': 91, 'h': 200, 'color': '#BBDEFB'}, {'order': 4, 'id': 1261, 'x': 225, 'y': 400, 'z': 0, 'l': 225, 'w': 91, 'h': 200, 'color': '#BBDEFB'}, {'order': 5, 'id': 883, 'x': 0, 'y': 400, 'z': 200, 'l': 225, 'w': 91, 'h': 200, 'color': '#BBDEFB'}, {'order': 6, 'id': 931, 'x': 225, 'y': 400, 'z': 200, 'l': 225, 'w': 91, 'h': 200, 'color': '#BBDEFB'}]}, {'id': 15, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 441, 'items': 8, 'fill_rate': '85.0%', 'placements': [{'order': 0, 'id': 2699, 'x': 0, 'y': 0, 'z': 0, 'l': 500, 'w': 400, 'h': 183, 'color': '#64B5F6'}, {'order': 1, 'id': 2452, 'x': 0, 'y': 0, 'z': 183, 'l': 500, 'w': 400, 'h': 183, 'color': '#64B5F6'}, {'order': 2, 'id': 2809, 'x': 500, 'y': 0, 'z': 0, 'l': 137, 'w': 500, 'h': 375, 'color': '#42A5F5'}, {'order': 3, 'id': 1590, 'x': 0, 'y': 400, 'z': 0, 'l': 225, 'w': 91, 'h': 200, 'color': '#BBDEFB'}, {'order': 4, 'id': 1269, 'x': 225, 'y': 400, 'z': 0, 'l': 110, 'w': 100, 'h': 300, 'color': '#BBDEFB'}, {'order': 5, 'id': 1568, 'x': 335, 'y': 400, 'z': 0, 'l': 110, 'w': 100, 'h': 300, 'color': '#BBDEFB'}, {'order': 6, 'id': 1129, 'x': 0, 'y': 400, 'z': 200, 'l': 225, 'w': 100, 'h': 137, 'color': '#BBDEFB'}, {'order': 7, 'id': 1331, 'x': 225, 'y': 400, 'z': 300, 'l': 225, 'w': 100, 'h': 91, 'color': '#BBDEFB'}]}, {'id': 16, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 8, 'fill_rate': '81.0%', 'placements': [{'order': 0, 'id': 2469, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 400, 'h': 220, 'color': '#64B5F6'}, {'order': 1, 'id': 2425, 'x': 400, 'y': 0, 'z': 0, 'l': 220, 'w': 400, 'h': 400, 'color': '#64B5F6'}, {'order': 2, 'id': 2853, 'x': 0, 'y': 0, 'z': 220, 'l': 400, 'w': 450, 'h': 137, 'color': '#42A5F5'}, {'order': 3, 'id': 1245, 'x': 0, 'y': 400, 'z': 0, 'l': 225, 'w': 91, 'h': 150, 'color': '#BBDEFB'}, {'order': 4, 'id': 1189, 'x': 225, 'y': 400, 'z': 0, 'l': 225, 'w': 91, 'h': 150, 'color': '#BBDEFB'}, {'order': 5, 'id': 1168, 'x': 450, 'y': 400, 'z': 0, 'l': 225, 'w': 91, 'h': 150, 'color': '#BBDEFB'}, {'order': 6, 'id': 1482, 'x': 450, 'y': 400, 'z': 150, 'l': 225, 'w': 91, 'h': 150, 'color': '#BBDEFB'}, {'order': 7, 'id': 1608, 'x': 450, 'y': 400, 'z': 300, 'l': 225, 'w': 100, 'h': 91, 'color': '#BBDEFB'}]}, {'id': 17, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 7, 'fill_rate': '79.3%', 'placements': [{'order': 0, 'id': 2440, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 400, 'h': 220, 'color': '#64B5F6'}, {'order': 1, 'id': 2493, 'x': 400, 'y': 0, 'z': 0, 'l': 220, 'w': 400, 'h': 400, 'color': '#64B5F6'}, {'order': 2, 'id': 2848, 'x': 0, 'y': 0, 'z': 220, 'l': 400, 'w': 450, 'h': 137, 'color': '#42A5F5'}, {'order': 3, 'id': 1126, 'x': 0, 'y': 400, 'z': 0, 'l': 225, 'w': 91, 'h': 150, 'color': '#BBDEFB'}, {'order': 4, 'id': 960, 'x': 225, 'y': 400, 'z': 0, 'l': 225, 'w': 91, 'h': 150, 'color': '#BBDEFB'}, {'order': 5, 'id': 1054, 'x': 450, 'y': 400, 'z': 0, 'l': 225, 'w': 91, 'h': 150, 'color': '#BBDEFB'}, {'order': 6, 'id': 1552, 'x': 450, 'y': 400, 'z': 150, 'l': 150, 'w': 91, 'h': 200, 'color': '#BBDEFB'}]}, {'id': 18, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 425, 'items': 6, 'fill_rate': '80.0%', 'placements': [{'order': 0, 'id': 2826, 'x': 0, 'y': 0, 'z': 0, 'l': 450, 'w': 350, 'h': 220, 'color': '#42A5F5'}, {'order': 1, 'id': 2825, 'x': 450, 'y': 0, 'z': 0, 'l': 183, 'w': 500, 'h': 375, 'color': '#42A5F5'}, {'order': 2, 'id': 2875, 'x': 0, 'y': 0, 'z': 220, 'l': 350, 'w': 500, 'h': 137, 'color': '#42A5F5'}, {'order': 3, 'id': 1115, 'x': 0, 'y': 350, 'z': 0, 'l': 300, 'w': 137, 'h': 200, 'color': '#BBDEFB'}, {'order': 4, 'id': 1010, 'x': 300, 'y': 350, 'z': 0, 'l': 137, 'w': 150, 'h': 200, 'color': '#BBDEFB'}, {'order': 5, 'id': 1146, 'x': 350, 'y': 0, 'z': 220, 'l': 100, 'w': 300, 'h': 91, 'color': '#BBDEFB'}]}, {'id': 19, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 9, 'fill_rate': '83.5%', 'placements': [{'order': 0, 'id': 2935, 'x': 0, 'y': 0, 'z': 0, 'l': 500, 'w': 375, 'h': 183, 'color': '#42A5F5'}, {'order': 1, 'id': 2850, 'x': 0, 'y': 0, 'z': 183, 'l': 500, 'w': 350, 'h': 183, 'color': '#42A5F5'}, {'order': 2, 'id': 2594, 'x': 500, 'y': 0, 'z': 0, 'l': 137, 'w': 400, 'h': 400, 'color': '#64B5F6'}, {'order': 3, 'id': 2179, 'x': 0, 'y': 375, 'z': 0, 'l': 400, 'w': 110, 'h': 300, 'color': '#90CAF9'}, {'order': 4, 'id': 795, 'x': 500, 'y': 400, 'z': 0, 'l': 91, 'w': 100, 'h': 300, 'color': '#BBDEFB'}, {'order': 5, 'id': 1618, 'x': 400, 'y': 375, 'z': 0, 'l': 100, 'w': 91, 'h': 300, 'color': '#BBDEFB'}, {'order': 6, 'id': 1247, 'x': 0, 'y': 375, 'z': 300, 'l': 300, 'w': 100, 'h': 91, 'color': '#BBDEFB'}, {'order': 7, 'id': 1504, 'x': 300, 'y': 375, 'z': 300, 'l': 150, 'w': 110, 'h': 100, 'color': '#BBDEFB'}, {'order': 8, 'id': 800, 'x': 500, 'y': 400, 'z': 300, 'l': 150, 'w': 100, 'h': 91, 'color': '#BBDEFB'}]}, {'id': 20, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 10, 'fill_rate': '80.0%', 'placements': [{'order': 0, 'id': 2788, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 375, 'h': 220, 'color': '#42A5F5'}, {'order': 1, 'id': 2599, 'x': 400, 'y': 0, 'z': 0, 'l': 220, 'w': 500, 'h': 300, 'color': '#64B5F6'}, {'order': 2, 'id': 2653, 'x': 0, 'y': 0, 'z': 220, 'l': 400, 'w': 400, 'h': 137, 'color': '#64B5F6'}, {'order': 3, 'id': 753, 'x': 0, 'y': 375, 'z': 0, 'l': 300, 'w': 110, 'h': 200, 'color': '#BBDEFB'}, {'order': 4, 'id': 978, 'x': 400, 'y': 0, 'z': 300, 'l': 150, 'w': 200, 'h': 91, 'color': '#BBDEFB'}, {'order': 5, 'id': 1096, 'x': 400, 'y': 200, 'z': 300, 'l': 150, 'w': 200, 'h': 91, 'color': '#BBDEFB'}, {'order': 6, 'id': 1539, 'x': 550, 'y': 0, 'z': 300, 'l': 110, 'w': 225, 'h': 100, 'color': '#BBDEFB'}, {'order': 7, 'id': 1615, 'x': 550, 'y': 225, 'z': 300, 'l': 110, 'w': 225, 'h': 100, 'color': '#BBDEFB'}, {'order': 8, 'id': 971, 'x': 300, 'y': 375, 'z': 0, 'l': 100, 'w': 110, 'h': 150, 'color': '#BBDEFB'}, {'order': 9, 'id': 1374, 'x': 400, 'y': 400, 'z': 300, 'l': 150, 'w': 100, 'h': 91, 'color': '#BBDEFB'}]}, {'id': 21, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 6, 'fill_rate': '83.2%', 'placements': [{'order': 0, 'id': 2641, 'x': 0, 'y': 0, 'z': 0, 'l': 500, 'w': 300, 'h': 220, 'color': '#64B5F6'}, {'order': 1, 'id': 2789, 'x': 0, 'y': 300, 'z': 0, 'l': 500, 'w': 183, 'h': 350, 'color': '#42A5F5'}, {'order': 2, 'id': 2601, 'x': 500, 'y': 0, 'z': 0, 'l': 137, 'w': 400, 'h': 400, 'color': '#64B5F6'}, {'order': 3, 'id': 2710, 'x': 0, 'y': 0, 'z': 220, 'l': 500, 'w': 300, 'h': 137, 'color': '#64B5F6'}, {'order': 4, 'id': 938, 'x': 500, 'y': 400, 'z': 0, 'l': 150, 'w': 91, 'h': 200, 'color': '#BBDEFB'}, {'order': 5, 'id': 771, 'x': 500, 'y': 400, 'z': 200, 'l': 150, 'w': 91, 'h': 150, 'color': '#BBDEFB'}]}, {'id': 22, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 407, 'items': 13, 'fill_rate': '78.2%', 'placements': [{'order': 0, 'id': 2726, 'x': 0, 'y': 0, 'z': 0, 'l': 337, 'w': 400, 'h': 220, 'color': '#64B5F6'}, {'order': 1, 'id': 2572, 'x': 337, 'y': 0, 'z': 0, 'l': 220, 'w': 400, 'h': 337, 'color': '#64B5F6'}, {'order': 2, 'id': 2624, 'x': 0, 'y': 0, 'z': 220, 'l': 250, 'w': 500, 'h': 137, 'color': '#64B5F6'}, {'order': 3, 'id': 2376, 'x': 557, 'y': 0, 'z': 0, 'l': 110, 'w': 400, 'h': 300, 'color': '#90CAF9'}, {'order': 4, 'id': 1454, 'x': 0, 'y': 400, 'z': 0, 'l': 225, 'w': 100, 'h': 91, 'color': '#BBDEFB'}, {'order': 5, 'id': 1273, 'x': 225, 'y': 400, 'z': 0, 'l': 225, 'w': 100, 'h': 91, 'color': '#BBDEFB'}, {'order': 6, 'id': 1368, 'x': 450, 'y': 400, 'z': 0, 'l': 225, 'w': 100, 'h': 91, 'color': '#BBDEFB'}, {'order': 7, 'id': 977, 'x': 0, 'y': 400, 'z': 91, 'l': 225, 'w': 100, 'h': 91, 'color': '#BBDEFB'}, {'order': 8, 'id': 922, 'x': 225, 'y': 400, 'z': 91, 'l': 150, 'w': 100, 'h': 110, 'color': '#BBDEFB'}, {'order': 9, 'id': 1471, 'x': 375, 'y': 400, 'z': 91, 'l': 150, 'w': 100, 'h': 110, 'color': '#BBDEFB'}, {'order': 10, 'id': 1353, 'x': 525, 'y': 400, 'z': 91, 'l': 150, 'w': 100, 'h': 110, 'color': '#BBDEFB'}, {'order': 11, 'id': 1526, 'x': 375, 'y': 400, 'z': 201, 'l': 150, 'w': 100, 'h': 91, 'color': '#BBDEFB'}, {'order': 12, 'id': 1538, 'x': 525, 'y': 400, 'z': 201, 'l': 150, 'w': 100, 'h': 91, 'color': '#BBDEFB'}]}, {'id': 23, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 437, 'items': 4, 'fill_rate': '75.1%', 'placements': [{'order': 0, 'id': 2670, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 400, 'h': 183, 'color': '#64B5F6'}, {'order': 1, 'id': 2417, 'x': 400, 'y': 0, 'z': 0, 'l': 220, 'w': 500, 'h': 250, 'color': '#64B5F6'}, {'order': 2, 'id': 2544, 'x': 0, 'y': 0, 'z': 183, 'l': 300, 'w': 500, 'h': 183, 'color': '#64B5F6'}, {'order': 3, 'id': 2515, 'x': 400, 'y': 0, 'z': 250, 'l': 250, 'w': 500, 'h': 137, 'color': '#64B5F6'}]}, {'id': 24, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 416, 'items': 4, 'fill_rate': '66.4%', 'placements': [{'order': 0, 'id': 2835, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 375, 'h': 183, 'color': '#42A5F5'}, {'order': 1, 'id': 2725, 'x': 400, 'y': 0, 'z': 0, 'l': 183, 'w': 500, 'h': 300, 'color': '#64B5F6'}, {'order': 2, 'id': 2564, 'x': 0, 'y': 0, 'z': 183, 'l': 300, 'w': 500, 'h': 183, 'color': '#64B5F6'}, {'order': 3, 'id': 1869, 'x': 0, 'y': 375, 'z': 0, 'l': 400, 'w': 110, 'h': 166, 'color': '#90CAF9'}]}, {'id': 25, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 4, 'fill_rate': '71.8%', 'placements': [{'order': 0, 'id': 2724, 'x': 0, 'y': 0, 'z': 0, 'l': 500, 'w': 300, 'h': 183, 'color': '#64B5F6'}, {'order': 1, 'id': 2623, 'x': 0, 'y': 300, 'z': 0, 'l': 400, 'w': 183, 'h': 337, 'color': '#64B5F6'}, {'order': 2, 'id': 2451, 'x': 0, 'y': 0, 'z': 183, 'l': 500, 'w': 250, 'h': 183, 'color': '#64B5F6'}, {'order': 3, 'id': 2527, 'x': 500, 'y': 0, 'z': 0, 'l': 137, 'w': 400, 'h': 400, 'color': '#64B5F6'}]}, {'id': 26, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 407, 'items': 4, 'fill_rate': '68.3%', 'placements': [{'order': 0, 'id': 2634, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 300, 'h': 220, 'color': '#64B5F6'}, {'order': 1, 'id': 2608, 'x': 400, 'y': 0, 'z': 0, 'l': 183, 'w': 400, 'h': 337, 'color': '#64B5F6'}, {'order': 2, 'id': 2658, 'x': 0, 'y': 300, 'z': 0, 'l': 400, 'w': 183, 'h': 337, 'color': '#64B5F6'}, {'order': 3, 'id': 2551, 'x': 0, 'y': 0, 'z': 220, 'l': 400, 'w': 300, 'h': 137, 'color': '#64B5F6'}]}, {'id': 27, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 6, 'fill_rate': '82.9%', 'placements': [{'order': 0, 'id': 2616, 'x': 0, 'y': 0, 'z': 0, 'l': 337, 'w': 300, 'h': 220, 'color': '#64B5F6'}, {'order': 1, 'id': 2455, 'x': 337, 'y': 0, 'z': 0, 'l': 220, 'w': 337, 'h': 300, 'color': '#64B5F6'}, {'order': 2, 'id': 1772, 'x': 0, 'y': 300, 'z': 0, 'l': 300, 'w': 183, 'h': 400, 'color': '#90CAF9'}, {'order': 3, 'id': 2607, 'x': 337, 'y': 337, 'z': 0, 'l': 337, 'w': 137, 'h': 400, 'color': '#64B5F6'}, {'order': 4, 'id': 2247, 'x': 0, 'y': 0, 'z': 220, 'l': 337, 'w': 300, 'h': 137, 'color': '#90CAF9'}, {'order': 5, 'id': 1714, 'x': 557, 'y': 0, 'z': 0, 'l': 110, 'w': 300, 'h': 400, 'color': '#90CAF9'}]}, {'id': 28, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 5, 'fill_rate': '71.0%', 'placements': [{'order': 0, 'id': 2757, 'x': 0, 'y': 0, 'z': 0, 'l': 337, 'w': 300, 'h': 220, 'color': '#64B5F6'}, {'order': 1, 'id': 2578, 'x': 337, 'y': 0, 'z': 0, 'l': 250, 'w': 400, 'h': 220, 'color': '#64B5F6'}, {'order': 2, 'id': 2014, 'x': 0, 'y': 300, 'z': 0, 'l': 300, 'w': 183, 'h': 400, 'color': '#90CAF9'}, {'order': 3, 'id': 2565, 'x': 0, 'y': 0, 'z': 220, 'l': 500, 'w': 300, 'h': 137, 'color': '#64B5F6'}, {'order': 4, 'id': 1896, 'x': 500, 'y': 0, 'z': 220, 'l': 137, 'w': 400, 'h': 166, 'color': '#90CAF9'}]}, {'id': 29, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 407, 'items': 4, 'fill_rate': '59.0%', 'placements': [{'order': 0, 'id': 2488, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 250, 'h': 220, 'color': '#64B5F6'}, {'order': 1, 'id': 2604, 'x': 400, 'y': 0, 'z': 0, 'l': 183, 'w': 400, 'h': 300, 'color': '#64B5F6'}, {'order': 2, 'id': 1692, 'x': 0, 'y': 250, 'z': 0, 'l': 400, 'w': 183, 'h': 300, 'color': '#90CAF9'}, {'order': 3, 'id': 2446, 'x': 0, 'y': 0, 'z': 220, 'l': 400, 'w': 250, 'h': 137, 'color': '#64B5F6'}]}, {'id': 30, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 416, 'items': 4, 'fill_rate': '65.1%', 'placements': [{'order': 0, 'id': 2396, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 300, 'h': 183, 'color': '#90CAF9'}, {'order': 1, 'id': 1796, 'x': 400, 'y': 0, 'z': 0, 'l': 183, 'w': 400, 'h': 300, 'color': '#90CAF9'}, {'order': 2, 'id': 2580, 'x': 0, 'y': 300, 'z': 0, 'l': 400, 'w': 183, 'h': 300, 'color': '#64B5F6'}, {'order': 3, 'id': 1939, 'x': 0, 'y': 0, 'z': 183, 'l': 400, 'w': 300, 'h': 183, 'color': '#90CAF9'}]}, {'id': 31, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 416, 'items': 4, 'fill_rate': '65.1%', 'placements': [{'order': 0, 'id': 2664, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 300, 'h': 183, 'color': '#64B5F6'}, {'order': 1, 'id': 1837, 'x': 400, 'y': 0, 'z': 0, 'l': 183, 'w': 400, 'h': 300, 'color': '#90CAF9'}, {'order': 2, 'id': 2144, 'x': 0, 'y': 300, 'z': 0, 'l': 400, 'w': 183, 'h': 300, 'color': '#90CAF9'}, {'order': 3, 'id': 2404, 'x': 0, 'y': 0, 'z': 183, 'l': 400, 'w': 300, 'h': 183, 'color': '#64B5F6'}]}, {'id': 32, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 425, 'items': 4, 'fill_rate': '61.5%', 'placements': [{'order': 0, 'id': 1911, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 300, 'h': 183, 'color': '#90CAF9'}, {'order': 1, 'id': 2454, 'x': 400, 'y': 0, 'z': 0, 'l': 183, 'w': 400, 'h': 300, 'color': '#64B5F6'}, {'order': 2, 'id': 2895, 'x': 0, 'y': 300, 'z': 0, 'l': 400, 'w': 137, 'h': 375, 'color': '#42A5F5'}, {'order': 3, 'id': 2105, 'x': 0, 'y': 0, 'z': 183, 'l': 337, 'w': 300, 'h': 183, 'color': '#90CAF9'}]}, {'id': 33, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 7, 'fill_rate': '80.2%', 'placements': [{'order': 0, 'id': 2688, 'x': 0, 'y': 0, 'z': 0, 'l': 337, 'w': 250, 'h': 220, 'color': '#64B5F6'}, {'order': 1, 'id': 2444, 'x': 337, 'y': 0, 'z': 0, 'l': 250, 'w': 337, 'h': 220, 'color': '#64B5F6'}, {'order': 2, 'id': 2621, 'x': 0, 'y': 250, 'z': 0, 'l': 337, 'w': 250, 'h': 220, 'color': '#64B5F6'}, {'order': 3, 'id': 2716, 'x': 337, 'y': 337, 'z': 0, 'l': 300, 'w': 137, 'h': 400, 'color': '#64B5F6'}, {'order': 4, 'id': 1724, 'x': 0, 'y': 0, 'z': 220, 'l': 400, 'w': 300, 'h': 137, 'color': '#90CAF9'}, {'order': 5, 'id': 2736, 'x': 400, 'y': 0, 'z': 220, 'l': 250, 'w': 337, 'h': 137, 'color': '#64B5F6'}, {'order': 6, 'id': 1120, 'x': 0, 'y': 300, 'z': 220, 'l': 300, 'w': 200, 'h': 137, 'color': '#BBDEFB'}]}, {'id': 34, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 6, 'fill_rate': '68.6%', 'placements': [{'order': 0, 'id': 2753, 'x': 0, 'y': 0, 'z': 0, 'l': 337, 'w': 250, 'h': 220, 'color': '#64B5F6'}, {'order': 1, 'id': 2354, 'x': 337, 'y': 0, 'z': 0, 'l': 183, 'w': 337, 'h': 300, 'color': '#90CAF9'}, {'order': 2, 'id': 2288, 'x': 0, 'y': 250, 'z': 0, 'l': 337, 'w': 183, 'h': 300, 'color': '#90CAF9'}, {'order': 3, 'id': 2002, 'x': 520, 'y': 0, 'z': 0, 'l': 137, 'w': 400, 'h': 300, 'color': '#90CAF9'}, {'order': 4, 'id': 1973, 'x': 0, 'y': 0, 'z': 220, 'l': 337, 'w': 250, 'h': 137, 'color': '#90CAF9'}, {'order': 5, 'id': 1964, 'x': 337, 'y': 337, 'z': 0, 'l': 166, 'w': 137, 'h': 400, 'color': '#90CAF9'}]}, {'id': 35, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 416, 'items': 6, 'fill_rate': '73.1%', 'placements': [{'order': 0, 'id': 2371, 'x': 0, 'y': 0, 'z': 0, 'l': 337, 'w': 300, 'h': 183, 'color': '#90CAF9'}, {'order': 1, 'id': 1925, 'x': 337, 'y': 0, 'z': 0, 'l': 183, 'w': 337, 'h': 300, 'color': '#90CAF9'}, {'order': 2, 'id': 2234, 'x': 0, 'y': 300, 'z': 0, 'l': 337, 'w': 183, 'h': 300, 'color': '#90CAF9'}, {'order': 3, 'id': 2663, 'x': 0, 'y': 0, 'z': 183, 'l': 337, 'w': 300, 'h': 183, 'color': '#64B5F6'}, {'order': 4, 'id': 2471, 'x': 520, 'y': 0, 'z': 0, 'l': 137, 'w': 400, 'h': 337, 'color': '#64B5F6'}, {'order': 5, 'id': 956, 'x': 337, 'y': 337, 'z': 0, 'l': 150, 'w': 137, 'h': 300, 'color': '#BBDEFB'}]}, {'id': 36, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 5, 'fill_rate': '67.9%', 'placements': [{'order': 0, 'id': 2520, 'x': 0, 'y': 0, 'z': 0, 'l': 337, 'w': 300, 'h': 183, 'color': '#64B5F6'}, {'order': 1, 'id': 2273, 'x': 337, 'y': 0, 'z': 0, 'l': 250, 'w': 400, 'h': 183, 'color': '#90CAF9'}, {'order': 2, 'id': 1807, 'x': 0, 'y': 300, 'z': 0, 'l': 250, 'w': 183, 'h': 400, 'color': '#90CAF9'}, {'order': 3, 'id': 2704, 'x': 0, 'y': 0, 'z': 183, 'l': 400, 'w': 250, 'h': 183, 'color': '#64B5F6'}, {'order': 4, 'id': 2341, 'x': 400, 'y': 0, 'z': 183, 'l': 250, 'w': 400, 'h': 183, 'color': '#90CAF9'}]}, {'id': 37, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 437, 'items': 6, 'fill_rate': '77.9%', 'placements': [{'order': 0, 'id': 2160, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 250, 'h': 183, 'color': '#90CAF9'}, {'order': 1, 'id': 2557, 'x': 400, 'y': 0, 'z': 0, 'l': 183, 'w': 400, 'h': 250, 'color': '#64B5F6'}, {'order': 2, 'id': 2250, 'x': 0, 'y': 250, 'z': 0, 'l': 400, 'w': 250, 'h': 183, 'color': '#90CAF9'}, {'order': 3, 'id': 1758, 'x': 0, 'y': 0, 'z': 183, 'l': 400, 'w': 250, 'h': 183, 'color': '#90CAF9'}, {'order': 4, 'id': 2188, 'x': 0, 'y': 250, 'z': 183, 'l': 400, 'w': 250, 'h': 183, 'color': '#90CAF9'}, {'order': 5, 'id': 1682, 'x': 400, 'y': 0, 'z': 250, 'l': 250, 'w': 400, 'h': 137, 'color': '#90CAF9'}]}, {'id': 38, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 7, 'fill_rate': '77.9%', 'placements': [{'order': 0, 'id': 1889, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 250, 'h': 183, 'color': '#90CAF9'}, {'order': 1, 'id': 2180, 'x': 400, 'y': 0, 'z': 0, 'l': 183, 'w': 337, 'h': 250, 'color': '#90CAF9'}, {'order': 2, 'id': 2054, 'x': 0, 'y': 250, 'z': 0, 'l': 337, 'w': 250, 'h': 183, 'color': '#90CAF9'}, {'order': 3, 'id': 2123, 'x': 0, 'y': 0, 'z': 183, 'l': 337, 'w': 250, 'h': 183, 'color': '#90CAF9'}, {'order': 4, 'id': 2017, 'x': 0, 'y': 250, 'z': 183, 'l': 337, 'w': 250, 'h': 183, 'color': '#90CAF9'}, {'order': 5, 'id': 2587, 'x': 400, 'y': 337, 'z': 0, 'l': 250, 'w': 137, 'h': 400, 'color': '#64B5F6'}, {'order': 6, 'id': 2582, 'x': 400, 'y': 0, 'z': 250, 'l': 250, 'w': 337, 'h': 137, 'color': '#64B5F6'}]}, {'id': 39, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 416, 'items': 7, 'fill_rate': '76.5%', 'placements': [{'order': 0, 'id': 1833, 'x': 0, 'y': 0, 'z': 0, 'l': 337, 'w': 250, 'h': 183, 'color': '#90CAF9'}, {'order': 1, 'id': 2525, 'x': 337, 'y': 0, 'z': 0, 'l': 250, 'w': 337, 'h': 183, 'color': '#64B5F6'}, {'order': 2, 'id': 1947, 'x': 0, 'y': 250, 'z': 0, 'l': 337, 'w': 250, 'h': 183, 'color': '#90CAF9'}, {'order': 3, 'id': 1675, 'x': 0, 'y': 0, 'z': 183, 'l': 337, 'w': 250, 'h': 183, 'color': '#90CAF9'}, {'order': 4, 'id': 2539, 'x': 337, 'y': 0, 'z': 183, 'l': 250, 'w': 337, 'h': 183, 'color': '#64B5F6'}, {'order': 5, 'id': 1666, 'x': 337, 'y': 337, 'z': 0, 'l': 337, 'w': 137, 'h': 300, 'color': '#90CAF9'}, {'order': 6, 'id': 1788, 'x': 0, 'y': 250, 'z': 183, 'l': 300, 'w': 225, 'h': 183, 'color': '#90CAF9'}]}, {'id': 40, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 437, 'items': 8, 'fill_rate': '77.8%', 'placements': [{'order': 0, 'id': 2390, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 250, 'h': 137, 'color': '#90CAF9'}, {'order': 1, 'id': 2662, 'x': 400, 'y': 0, 'z': 0, 'l': 137, 'w': 400, 'h': 250, 'color': '#64B5F6'}, {'order': 2, 'id': 2497, 'x': 0, 'y': 250, 'z': 0, 'l': 400, 'w': 250, 'h': 137, 'color': '#64B5F6'}, {'order': 3, 'id': 2435, 'x': 537, 'y': 0, 'z': 0, 'l': 137, 'w': 400, 'h': 250, 'color': '#64B5F6'}, {'order': 4, 'id': 1883, 'x': 0, 'y': 0, 'z': 137, 'l': 400, 'w': 300, 'h': 110, 'color': '#90CAF9'}, {'order': 5, 'id': 1857, 'x': 0, 'y': 0, 'z': 247, 'l': 400, 'w': 300, 'h': 110, 'color': '#90CAF9'}, {'order': 6, 'id': 1810, 'x': 0, 'y': 300, 'z': 137, 'l': 300, 'w': 183, 'h': 225, 'color': '#90CAF9'}, {'order': 7, 'id': 1674, 'x': 400, 'y': 0, 'z': 250, 'l': 250, 'w': 337, 'h': 137, 'color': '#90CAF9'}]}, {'id': 41, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 441, 'items': 10, 'fill_rate': '87.3%', 'placements': [{'order': 0, 'id': 1958, 'x': 0, 'y': 0, 'z': 0, 'l': 225, 'w': 300, 'h': 183, 'color': '#90CAF9'}, {'order': 1, 'id': 2244, 'x': 225, 'y': 0, 'z': 0, 'l': 225, 'w': 300, 'h': 183, 'color': '#90CAF9'}, {'order': 2, 'id': 1850, 'x': 450, 'y': 0, 'z': 0, 'l': 225, 'w': 300, 'h': 183, 'color': '#90CAF9'}, {'order': 3, 'id': 1867, 'x': 0, 'y': 300, 'z': 0, 'l': 300, 'w': 183, 'h': 225, 'color': '#90CAF9'}, {'order': 4, 'id': 2279, 'x': 300, 'y': 300, 'z': 0, 'l': 300, 'w': 183, 'h': 225, 'color': '#90CAF9'}, {'order': 5, 'id': 1688, 'x': 0, 'y': 0, 'z': 183, 'l': 225, 'w': 300, 'h': 183, 'color': '#90CAF9'}, {'order': 6, 'id': 2399, 'x': 225, 'y': 0, 'z': 183, 'l': 225, 'w': 300, 'h': 183, 'color': '#90CAF9'}, {'order': 7, 'id': 1838, 'x': 450, 'y': 0, 'z': 183, 'l': 225, 'w': 300, 'h': 183, 'color': '#90CAF9'}, {'order': 8, 'id': 1861, 'x': 0, 'y': 300, 'z': 225, 'l': 400, 'w': 183, 'h': 166, 'color': '#90CAF9'}, {'order': 9, 'id': 1698, 'x': 400, 'y': 300, 'z': 225, 'l': 225, 'w': 183, 'h': 166, 'color': '#90CAF9'}]}, {'id': 42, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 382, 'items': 7, 'fill_rate': '58.5%', 'placements': [{'order': 0, 'id': 2237, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 183, 'h': 166, 'color': '#90CAF9'}, {'order': 1, 'id': 1916, 'x': 400, 'y': 0, 'z': 0, 'l': 183, 'w': 400, 'h': 166, 'color': '#90CAF9'}, {'order': 2, 'id': 1826, 'x': 0, 'y': 183, 'z': 0, 'l': 400, 'w': 183, 'h': 166, 'color': '#90CAF9'}, {'order': 3, 'id': 2070, 'x': 0, 'y': 0, 'z': 166, 'l': 400, 'w': 183, 'h': 166, 'color': '#90CAF9'}, {'order': 4, 'id': 1870, 'x': 0, 'y': 183, 'z': 166, 'l': 337, 'w': 250, 'h': 137, 'color': '#90CAF9'}, {'order': 5, 'id': 2092, 'x': 400, 'y': 0, 'z': 166, 'l': 250, 'w': 337, 'h': 137, 'color': '#90CAF9'}, {'order': 6, 'id': 2195, 'x': 0, 'y': 366, 'z': 0, 'l': 400, 'w': 110, 'h': 166, 'color': '#90CAF9'}]}, {'id': 43, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 412, 'items': 9, 'fill_rate': '73.7%', 'placements': [{'order': 0, 'id': 2133, 'x': 0, 'y': 0, 'z': 0, 'l': 337, 'w': 250, 'h': 137, 'color': '#90CAF9'}, {'order': 1, 'id': 1982, 'x': 337, 'y': 0, 'z': 0, 'l': 250, 'w': 337, 'h': 137, 'color': '#90CAF9'}, {'order': 2, 'id': 1919, 'x': 0, 'y': 250, 'z': 0, 'l': 337, 'w': 250, 'h': 137, 'color': '#90CAF9'}, {'order': 3, 'id': 1840, 'x': 337, 'y': 337, 'z': 0, 'l': 337, 'w': 110, 'h': 300, 'color': '#90CAF9'}, {'order': 4, 'id': 2198, 'x': 0, 'y': 0, 'z': 137, 'l': 337, 'w': 300, 'h': 110, 'color': '#90CAF9'}, {'order': 5, 'id': 2319, 'x': 337, 'y': 0, 'z': 137, 'l': 337, 'w': 300, 'h': 110, 'color': '#90CAF9'}, {'order': 6, 'id': 1795, 'x': 0, 'y': 0, 'z': 247, 'l': 337, 'w': 300, 'h': 110, 'color': '#90CAF9'}, {'order': 7, 'id': 2215, 'x': 337, 'y': 0, 'z': 247, 'l': 337, 'w': 300, 'h': 110, 'color': '#90CAF9'}, {'order': 8, 'id': 2051, 'x': 0, 'y': 300, 'z': 137, 'l': 300, 'w': 137, 'h': 225, 'color': '#90CAF9'}]}, {'id': 44, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 9, 'fill_rate': '68.2%', 'placements': [{'order': 0, 'id': 2029, 'x': 0, 'y': 0, 'z': 0, 'l': 337, 'w': 300, 'h': 110, 'color': '#90CAF9'}, {'order': 1, 'id': 2165, 'x': 337, 'y': 0, 'z': 0, 'l': 110, 'w': 337, 'h': 300, 'color': '#90CAF9'}, {'order': 2, 'id': 2233, 'x': 447, 'y': 0, 'z': 0, 'l': 110, 'w': 337, 'h': 300, 'color': '#90CAF9'}, {'order': 3, 'id': 1910, 'x': 0, 'y': 300, 'z': 0, 'l': 250, 'w': 110, 'h': 400, 'color': '#90CAF9'}, {'order': 4, 'id': 2331, 'x': 337, 'y': 337, 'z': 0, 'l': 250, 'w': 110, 'h': 400, 'color': '#90CAF9'}, {'order': 5, 'id': 1780, 'x': 557, 'y': 0, 'z': 0, 'l': 110, 'w': 250, 'h': 400, 'color': '#90CAF9'}, {'order': 6, 'id': 1731, 'x': 0, 'y': 0, 'z': 110, 'l': 337, 'w': 183, 'h': 166, 'color': '#90CAF9'}, {'order': 7, 'id': 1893, 'x': 0, 'y': 183, 'z': 110, 'l': 337, 'w': 110, 'h': 250, 'color': '#90CAF9'}, {'order': 8, 'id': 1942, 'x': 0, 'y': 0, 'z': 276, 'l': 337, 'w': 166, 'h': 110, 'color': '#90CAF9'}]}, {'id': 45, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 436, 'items': 9, 'fill_rate': '64.6%', 'placements': [{'order': 0, 'id': 2072, 'x': 0, 'y': 0, 'z': 0, 'l': 400, 'w': 250, 'h': 110, 'color': '#90CAF9'}, {'order': 1, 'id': 2204, 'x': 400, 'y': 0, 'z': 0, 'l': 183, 'w': 337, 'h': 166, 'color': '#90CAF9'}, {'order': 2, 'id': 2081, 'x': 0, 'y': 250, 'z': 0, 'l': 337, 'w': 183, 'h': 166, 'color': '#90CAF9'}, {'order': 3, 'id': 1960, 'x': 0, 'y': 0, 'z': 110, 'l': 337, 'w': 183, 'h': 166, 'color': '#90CAF9'}, {'order': 4, 'id': 2191, 'x': 400, 'y': 0, 'z': 166, 'l': 183, 'w': 337, 'h': 166, 'color': '#90CAF9'}, {'order': 5, 'id': 2386, 'x': 400, 'y': 337, 'z': 0, 'l': 250, 'w': 110, 'h': 337, 'color': '#90CAF9'}, {'order': 6, 'id': 2145, 'x': 0, 'y': 250, 'z': 166, 'l': 337, 'w': 250, 'h': 110, 'color': '#90CAF9'}, {'order': 7, 'id': 1701, 'x': 0, 'y': 0, 'z': 276, 'l': 337, 'w': 250, 'h': 110, 'color': '#90CAF9'}, {'order': 8, 'id': 2239, 'x': 0, 'y': 250, 'z': 276, 'l': 300, 'w': 225, 'h': 110, 'color': '#90CAF9'}]}, {'id': 46, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 434, 'items': 15, 'fill_rate': '85.7%', 'placements': [{'order': 0, 'id': 2236, 'x': 0, 'y': 0, 'z': 0, 'l': 225, 'w': 300, 'h': 137, 'color': '#90CAF9'}, {'order': 1, 'id': 2168, 'x': 225, 'y': 0, 'z': 0, 'l': 225, 'w': 300, 'h': 137, 'color': '#90CAF9'}, {'order': 2, 'id': 2348, 'x': 450, 'y': 0, 'z': 0, 'l': 225, 'w': 300, 'h': 137, 'color': '#90CAF9'}, {'order': 3, 'id': 980, 'x': 0, 'y': 300, 'z': 0, 'l': 300, 'w': 200, 'h': 137, 'color': '#BBDEFB'}, {'order': 4, 'id': 1566, 'x': 300, 'y': 300, 'z': 0, 'l': 300, 'w': 200, 'h': 137, 'color': '#BBDEFB'}, {'order': 5, 'id': 1263, 'x': 0, 'y': 0, 'z': 137, 'l': 300, 'w': 200, 'h': 137, 'color': '#BBDEFB'}, {'order': 6, 'id': 1717, 'x': 300, 'y': 0, 'z': 137, 'l': 225, 'w': 250, 'h': 137, 'color': '#90CAF9'}, {'order': 7, 'id': 2167, 'x': 0, 'y': 200, 'z': 137, 'l': 225, 'w': 250, 'h': 137, 'color': '#90CAF9'}, {'order': 8, 'id': 1670, 'x': 300, 'y': 250, 'z': 137, 'l': 225, 'w': 250, 'h': 137, 'color': '#90CAF9'}, {'order': 9, 'id': 2132, 'x': 525, 'y': 0, 'z': 137, 'l': 137, 'w': 250, 'h': 225, 'color': '#90CAF9'}, {'order': 10, 'id': 2270, 'x': 525, 'y': 250, 'z': 137, 'l': 137, 'w': 250, 'h': 225, 'color': '#90CAF9'}, {'order': 11, 'id': 1563, 'x': 0, 'y': 0, 'z': 274, 'l': 300, 'w': 200, 'h': 110, 'color': '#BBDEFB'}, {'order': 12, 'id': 1546, 'x': 300, 'y': 0, 'z': 274, 'l': 200, 'w': 300, 'h': 110, 'color': '#BBDEFB'}, {'order': 13, 'id': 1193, 'x': 0, 'y': 200, 'z': 274, 'l': 300, 'w': 200, 'h': 110, 'color': '#BBDEFB'}, {'order': 14, 'id': 1532, 'x': 300, 'y': 300, 'z': 274, 'l': 225, 'w': 200, 'h': 110, 'color': '#BBDEFB'}]}, {'id': 47, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 450, 'items': 15, 'fill_rate': '75.5%', 'placements': [{'order': 0, 'id': 2048, 'x': 0, 'y': 0, 'z': 0, 'l': 225, 'w': 250, 'h': 137, 'color': '#90CAF9'}, {'order': 1, 'id': 2181, 'x': 225, 'y': 0, 'z': 0, 'l': 337, 'w': 166, 'h': 137, 'color': '#90CAF9'}, {'order': 2, 'id': 2088, 'x': 225, 'y': 166, 'z': 0, 'l': 337, 'w': 166, 'h': 137, 'color': '#90CAF9'}, {'order': 3, 'id': 1803, 'x': 0, 'y': 250, 'z': 0, 'l': 166, 'w': 137, 'h': 337, 'color': '#90CAF9'}, {'order': 4, 'id': 2135, 'x': 225, 'y': 332, 'z': 0, 'l': 300, 'w': 110, 'h': 225, 'color': '#90CAF9'}, {'order': 5, 'id': 1741, 'x': 562, 'y': 0, 'z': 0, 'l': 110, 'w': 300, 'h': 225, 'color': '#90CAF9'}, {'order': 6, 'id': 2342, 'x': 0, 'y': 387, 'z': 0, 'l': 166, 'w': 110, 'h': 400, 'color': '#90CAF9'}, {'order': 7, 'id': 1811, 'x': 562, 'y': 300, 'z': 0, 'l': 110, 'w': 166, 'h': 400, 'color': '#90CAF9'}, {'order': 8, 'id': 1819, 'x': 0, 'y': 0, 'z': 137, 'l': 400, 'w': 166, 'h': 110, 'color': '#90CAF9'}, {'order': 9, 'id': 2071, 'x': 0, 'y': 0, 'z': 247, 'l': 400, 'w': 166, 'h': 110, 'color': '#90CAF9'}, {'order': 10, 'id': 1658, 'x': 225, 'y': 166, 'z': 137, 'l': 225, 'w': 166, 'h': 183, 'color': '#90CAF9'}, {'order': 11, 'id': 807, 'x': 225, 'y': 332, 'z': 225, 'l': 300, 'w': 150, 'h': 137, 'color': '#BBDEFB'}, {'order': 12, 'id': 2100, 'x': 400, 'y': 0, 'z': 137, 'l': 137, 'w': 166, 'h': 225, 'color': '#90CAF9'}, {'order': 13, 'id': 1044, 'x': 562, 'y': 0, 'z': 225, 'l': 110, 'w': 300, 'h': 150, 'color': '#BBDEFB'}, {'order': 14, 'id': 1992, 'x': 450, 'y': 166, 'z': 137, 'l': 110, 'w': 166, 'h': 225, 'color': '#90CAF9'}]}, {'id': 48, 'type': 'MEDIUM', 'dim_l': 675, 'dim_w': 500, 'dim_h': 436, 'items': 16, 'fill_rate': '69.6%', 'placements': [{'order': 0, 'id': 1721, 'x': 0, 'y': 0, 'z': 0, 'l': 225, 'w': 183, 'h': 166, 'color': '#90CAF9'}, {'order': 1, 'id': 2120, 'x': 225, 'y': 0, 'z': 0, 'l': 225, 'w': 183, 'h': 166, 'color': '#90CAF9'}, {'order': 2, 'id': 2053, 'x': 450, 'y': 0, 'z': 0, 'l': 225, 'w': 183, 'h': 166, 'color': '#90CAF9'}, {'order': 3, 'id': 2385, 'x': 0, 'y': 183, 'z': 0, 'l': 225, 'w': 250, 'h': 110, 'color': '#90CAF9'}, {'order': 4, 'id': 1995, 'x': 225, 'y': 183, 'z': 0, 'l': 225, 'w': 250, 'h': 110, 'color': '#90CAF9'}, {'order': 5, 'id': 1650, 'x': 450, 'y': 183, 'z': 0, 'l': 225, 'w': 250, 'h': 110, 'color': '#90CAF9'}, {'order': 6, 'id': 2364, 'x': 0, 'y': 183, 'z': 110, 'l': 225, 'w': 250, 'h': 110, 'color': '#90CAF9'}, {'order': 7, 'id': 1936, 'x': 225, 'y': 183, 'z': 110, 'l': 225, 'w': 250, 'h': 110, 'color': '#90CAF9'}, {'order': 8, 'id': 1359, 'x': 450, 'y': 183, 'z': 110, 'l': 225, 'w': 200, 'h': 137, 'color': '#BBDEFB'}, {'order': 9, 'id': 1326, 'x': 0, 'y': 0, 'z': 166, 'l': 300, 'w': 150, 'h': 137, 'color': '#BBDEFB'}, {'order': 10, 'id': 1467, 'x': 300, 'y': 0, 'z': 166, 'l': 300, 'w': 150, 'h': 137, 'color': '#BBDEFB'}, {'order': 11, 'id': 890, 'x': 0, 'y': 183, 'z': 220, 'l': 300, 'w': 150, 'h': 137, 'color': '#BBDEFB'}, {'order': 12, 'id': 900, 'x': 450, 'y': 183, 'z': 247, 'l': 225, 'w': 200, 'h': 137, 'color': '#BBDEFB'}, {'order': 13, 'id': 1700, 'x': 0, 'y': 333, 'z': 220, 'l': 337, 'w': 110, 'h': 166, 'color': '#90CAF9'}, {'order': 14, 'id': 1417, 'x': 300, 'y': 183, 'z': 220, 'l': 150, 'w': 150, 'h': 137, 'color': '#BBDEFB'}, {'order': 15, 'id': 856, 'x': 337, 'y': 333, 'z': 220, 'l': 110, 'w': 150, 'h': 150, 'color': '#BBDEFB'}]}, {'id': 49, 'type': 'SMALL', 'dim_l': 450, 'dim_w': 300, 'dim_h': 400, 'items': 13, 'fill_rate': '91.3%', 'placements': [{'order': 0, 'id': 1525, 'x': 0, 'y': 0, 'z': 0, 'l': 225, 'w': 200, 'h': 137, 'color': '#BBDEFB'}, {'order': 1, 'id': 1473, 'x': 225, 'y': 0, 'z': 0, 'l': 225, 'w': 200, 'h': 137, 'color': '#BBDEFB'}, {'order': 2, 'id': 799, 'x': 0, 'y': 0, 'z': 137, 'l': 300, 'w': 150, 'h': 137, 'color': '#BBDEFB'}, {'order': 3, 'id': 1332, 'x': 300, 'y': 0, 'z': 137, 'l': 150, 'w': 300, 'h': 137, 'color': '#BBDEFB'}, {'order': 4, 'id': 1372, 'x': 0, 'y': 200, 'z': 0, 'l': 300, 'w': 91, 'h': 200, 'color': '#BBDEFB'}, {'order': 5, 'id': 1148, 'x': 0, 'y': 200, 'z': 200, 'l': 300, 'w': 100, 'h': 137, 'color': '#BBDEFB'}, {'order': 6, 'id': 1112, 'x': 300, 'y': 200, 'z': 0, 'l': 150, 'w': 100, 'h': 137, 'color': '#BBDEFB'}, {'order': 7, 'id': 577, 'x': 0, 'y': 150, 'z': 137, 'l': 220, 'w': 49, 'h': 150, 'color': '#E3F2FD'}, {'order': 8, 'id': 543, 'x': 0, 'y': 0, 'z': 274, 'l': 220, 'w': 150, 'h': 47, 'color': '#E3F2FD'}, {'order': 9, 'id': 501, 'x': 300, 'y': 0, 'z': 274, 'l': 150, 'w': 220, 'h': 45, 'color': '#E3F2FD'}, {'order': 10, 'id': 389, 'x': 300, 'y': 0, 'z': 319, 'l': 150, 'w': 220, 'h': 31, 'color': '#E3F2FD'}, {'order': 11, 'id': 498, 'x': 0, 'y': 0, 'z': 321, 'l': 220, 'w': 150, 'h': 28, 'color': '#E3F2FD'}, {'order': 12, 'id': 0, 'x': 0, 'y': 200, 'z': 337, 'l': 220, 'w': 100, 'h': 11, 'color': '#E3F2FD'}]}, {'id': 50, 'type': 'SMALL', 'dim_l': 450, 'dim_w': 300, 'dim_h': 400, 'items': 15, 'fill_rate': '89.6%', 'placements': [{'order': 0, 'id': 850, 'x': 0, 'y': 0, 'z': 0, 'l': 225, 'w': 200, 'h': 137, 'color': '#BBDEFB'}, {'order': 1, 'id': 1032, 'x': 225, 'y': 0, 'z': 0, 'l': 150, 'w': 300, 'h': 137, 'color': '#BBDEFB'}, {'order': 2, 'id': 1110, 'x': 0, 'y': 0, 'z': 137, 'l': 225, 'w': 200, 'h': 137, 'color': '#BBDEFB'}, {'order': 3, 'id': 1548, 'x': 0, 'y': 200, 'z': 0, 'l': 200, 'w': 91, 'h': 300, 'color': '#BBDEFB'}, {'order': 4, 'id': 1385, 'x': 225, 'y': 0, 'z': 137, 'l': 91, 'w': 300, 'h': 200, 'color': '#BBDEFB'}, {'order': 5, 'id': 1272, 'x': 316, 'y': 0, 'z': 137, 'l': 91, 'w': 300, 'h': 200, 'color': '#BBDEFB'}, {'order': 6, 'id': 3, 'x': 0, 'y': 0, 'z': 274, 'l': 220, 'w': 150, 'h': 44, 'color': '#E3F2FD'}, {'order': 7, 'id': 176, 'x': 375, 'y': 0, 'z': 0, 'l': 49, 'w': 220, 'h': 120, 'color': '#E3F2FD'}, {'order': 8, 'id': 432, 'x': 0, 'y': 200, 'z': 300, 'l': 220, 'w': 100, 'h': 50, 'color': '#E3F2FD'}, {'order': 9, 'id': 747, 'x': 0, 'y': 0, 'z': 318, 'l': 220, 'w': 150, 'h': 27, 'color': '#E3F2FD'}, {'order': 10, 'id': 29, 'x': 424, 'y': 0, 'z': 0, 'l': 25, 'w': 220, 'h': 150, 'color': '#E3F2FD'}, {'order': 11, 'id': 552, 'x': 424, 'y': 0, 'z': 150, 'l': 24, 'w': 220, 'h': 150, 'color': '#E3F2FD'}, {'order': 12, 'id': 219, 'x': 200, 'y': 200, 'z': 0, 'l': 23, 'w': 100, 'h': 220, 'color': '#E3F2FD'}, {'order': 13, 'id': 708, 'x': 225, 'y': 0, 'z': 337, 'l': 150, 'w': 180, 'h': 12, 'color': '#E3F2FD'}, {'order': 14, 'id': 668, 'x': 225, 'y': 180, 'z': 337, 'l': 180, 'w': 120, 'h': 12, 'color': '#E3F2FD'}]}, {'id': 51, 'type': 'SMALL', 'dim_l': 450, 'dim_w': 300, 'dim_h': 400, 'items': 18, 'fill_rate': '95.0%', 'placements': [{'order': 0, 'id': 1830, 'x': 0, 'y': 0, 'z': 0, 'l': 225, 'w': 166, 'h': 137, 'color': '#90CAF9'}, {'order': 1, 'id': 1679, 'x': 225, 'y': 0, 'z': 0, 'l': 225, 'w': 166, 'h': 137, 'color': '#90CAF9'}, {'order': 2, 'id': 1905, 'x': 0, 'y': 0, 'z': 137, 'l': 225, 'w': 166, 'h': 137, 'color': '#90CAF9'}, {'order': 3, 'id': 1665, 'x': 225, 'y': 0, 'z': 137, 'l': 225, 'w': 166, 'h': 137, 'color': '#90CAF9'}, {'order': 4, 'id': 768, 'x': 0, 'y': 166, 'z': 0, 'l': 300, 'w': 110, 'h': 150, 'color': '#BBDEFB'}, {'order': 5, 'id': 1404, 'x': 300, 'y': 166, 'z': 0, 'l': 150, 'w': 110, 'h': 300, 'color': '#BBDEFB'}, {'order': 6, 'id': 830, 'x': 0, 'y': 166, 'z': 150, 'l': 225, 'w': 110, 'h': 200, 'color': '#BBDEFB'}, {'order': 7, 'id': 378, 'x': 0, 'y': 0, 'z': 274, 'l': 220, 'w': 150, 'h': 41, 'color': '#E3F2FD'}, {'order': 8, 'id': 116, 'x': 220, 'y': 0, 'z': 274, 'l': 180, 'w': 150, 'h': 47, 'color': '#E3F2FD'}, {'order': 9, 'id': 164, 'x': 0, 'y': 0, 'z': 315, 'l': 220, 'w': 150, 'h': 35, 'color': '#E3F2FD'}, {'order': 10, 'id': 277, 'x': 225, 'y': 166, 'z': 150, 'l': 48, 'w': 120, 'h': 180, 'color': '#E3F2FD'}, {'order': 11, 'id': 370, 'x': 220, 'y': 0, 'z': 321, 'l': 220, 'w': 150, 'h': 27, 'color': '#E3F2FD'}, {'order': 12, 'id': 495, 'x': 300, 'y': 166, 'z': 300, 'l': 150, 'w': 120, 'h': 49, 'color': '#E3F2FD'}, {'order': 13, 'id': 329, 'x': 0, 'y': 276, 'z': 0, 'l': 220, 'w': 22, 'h': 150, 'color': '#E3F2FD'}, {'order': 14, 'id': 522, 'x': 220, 'y': 276, 'z': 0, 'l': 180, 'w': 24, 'h': 150, 'color': '#E3F2FD'}, {'order': 15, 'id': 570, 'x': 0, 'y': 276, 'z': 150, 'l': 220, 'w': 19, 'h': 150, 'color': '#E3F2FD'}, {'order': 16, 'id': 34, 'x': 273, 'y': 166, 'z': 150, 'l': 27, 'w': 120, 'h': 180, 'color': '#E3F2FD'}, {'order': 17, 'id': 197, 'x': 225, 'y': 286, 'z': 150, 'l': 150, 'w': 14, 'h': 180, 'color': '#E3F2FD'}]}, {'id': 52, 'type': 'SMALL', 'dim_l': 450, 'dim_w': 300, 'dim_h': 400, 'items': 18, 'fill_rate': '92.6%', 'placements': [{'order': 0, 'id': 1994, 'x': 0, 'y': 0, 'z': 0, 'l': 225, 'w': 166, 'h': 137, 'color': '#90CAF9'}, {'order': 1, 'id': 2193, 'x': 225, 'y': 0, 'z': 0, 'l': 225, 'w': 166, 'h': 137, 'color': '#90CAF9'}, {'order': 2, 'id': 1426, 'x': 0, 'y': 166, 'z': 0, 'l': 225, 'w': 110, 'h': 200, 'color': '#BBDEFB'}, {'order': 3, 'id': 1208, 'x': 225, 'y': 166, 'z': 0, 'l': 150, 'w': 110, 'h': 300, 'color': '#BBDEFB'}, {'order': 4, 'id': 1522, 'x': 0, 'y': 0, 'z': 137, 'l': 300, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 5, 'id': 839, 'x': 300, 'y': 0, 'z': 137, 'l': 150, 'w': 137, 'h': 200, 'color': '#BBDEFB'}, {'order': 6, 'id': 1069, 'x': 0, 'y': 0, 'z': 247, 'l': 300, 'w': 137, 'h': 100, 'color': '#BBDEFB'}, {'order': 7, 'id': 1212, 'x': 0, 'y': 166, 'z': 200, 'l': 225, 'w': 110, 'h': 150, 'color': '#BBDEFB'}, {'order': 8, 'id': 716, 'x': 375, 'y': 166, 'z': 0, 'l': 45, 'w': 120, 'h': 220, 'color': '#E3F2FD'}, {'order': 9, 'id': 278, 'x': 225, 'y': 166, 'z': 300, 'l': 220, 'w': 120, 'h': 45, 'color': '#E3F2FD'}, {'order': 10, 'id': 418, 'x': 300, 'y': 137, 'z': 137, 'l': 150, 'w': 29, 'h': 180, 'color': '#E3F2FD'}, {'order': 11, 'id': 316, 'x': 420, 'y': 166, 'z': 0, 'l': 29, 'w': 120, 'h': 220, 'color': '#E3F2FD'}, {'order': 12, 'id': 36, 'x': 0, 'y': 276, 'z': 0, 'l': 220, 'w': 23, 'h': 120, 'color': '#E3F2FD'}, {'order': 13, 'id': 718, 'x': 220, 'y': 276, 'z': 0, 'l': 120, 'w': 23, 'h': 220, 'color': '#E3F2FD'}, {'order': 14, 'id': 259, 'x': 0, 'y': 276, 'z': 120, 'l': 220, 'w': 17, 'h': 150, 'color': '#E3F2FD'}, {'order': 15, 'id': 88, 'x': 0, 'y': 150, 'z': 137, 'l': 220, 'w': 16, 'h': 150, 'color': '#E3F2FD'}, {'order': 16, 'id': 426, 'x': 300, 'y': 0, 'z': 337, 'l': 150, 'w': 150, 'h': 13, 'color': '#E3F2FD'}, {'order': 17, 'id': 148, 'x': 0, 'y': 137, 'z': 247, 'l': 180, 'w': 12, 'h': 100, 'color': '#E3F2FD'}]}, {'id': 53, 'type': 'SMALL', 'dim_l': 450, 'dim_w': 300, 'dim_h': 400, 'items': 18, 'fill_rate': '95.2%', 'placements': [{'order': 0, 'id': 965, 'x': 0, 'y': 0, 'z': 0, 'l': 300, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 1, 'id': 1619, 'x': 300, 'y': 0, 'z': 0, 'l': 150, 'w': 300, 'h': 110, 'color': '#BBDEFB'}, {'order': 2, 'id': 1443, 'x': 0, 'y': 150, 'z': 0, 'l': 300, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 3, 'id': 997, 'x': 0, 'y': 0, 'z': 110, 'l': 300, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 4, 'id': 1634, 'x': 300, 'y': 0, 'z': 110, 'l': 110, 'w': 225, 'h': 200, 'color': '#BBDEFB'}, {'order': 5, 'id': 1199, 'x': 0, 'y': 150, 'z': 110, 'l': 225, 'w': 150, 'h': 137, 'color': '#BBDEFB'}, {'order': 6, 'id': 816, 'x': 0, 'y': 0, 'z': 220, 'l': 300, 'w': 137, 'h': 100, 'color': '#BBDEFB'}, {'order': 7, 'id': 1182, 'x': 0, 'y': 150, 'z': 247, 'l': 300, 'w': 137, 'h': 100, 'color': '#BBDEFB'}, {'order': 8, 'id': 269, 'x': 300, 'y': 225, 'z': 110, 'l': 150, 'w': 47, 'h': 180, 'color': '#E3F2FD'}, {'order': 9, 'id': 630, 'x': 410, 'y': 0, 'z': 110, 'l': 38, 'w': 220, 'h': 150, 'color': '#E3F2FD'}, {'order': 10, 'id': 381, 'x': 300, 'y': 0, 'z': 310, 'l': 150, 'w': 220, 'h': 34, 'color': '#E3F2FD'}, {'order': 11, 'id': 422, 'x': 225, 'y': 150, 'z': 110, 'l': 46, 'w': 150, 'h': 120, 'color': '#E3F2FD'}, {'order': 12, 'id': 578, 'x': 0, 'y': 0, 'z': 320, 'l': 180, 'w': 150, 'h': 30, 'color': '#E3F2FD'}, {'order': 13, 'id': 423, 'x': 300, 'y': 272, 'z': 110, 'l': 150, 'w': 28, 'h': 180, 'color': '#E3F2FD'}, {'order': 14, 'id': 548, 'x': 271, 'y': 150, 'z': 110, 'l': 28, 'w': 150, 'h': 120, 'color': '#E3F2FD'}, {'order': 15, 'id': 276, 'x': 180, 'y': 0, 'z': 320, 'l': 120, 'w': 150, 'h': 26, 'color': '#E3F2FD'}, {'order': 16, 'id': 33, 'x': 0, 'y': 137, 'z': 220, 'l': 150, 'w': 12, 'h': 100, 'color': '#E3F2FD'}, {'order': 17, 'id': 455, 'x': 150, 'y': 137, 'z': 220, 'l': 150, 'w': 12, 'h': 100, 'color': '#E3F2FD'}]}, {'id': 54, 'type': 'SMALL', 'dim_l': 450, 'dim_w': 300, 'dim_h': 400, 'items': 18, 'fill_rate': '86.9%', 'placements': [{'order': 0, 'id': 847, 'x': 0, 'y': 0, 'z': 0, 'l': 225, 'w': 150, 'h': 137, 'color': '#BBDEFB'}, {'order': 1, 'id': 803, 'x': 225, 'y': 0, 'z': 0, 'l': 150, 'w': 200, 'h': 137, 'color': '#BBDEFB'}, {'order': 2, 'id': 1319, 'x': 0, 'y': 150, 'z': 0, 'l': 200, 'w': 150, 'h': 137, 'color': '#BBDEFB'}, {'order': 3, 'id': 1214, 'x': 225, 'y': 200, 'z': 0, 'l': 137, 'w': 100, 'h': 300, 'color': '#BBDEFB'}, {'order': 4, 'id': 1518, 'x': 0, 'y': 0, 'z': 137, 'l': 150, 'w': 200, 'h': 137, 'color': '#BBDEFB'}, {'order': 5, 'id': 1074, 'x': 150, 'y': 0, 'z': 137, 'l': 300, 'w': 137, 'h': 100, 'color': '#BBDEFB'}, {'order': 6, 'id': 903, 'x': 150, 'y': 0, 'z': 237, 'l': 300, 'w': 137, 'h': 100, 'color': '#BBDEFB'}, {'order': 7, 'id': 1135, 'x': 0, 'y': 200, 'z': 137, 'l': 225, 'w': 91, 'h': 200, 'color': '#BBDEFB'}, {'order': 8, 'id': 41, 'x': 150, 'y': 137, 'z': 137, 'l': 180, 'w': 47, 'h': 150, 'color': '#E3F2FD'}, {'order': 9, 'id': 31, 'x': 0, 'y': 0, 'z': 274, 'l': 150, 'w': 180, 'h': 45, 'color': '#E3F2FD'}, {'order': 10, 'id': 178, 'x': 375, 'y': 0, 'z': 0, 'l': 42, 'w': 220, 'h': 120, 'color': '#E3F2FD'}, {'order': 11, 'id': 302, 'x': 225, 'y': 200, 'z': 300, 'l': 220, 'w': 100, 'h': 50, 'color': '#E3F2FD'}, {'order': 12, 'id': 698, 'x': 417, 'y': 0, 'z': 0, 'l': 32, 'w': 220, 'h': 120, 'color': '#E3F2FD'}, {'order': 13, 'id': 326, 'x': 0, 'y': 0, 'z': 319, 'l': 150, 'w': 180, 'h': 28, 'color': '#E3F2FD'}, {'order': 14, 'id': 664, 'x': 150, 'y': 184, 'z': 137, 'l': 220, 'w': 15, 'h': 150, 'color': '#E3F2FD'}, {'order': 15, 'id': 679, 'x': 200, 'y': 150, 'z': 0, 'l': 22, 'w': 150, 'h': 120, 'color': '#E3F2FD'}, {'order': 16, 'id': 670, 'x': 150, 'y': 0, 'z': 337, 'l': 180, 'w': 150, 'h': 11, 'color': '#E3F2FD'}, {'order': 17, 'id': 303, 'x': 362, 'y': 200, 'z': 0, 'l': 10, 'w': 100, 'h': 180, 'color': '#E3F2FD'}]}, {'id': 55, 'type': 'SMALL', 'dim_l': 450, 'dim_w': 300, 'dim_h': 400, 'items': 21, 'fill_rate': '95.6%', 'placements': [{'order': 0, 'id': 2225, 'x': 0, 'y': 0, 'z': 0, 'l': 225, 'w': 166, 'h': 110, 'color': '#90CAF9'}, {'order': 1, 'id': 2384, 'x': 225, 'y': 0, 'z': 0, 'l': 225, 'w': 166, 'h': 110, 'color': '#90CAF9'}, {'order': 2, 'id': 2304, 'x': 0, 'y': 166, 'z': 0, 'l': 225, 'w': 110, 'h': 166, 'color': '#90CAF9'}, {'order': 3, 'id': 1829, 'x': 225, 'y': 166, 'z': 0, 'l': 225, 'w': 110, 'h': 166, 'color': '#90CAF9'}, {'order': 4, 'id': 1950, 'x': 0, 'y': 0, 'z': 110, 'l': 225, 'w': 166, 'h': 110, 'color': '#90CAF9'}, {'order': 5, 'id': 2158, 'x': 225, 'y': 0, 'z': 110, 'l': 225, 'w': 166, 'h': 110, 'color': '#90CAF9'}, {'order': 6, 'id': 2043, 'x': 0, 'y': 166, 'z': 166, 'l': 225, 'w': 110, 'h': 166, 'color': '#90CAF9'}, {'order': 7, 'id': 2082, 'x': 225, 'y': 166, 'z': 166, 'l': 225, 'w': 110, 'h': 166, 'color': '#90CAF9'}, {'order': 8, 'id': 1427, 'x': 0, 'y': 0, 'z': 220, 'l': 300, 'w': 150, 'h': 91, 'color': '#BBDEFB'}, {'order': 9, 'id': 1517, 'x': 300, 'y': 0, 'z': 220, 'l': 150, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 10, 'id': 539, 'x': 0, 'y': 0, 'z': 311, 'l': 180, 'w': 150, 'h': 38, 'color': '#E3F2FD'}, {'order': 11, 'id': 375, 'x': 180, 'y': 0, 'z': 311, 'l': 120, 'w': 150, 'h': 36, 'color': '#E3F2FD'}, {'order': 12, 'id': 319, 'x': 0, 'y': 276, 'z': 0, 'l': 150, 'w': 23, 'h': 150, 'color': '#E3F2FD'}, {'order': 13, 'id': 189, 'x': 150, 'y': 276, 'z': 0, 'l': 180, 'w': 23, 'h': 120, 'color': '#E3F2FD'}, {'order': 14, 'id': 749, 'x': 150, 'y': 276, 'z': 120, 'l': 220, 'w': 15, 'h': 150, 'color': '#E3F2FD'}, {'order': 15, 'id': 361, 'x': 0, 'y': 276, 'z': 150, 'l': 150, 'w': 18, 'h': 180, 'color': '#E3F2FD'}, {'order': 16, 'id': 653, 'x': 0, 'y': 166, 'z': 332, 'l': 220, 'w': 120, 'h': 17, 'color': '#E3F2FD'}, {'order': 17, 'id': 145, 'x': 300, 'y': 0, 'z': 330, 'l': 150, 'w': 150, 'h': 19, 'color': '#E3F2FD'}, {'order': 18, 'id': 444, 'x': 0, 'y': 150, 'z': 220, 'l': 220, 'w': 15, 'h': 120, 'color': '#E3F2FD'}, {'order': 19, 'id': 193, 'x': 220, 'y': 150, 'z': 220, 'l': 220, 'w': 15, 'h': 120, 'color': '#E3F2FD'}, {'order': 20, 'id': 736, 'x': 220, 'y': 166, 'z': 332, 'l': 220, 'w': 100, 'h': 18, 'color': '#E3F2FD'}]}, {'id': 56, 'type': 'SMALL', 'dim_l': 450, 'dim_w': 300, 'dim_h': 400, 'items': 18, 'fill_rate': '95.4%', 'placements': [{'order': 0, 'id': 1128, 'x': 0, 'y': 0, 'z': 0, 'l': 225, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 1, 'id': 1524, 'x': 225, 'y': 0, 'z': 0, 'l': 225, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 2, 'id': 1354, 'x': 0, 'y': 150, 'z': 0, 'l': 225, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 3, 'id': 1478, 'x': 225, 'y': 150, 'z': 0, 'l': 225, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 4, 'id': 1383, 'x': 0, 'y': 0, 'z': 110, 'l': 225, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 5, 'id': 840, 'x': 225, 'y': 0, 'z': 110, 'l': 225, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 6, 'id': 844, 'x': 0, 'y': 150, 'z': 110, 'l': 225, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 7, 'id': 942, 'x': 0, 'y': 0, 'z': 220, 'l': 300, 'w': 110, 'h': 100, 'color': '#BBDEFB'}, {'order': 8, 'id': 1088, 'x': 0, 'y': 110, 'z': 220, 'l': 300, 'w': 110, 'h': 100, 'color': '#BBDEFB'}, {'order': 9, 'id': 1221, 'x': 225, 'y': 150, 'z': 110, 'l': 200, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 10, 'id': 868, 'x': 300, 'y': 0, 'z': 220, 'l': 150, 'w': 200, 'h': 110, 'color': '#BBDEFB'}, {'order': 11, 'id': 1632, 'x': 300, 'y': 200, 'z': 220, 'l': 150, 'w': 100, 'h': 110, 'color': '#BBDEFB'}, {'order': 12, 'id': 470, 'x': 0, 'y': 220, 'z': 220, 'l': 220, 'w': 50, 'h': 100, 'color': '#E3F2FD'}, {'order': 13, 'id': 690, 'x': 0, 'y': 0, 'z': 320, 'l': 180, 'w': 150, 'h': 27, 'color': '#E3F2FD'}, {'order': 14, 'id': 481, 'x': 0, 'y': 150, 'z': 320, 'l': 150, 'w': 150, 'h': 30, 'color': '#E3F2FD'}, {'order': 15, 'id': 662, 'x': 180, 'y': 0, 'z': 320, 'l': 120, 'w': 220, 'h': 25, 'color': '#E3F2FD'}, {'order': 16, 'id': 433, 'x': 0, 'y': 270, 'z': 220, 'l': 220, 'w': 29, 'h': 100, 'color': '#E3F2FD'}, {'order': 17, 'id': 322, 'x': 300, 'y': 0, 'z': 330, 'l': 100, 'w': 220, 'h': 20, 'color': '#E3F2FD'}]}, {'id': 57, 'type': 'SMALL', 'dim_l': 450, 'dim_w': 300, 'dim_h': 400, 'items': 19, 'fill_rate': '87.1%', 'placements': [{'order': 0, 'id': 912, 'x': 0, 'y': 0, 'z': 0, 'l': 150, 'w': 200, 'h': 110, 'color': '#BBDEFB'}, {'order': 1, 'id': 1101, 'x': 150, 'y': 0, 'z': 0, 'l': 300, 'w': 110, 'h': 100, 'color': '#BBDEFB'}, {'order': 2, 'id': 791, 'x': 150, 'y': 110, 'z': 0, 'l': 150, 'w': 137, 'h': 150, 'color': '#BBDEFB'}, {'order': 3, 'id': 893, 'x': 300, 'y': 110, 'z': 0, 'l': 150, 'w': 137, 'h': 150, 'color': '#BBDEFB'}, {'order': 4, 'id': 1606, 'x': 0, 'y': 0, 'z': 110, 'l': 150, 'w': 150, 'h': 137, 'color': '#BBDEFB'}, {'order': 5, 'id': 825, 'x': 150, 'y': 110, 'z': 150, 'l': 150, 'w': 137, 'h': 150, 'color': '#BBDEFB'}, {'order': 6, 'id': 1276, 'x': 300, 'y': 110, 'z': 150, 'l': 150, 'w': 137, 'h': 150, 'color': '#BBDEFB'}, {'order': 7, 'id': 1056, 'x': 0, 'y': 200, 'z': 0, 'l': 137, 'w': 100, 'h': 225, 'color': '#BBDEFB'}, {'order': 8, 'id': 761, 'x': 150, 'y': 0, 'z': 100, 'l': 225, 'w': 100, 'h': 137, 'color': '#BBDEFB'}, {'order': 9, 'id': 1243, 'x': 0, 'y': 0, 'z': 247, 'l': 137, 'w': 225, 'h': 100, 'color': '#BBDEFB'}, {'order': 10, 'id': 908, 'x': 150, 'y': 0, 'z': 237, 'l': 300, 'w': 100, 'h': 91, 'color': '#BBDEFB'}, {'order': 11, 'id': 287, 'x': 150, 'y': 247, 'z': 0, 'l': 180, 'w': 43, 'h': 150, 'color': '#E3F2FD'}, {'order': 12, 'id': 170, 'x': 150, 'y': 247, 'z': 150, 'l': 180, 'w': 42, 'h': 150, 'color': '#E3F2FD'}, {'order': 13, 'id': 567, 'x': 150, 'y': 110, 'z': 300, 'l': 150, 'w': 150, 'h': 50, 'color': '#E3F2FD'}, {'order': 14, 'id': 137, 'x': 300, 'y': 110, 'z': 300, 'l': 150, 'w': 180, 'h': 41, 'color': '#E3F2FD'}, {'order': 15, 'id': 586, 'x': 330, 'y': 247, 'z': 0, 'l': 100, 'w': 49, 'h': 220, 'color': '#E3F2FD'}, {'order': 16, 'id': 272, 'x': 0, 'y': 150, 'z': 110, 'l': 150, 'w': 46, 'h': 120, 'color': '#E3F2FD'}, {'order': 17, 'id': 293, 'x': 150, 'y': 0, 'z': 328, 'l': 220, 'w': 100, 'h': 22, 'color': '#E3F2FD'}, {'order': 18, 'id': 5, 'x': 0, 'y': 200, 'z': 225, 'l': 150, 'w': 100, 'h': 15, 'color': '#E3F2FD'}]}, {'id': 58, 'type': 'SMALL', 'dim_l': 450, 'dim_w': 300, 'dim_h': 400, 'items': 24, 'fill_rate': '93.7%', 'placements': [{'order': 0, 'id': 933, 'x': 0, 'y': 0, 'z': 0, 'l': 150, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 1, 'id': 988, 'x': 150, 'y': 0, 'z': 0, 'l': 150, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 2, 'id': 1094, 'x': 300, 'y': 0, 'z': 0, 'l': 150, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 3, 'id': 796, 'x': 0, 'y': 150, 'z': 0, 'l': 150, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 4, 'id': 1483, 'x': 150, 'y': 150, 'z': 0, 'l': 225, 'w': 100, 'h': 110, 'color': '#BBDEFB'}, {'order': 5, 'id': 1347, 'x': 0, 'y': 0, 'z': 110, 'l': 150, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 6, 'id': 1520, 'x': 150, 'y': 0, 'z': 110, 'l': 150, 'w': 150, 'h': 110, 'color': '#BBDEFB'}, {'order': 7, 'id': 944, 'x': 300, 'y': 0, 'z': 110, 'l': 150, 'w': 137, 'h': 100, 'color': '#BBDEFB'}, {'order': 8, 'id': 924, 'x': 0, 'y': 150, 'z': 110, 'l': 137, 'w': 150, 'h': 100, 'color': '#BBDEFB'}, {'order': 9, 'id': 1384, 'x': 137, 'y': 150, 'z': 110, 'l': 137, 'w': 150, 'h': 100, 'color': '#BBDEFB'}, {'order': 10, 'id': 902, 'x': 274, 'y': 150, 'z': 110, 'l': 100, 'w': 150, 'h': 137, 'color': '#BBDEFB'}, {'order': 11, 'id': 1610, 'x': 300, 'y': 0, 'z': 210, 'l': 150, 'w': 137, 'h': 100, 'color': '#BBDEFB'}, {'order': 12, 'id': 1401, 'x': 0, 'y': 150, 'z': 210, 'l': 137, 'w': 150, 'h': 100, 'color': '#BBDEFB'}, {'order': 13, 'id': 1425, 'x': 137, 'y': 150, 'z': 210, 'l': 137, 'w': 150, 'h': 100, 'color': '#BBDEFB'}, {'order': 14, 'id': 1298, 'x': 0, 'y': 0, 'z': 220, 'l': 150, 'w': 150, 'h': 91, 'color': '#BBDEFB'}, {'order': 15, 'id': 1555, 'x': 150, 'y': 0, 'z': 220, 'l': 150, 'w': 150, 'h': 91, 'color': '#BBDEFB'}, {'order': 16, 'id': 994, 'x': 274, 'y': 150, 'z': 247, 'l': 150, 'w': 150, 'h': 91, 'color': '#BBDEFB'}, {'order': 17, 'id': 676, 'x': 375, 'y': 150, 'z': 0, 'l': 40, 'w': 120, 'h': 220, 'color': '#E3F2FD'}, {'order': 18, 'id': 474, 'x': 150, 'y': 250, 'z': 0, 'l': 220, 'w': 47, 'h': 100, 'color': '#E3F2FD'}, {'order': 19, 'id': 492, 'x': 0, 'y': 150, 'z': 310, 'l': 180, 'w': 150, 'h': 38, 'color': '#E3F2FD'}, {'order': 20, 'id': 712, 'x': 415, 'y': 150, 'z': 0, 'l': 35, 'w': 120, 'h': 220, 'color': '#E3F2FD'}, {'order': 21, 'id': 609, 'x': 0, 'y': 0, 'z': 311, 'l': 180, 'w': 150, 'h': 34, 'color': '#E3F2FD'}, {'order': 22, 'id': 508, 'x': 300, 'y': 0, 'z': 310, 'l': 150, 'w': 150, 'h': 40, 'color': '#E3F2FD'}, {'order': 23, 'id': 163, 'x': 180, 'y': 0, 'z': 311, 'l': 120, 'w': 150, 'h': 32, 'color': '#E3F2FD'}]}];
+        const containerData = [{'order': 0, 'id': 2, 'x': 0, 'y': 0, 'z': 0, 'l': 900, 'w': 750, 'h': 500, 'color': '#FF5722', 'type': 'LARGE', 'items': 6}, {'order': 1, 'id': 3, 'x': 900, 'y': 0, 'z': 0, 'l': 900, 'w': 750, 'h': 500, 'color': '#FF5722', 'type': 'LARGE', 'items': 4}, {'order': 2, 'id': 4, 'x': 1800, 'y': 0, 'z': 0, 'l': 900, 'w': 750, 'h': 500, 'color': '#FF5722', 'type': 'LARGE', 'items': 8}, {'order': 3, 'id': 5, 'x': 0, 'y': 750, 'z': 0, 'l': 900, 'w': 750, 'h': 500, 'color': '#FF5722', 'type': 'LARGE', 'items': 7}, {'order': 4, 'id': 1, 'x': 900, 'y': 750, 'z': 0, 'l': 900, 'w': 750, 'h': 491, 'color': '#FF5722', 'type': 'LARGE', 'items': 7}, {'order': 5, 'id': 6, 'x': 1800, 'y': 750, 'z': 0, 'l': 900, 'w': 750, 'h': 490, 'color': '#FF5722', 'type': 'LARGE', 'items': 7}, {'order': 6, 'id': 7, 'x': 1800, 'y': 750, 'z': 490, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 32}, {'order': 7, 'id': 8, 'x': 900, 'y': 750, 'z': 491, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 44}, {'order': 8, 'id': 9, 'x': 0, 'y': 0, 'z': 500, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 11}, {'order': 9, 'id': 12, 'x': 675, 'y': 0, 'z': 500, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 9}, {'order': 10, 'id': 14, 'x': 1350, 'y': 0, 'z': 500, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 7}, {'order': 11, 'id': 16, 'x': 2025, 'y': 0, 'z': 500, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 8}, {'order': 12, 'id': 17, 'x': 0, 'y': 500, 'z': 500, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 7}, {'order': 13, 'id': 19, 'x': 0, 'y': 1000, 'z': 500, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 9}, {'order': 14, 'id': 20, 'x': 1800, 'y': 750, 'z': 940, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 10}, {'order': 15, 'id': 21, 'x': 900, 'y': 750, 'z': 941, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 6}, {'order': 16, 'id': 25, 'x': 0, 'y': 0, 'z': 950, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 4}, {'order': 17, 'id': 27, 'x': 675, 'y': 0, 'z': 950, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 6}, {'order': 18, 'id': 28, 'x': 1350, 'y': 0, 'z': 950, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 5}, {'order': 19, 'id': 33, 'x': 2025, 'y': 0, 'z': 950, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 7}, {'order': 20, 'id': 34, 'x': 0, 'y': 500, 'z': 950, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 6}, {'order': 21, 'id': 36, 'x': 0, 'y': 1000, 'z': 950, 'l': 675, 'w': 500, 'h': 450, 'color': '#FF9800', 'type': 'MEDIUM', 'items': 5}];
+        const containerDims = {l: 2700, w: 1500, h: 1400};
+        
+        // Color palette for items (distinct colors)
+        const colorPalette = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', 
+            '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+            '#F8B500', '#00CED1', '#FF7F50', '#9370DB', '#3CB371',
+            '#FF69B4', '#20B2AA', '#FFD700', '#87CEEB', '#FFA07A',
+            '#8FBC8F', '#DEB887', '#5F9EA0', '#D2691E', '#6495ED',
+            '#DC143C', '#00FFFF', '#FFE4B5', '#ADFF2F', '#FF1493'
+        ];
+        
+        function getItemColor(index) {
+            return colorPalette[index % colorPalette.length];
+        }
+        
+        // State
+        let currentBundleIdx = 0;
+        let bundleStep = 0;
+        let bundlePlaying = false;
+        let bundleInterval = null;
+        
+        let containerStep = 0;
+        let containerPlaying = false;
+        let containerInterval = null;
+        
+        // ==================== BUNDLE ANIMATION ====================
+        
+        function initBundleSelector() {
+            const selector = document.getElementById('bundle-selector');
+            bundleData.forEach((b, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'bundle-btn' + (idx === 0 ? ' active' : '');
+                btn.textContent = `#${b.id} (${b.type})`;
+                btn.onclick = () => selectBundle(idx);
+                selector.appendChild(btn);
+            });
+        }
+        
+        function selectBundle(idx) {
+            currentBundleIdx = idx;
+            bundleStep = 0;
+            
+            // Update buttons
+            document.querySelectorAll('.bundle-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === idx);
+            });
+            
+            // Update slider
+            const bundle = bundleData[idx];
+            const slider = document.getElementById('bundle-slider');
+            slider.max = bundle.placements.length;
+            slider.value = 0;
+            
+            // Update info
+            updateBundleInfo();
+            renderBundleAtStep(0);
+        }
+        
+        function updateBundleInfo() {
+            const bundle = bundleData[currentBundleIdx];
+            const info = document.getElementById('bundle-info');
+            info.innerHTML = `
+                <div class="info-item"><span class="label">Bundle:</span><span class="value">#${bundle.id} (${bundle.type})</span></div>
+                <div class="info-item"><span class="label">Size:</span><span class="value">${bundle.dim_l}x${bundle.dim_w}x${bundle.dim_h}mm</span></div>
+                <div class="info-item"><span class="label">Items:</span><span class="value">${bundle.items}</span></div>
+                <div class="info-item"><span class="label">Fill:</span><span class="value">${bundle.fill_rate}</span></div>
+            `;
+        }
+        
+        function renderBundleAtStep(step) {
+            const bundle = bundleData[currentBundleIdx];
+            const placements = bundle.placements.slice(0, step);
+            
+            // Update step display
+            document.getElementById('bundle-step').textContent = `${step} / ${bundle.placements.length}`;
+            document.getElementById('bundle-slider').value = step;
+            
+            const traces = [];
+            
+            // Container frame (bundle boundary)
+            traces.push({
+                type: 'mesh3d',
+                x: [0, bundle.dim_l, bundle.dim_l, 0, 0, bundle.dim_l, bundle.dim_l, 0],
+                y: [0, 0, bundle.dim_w, bundle.dim_w, 0, 0, bundle.dim_w, bundle.dim_w],
+                z: [0, 0, 0, 0, bundle.dim_h, bundle.dim_h, bundle.dim_h, bundle.dim_h],
+                i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                color: 'rgba(100,100,100,0.1)',
+                flatshading: true,
+                hoverinfo: 'skip'
+            });
+            
+            // Placed items - each with unique color from palette
+            placements.forEach((p, i) => {
+                const isLatest = i === placements.length - 1;
+                const itemColor = getItemColor(i);  // Unique color per item
+                traces.push({
+                    type: 'mesh3d',
+                    x: [p.x, p.x+p.l, p.x+p.l, p.x, p.x, p.x+p.l, p.x+p.l, p.x],
+                    y: [p.y, p.y, p.y+p.w, p.y+p.w, p.y, p.y, p.y+p.w, p.y+p.w],
+                    z: [p.z, p.z, p.z, p.z, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h],
+                    i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                    j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                    k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                    color: itemColor,
+                    opacity: isLatest ? 1 : 0.8,
+                    flatshading: true,
+                    name: `Item ${p.id}`,
+                    hovertemplate: `<b>Item #${p.id}</b><br>Size: ${p.l}x${p.w}x${p.h}<br>Pos: (${p.x}, ${p.y}, ${p.z})<extra></extra>`
+                });
+                
+                // Wireframe for latest item (highlight effect)
+                if (isLatest) {
+                    const lx = [p.x, p.x+p.l, p.x+p.l, p.x, p.x, null, p.x, p.x, null, p.x+p.l, p.x+p.l, null, p.x+p.l, p.x+p.l, null, p.x, p.x, p.x+p.l, p.x+p.l, p.x, p.x];
+                    const ly = [p.y, p.y, p.y+p.w, p.y+p.w, p.y, null, p.y, p.y, null, p.y, p.y, null, p.y+p.w, p.y+p.w, null, p.y+p.w, p.y+p.w, p.y, p.y, p.y+p.w, p.y+p.w];
+                    const lz = [p.z, p.z, p.z, p.z, p.z, null, p.z, p.z+p.h, null, p.z, p.z+p.h, null, p.z, p.z+p.h, null, p.z, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h];
+                    traces.push({
+                        type: 'scatter3d',
+                        x: lx, y: ly, z: lz,
+                        mode: 'lines',
+                        line: { color: '#00ff88', width: 6 },
+                        hoverinfo: 'skip'
+                    });
+                    // Label
+                    traces.push({
+                        type: 'scatter3d',
+                        x: [p.x + p.l/2],
+                        y: [p.y + p.w/2],
+                        z: [p.z + p.h + 20],
+                        mode: 'text',
+                        text: [`#${p.id}`],
+                        textfont: { size: 14, color: '#00ff88' },
+                        hoverinfo: 'skip'
+                    });
+                }
+            });
+            
+            Plotly.react('bundle-viz', traces, {
+                scene: {
+                    xaxis: { title: 'L', range: [0, bundle.dim_l] },
+                    yaxis: { title: 'W', range: [0, bundle.dim_w] },
+                    zaxis: { title: 'H', range: [0, bundle.dim_h] },
+                    aspectmode: 'data',
+                    camera: { eye: { x: 1.5, y: 1.5, z: 1.2 } }
+                },
+                margin: { l: 0, r: 0, t: 0, b: 0 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: false
+            }, { responsive: true });
+        }
+        
+        function bundleStepForward() {
+            const bundle = bundleData[currentBundleIdx];
+            if (bundleStep < bundle.placements.length) {
+                bundleStep++;
+                renderBundleAtStep(bundleStep);
+            }
+        }
+        
+        function bundleStepBack() {
+            if (bundleStep > 0) {
+                bundleStep--;
+                renderBundleAtStep(bundleStep);
+            }
+        }
+        
+        function bundlePlayPause() {
+            const btn = event.target;
+            if (bundlePlaying) {
+                clearInterval(bundleInterval);
+                bundlePlaying = false;
+                btn.textContent = '▶ Play';
+            } else {
+                bundlePlaying = true;
+                btn.textContent = '⏸ Pause';
+                const speed = parseInt(document.getElementById('bundle-speed').value);
+                bundleInterval = setInterval(() => {
+                    const bundle = bundleData[currentBundleIdx];
+                    if (bundleStep < bundle.placements.length) {
+                        bundleStep++;
+                        renderBundleAtStep(bundleStep);
+                    } else {
+                        clearInterval(bundleInterval);
+                        bundlePlaying = false;
+                        btn.textContent = '▶ Play';
+                    }
+                }, speed);
+            }
+        }
+        
+        function bundleReset() {
+            bundleStep = 0;
+            renderBundleAtStep(0);
+            if (bundlePlaying) {
+                clearInterval(bundleInterval);
+                bundlePlaying = false;
+                document.querySelector('.panel:first-child .btn.primary').textContent = '▶ Play';
+            }
+        }
+        
+        // Bundle slider event
+        document.getElementById('bundle-slider').addEventListener('input', (e) => {
+            bundleStep = parseInt(e.target.value);
+            renderBundleAtStep(bundleStep);
+        });
+        
+        // ==================== CONTAINER ANIMATION ====================
+        
+        function renderContainerAtStep(step) {
+            const placements = containerData.slice(0, step);
+            
+            // Update step display
+            document.getElementById('container-step').textContent = `${step} / ${containerData.length}`;
+            document.getElementById('container-slider').value = step;
+            
+            const traces = [];
+            
+            // Container frame
+            traces.push({
+                type: 'mesh3d',
+                x: [0, containerDims.l, containerDims.l, 0, 0, containerDims.l, containerDims.l, 0],
+                y: [0, 0, containerDims.w, containerDims.w, 0, 0, containerDims.w, containerDims.w],
+                z: [0, 0, 0, 0, containerDims.h, containerDims.h, containerDims.h, containerDims.h],
+                i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                color: 'rgba(100,100,100,0.1)',
+                flatshading: true,
+                hoverinfo: 'skip'
+            });
+            
+            // Loaded bundles - each with unique color based on type + index
+            placements.forEach((p, i) => {
+                const isLatest = i === placements.length - 1;
+                // Base color by type, vary shade by index
+                const baseColors = { SMALL: '#FFC107', MEDIUM: '#FF9800', LARGE: '#FF5722' };
+                const bundleColor = getItemColor(i);  // Unique color per bundle
+                traces.push({
+                    type: 'mesh3d',
+                    x: [p.x, p.x+p.l, p.x+p.l, p.x, p.x, p.x+p.l, p.x+p.l, p.x],
+                    y: [p.y, p.y, p.y+p.w, p.y+p.w, p.y, p.y, p.y+p.w, p.y+p.w],
+                    z: [p.z, p.z, p.z, p.z, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h],
+                    i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                    j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                    k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                    color: bundleColor,
+                    opacity: isLatest ? 1 : 0.8,
+                    flatshading: true,
+                    name: `Bundle ${p.id}`,
+                    hovertemplate: `<b>Bundle #${p.id}</b><br>Type: ${p.type}<br>Items: ${p.items}<br>Size: ${p.l}x${p.w}x${p.h}<extra></extra>`
+                });
+                
+                // Wireframe for latest bundle (highlight effect)
+                if (isLatest) {
+                    const lx = [p.x, p.x+p.l, p.x+p.l, p.x, p.x, null, p.x, p.x, null, p.x+p.l, p.x+p.l, null, p.x+p.l, p.x+p.l, null, p.x, p.x, p.x+p.l, p.x+p.l, p.x, p.x];
+                    const ly = [p.y, p.y, p.y+p.w, p.y+p.w, p.y, null, p.y, p.y, null, p.y, p.y, null, p.y+p.w, p.y+p.w, null, p.y+p.w, p.y+p.w, p.y, p.y, p.y+p.w, p.y+p.w];
+                    const lz = [p.z, p.z, p.z, p.z, p.z, null, p.z, p.z+p.h, null, p.z, p.z+p.h, null, p.z, p.z+p.h, null, p.z, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h];
+                    traces.push({
+                        type: 'scatter3d',
+                        x: lx, y: ly, z: lz,
+                        mode: 'lines',
+                        line: { color: '#00ff88', width: 6 },
+                        hoverinfo: 'skip'
+                    });
+                    // Label
+                    traces.push({
+                        type: 'scatter3d',
+                        x: [p.x + p.l/2],
+                        y: [p.y + p.w/2],
+                        z: [p.z + p.h + 50],
+                        mode: 'text',
+                        text: [`#${p.id} (${p.type})`],
+                        textfont: { size: 14, color: '#00ff88' },
+                        hoverinfo: 'skip'
+                    });
+                }
+            });
+            
+            Plotly.react('container-viz', traces, {
+                scene: {
+                    xaxis: { title: 'L', range: [0, containerDims.l] },
+                    yaxis: { title: 'W', range: [0, containerDims.w] },
+                    zaxis: { title: 'H', range: [0, containerDims.h] },
+                    aspectmode: 'data',
+                    camera: { eye: { x: 1.5, y: 1.5, z: 1.0 } }
+                },
+                margin: { l: 0, r: 0, t: 0, b: 0 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: false
+            }, { responsive: true });
+        }
+        
+        function containerStepForward() {
+            if (containerStep < containerData.length) {
+                containerStep++;
+                renderContainerAtStep(containerStep);
+            }
+        }
+        
+        function containerStepBack() {
+            if (containerStep > 0) {
+                containerStep--;
+                renderContainerAtStep(containerStep);
+            }
+        }
+        
+        function containerPlayPause() {
+            const btn = event.target;
+            if (containerPlaying) {
+                clearInterval(containerInterval);
+                containerPlaying = false;
+                btn.textContent = '▶ Play';
+            } else {
+                containerPlaying = true;
+                btn.textContent = '⏸ Pause';
+                const speed = parseInt(document.getElementById('container-speed').value);
+                containerInterval = setInterval(() => {
+                    if (containerStep < containerData.length) {
+                        containerStep++;
+                        renderContainerAtStep(containerStep);
+                    } else {
+                        clearInterval(containerInterval);
+                        containerPlaying = false;
+                        btn.textContent = '▶ Play';
+                    }
+                }, speed);
+            }
+        }
+        
+        function containerReset() {
+            containerStep = 0;
+            renderContainerAtStep(0);
+            if (containerPlaying) {
+                clearInterval(containerInterval);
+                containerPlaying = false;
+                document.querySelector('.panel:last-child .btn.primary').textContent = '▶ Play';
+            }
+        }
+        
+        // Container slider event
+        document.getElementById('container-slider').addEventListener('input', (e) => {
+            containerStep = parseInt(e.target.value);
+            renderContainerAtStep(containerStep);
+        });
+        
+        // ==================== INIT ====================
+        initBundleSelector();
+        if (bundleData.length > 0) {
+            selectBundle(0);
+        }
+        renderContainerAtStep(0);
+    </script>
+</body>
+</html>
