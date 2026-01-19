@@ -6,7 +6,9 @@ export interface BatchOrderItem {
     orderId: string;
     trackingNumber: string;
     receiverName: string;
-    receiverAddress: string;
+    receiverAddressLine1: string;
+    receiverWardName: string;
+    receiverProvinceName: string;
     status: string;
     weightKg: number;
 }

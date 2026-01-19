@@ -31,9 +31,19 @@ public class CustomerCreateOrderRequest {
 
     // ==================== PICKUP ADDRESS ====================
     
-    @NotBlank(message = "Pickup address is required")
-    @Schema(description = "Full address where shipper will pickup the package")
-    private String pickupAddress;
+    // ==================== PICKUP ADDRESS ====================
+    
+    @NotBlank(message = "Pickup address line 1 is required")
+    @Schema(description = "Pickup address line 1")
+    private String pickupAddressLine1;
+
+    @NotBlank(message = "Pickup ward code is required")
+    @Schema(description = "Pickup ward code")
+    private String pickupWardCode;
+
+    @NotBlank(message = "Pickup province code is required")
+    @Schema(description = "Pickup province code")
+    private String pickupProvinceCode;
 
     @Schema(description = "Additional pickup instructions for shipper")
     private String pickupInstructions;
@@ -49,13 +59,17 @@ public class CustomerCreateOrderRequest {
     @Schema(description = "Receiver's phone number", example = "0912345678")
     private String receiverPhone;
 
-    @NotBlank(message = "Receiver address is required")
-    @Schema(description = "Full delivery address")
-    private String receiverAddress;
+    @NotBlank(message = "Receiver address line 1 is required")
+    @Schema(description = "Receiver address line 1")
+    private String receiverAddressLine1;
 
-    @NotBlank(message = "Destination ward code is required")
-    @Schema(description = "Ward code of destination address")
-    private String destinationWardCode;
+    @NotBlank(message = "Receiver ward code (destination) is required")
+    @Schema(description = "Receiver ward code")
+    private String receiverWardCode;
+
+    @NotBlank(message = "Receiver province code is required")
+    @Schema(description = "Receiver province code")
+    private String receiverProvinceCode;
 
     // ==================== PACKAGE INFORMATION ====================
 

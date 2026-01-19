@@ -32,9 +32,17 @@ public class CreateOrderRequest {
     @Schema(description = "Sender's phone number", example = "0901234567")
     private String senderPhone;
 
-    @NotBlank(message = "Sender address is required")
-    @Schema(description = "Sender's address", example = "123 Nguyen Hue, District 1, HCMC")
-    private String senderAddress;
+    @NotBlank(message = "Sender address line 1 is required")
+    @Schema(description = "Sender's address line 1", example = "123 Nguyen Hue")
+    private String senderAddressLine1;
+
+    @NotBlank(message = "Sender ward code is required")
+    @Schema(description = "Sender's ward code", example = "00001")
+    private String senderWardCode;
+
+    @NotBlank(message = "Sender province code is required")
+    @Schema(description = "Sender's province code", example = "79")
+    private String senderProvinceCode;
 
     // ==================== RECEIVER INFORMATION ====================
 
@@ -48,13 +56,17 @@ public class CreateOrderRequest {
     @Schema(description = "Receiver's phone number", example = "0912345678")
     private String receiverPhone;
 
-    @NotBlank(message = "Receiver address is required")
-    @Schema(description = "Receiver's full address", example = "456 Tran Hung Dao, Hoan Kiem, Hanoi")
-    private String receiverAddress;
+    @NotBlank(message = "Receiver address line 1 is required")
+    @Schema(description = "Receiver's address line 1", example = "456 Tran Hung Dao")
+    private String receiverAddressLine1;
 
-    @NotBlank(message = "Destination ward code is required")
-    @Schema(description = "Ward code of destination for routing", example = "00001")
-    private String destinationWardCode;
+    @NotBlank(message = "Receiver ward code is required")
+    @Schema(description = "Receiver's ward code", example = "00001")
+    private String receiverWardCode;
+
+    @NotBlank(message = "Receiver province code is required")
+    @Schema(description = "Receiver's province code", example = "01")
+    private String receiverProvinceCode;
 
     // ==================== PACKAGE INFORMATION ====================
 

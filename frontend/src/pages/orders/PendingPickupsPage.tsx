@@ -151,8 +151,9 @@ export function PendingPickupsPage() {
                                                 <span className="text-gray-500 text-xs">{order.senderPhone}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 max-w-xs truncate" title={order.senderAddress}>
-                                            {order.senderAddress}
+                                        <td className="px-6 py-4 max-w-xs truncate" title={`${order.senderAddressLine1}, ${order.senderWardName}, ${order.senderProvinceName}`}>
+                                            {/* Refactored: Display sender address using names for UI (codes in data for backend) */}
+                                            {`${order.senderAddressLine1}, ${order.senderWardName}, ${order.senderProvinceName}`}
                                         </td>
                                         <td className="px-6 py-4 text-gray-500">
                                             {formatDate(order.createdAt)}
@@ -202,7 +203,8 @@ export function PendingPickupsPage() {
                         <div className="bg-gray-50 p-3 rounded-lg text-sm space-y-1">
                             <p className="font-medium text-gray-700">Thông tin đơn hàng:</p>
                             <p><span className="text-gray-500">Mã vận đơn:</span> {selectedOrder?.trackingNumber}</p>
-                            <p><span className="text-gray-500">Địa chỉ:</span> {selectedOrder?.senderAddress}</p>
+                            {/* Refactored: Display sender address using names for UI */}
+                            <p><span className="text-gray-500">Địa chỉ:</span> {`${selectedOrder?.senderAddressLine1}, ${selectedOrder?.senderWardName}, ${selectedOrder?.senderProvinceName}`}</p>
                         </div>
 
                         <div className="space-y-2">

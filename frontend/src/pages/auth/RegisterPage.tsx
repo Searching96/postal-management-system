@@ -10,7 +10,9 @@ export function RegisterPage() {
     username: "",
     password: "",
     email: "",
-    address: "",
+    addressLine1: "",
+    wardCode: "",
+    provinceCode: "",
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -33,13 +35,13 @@ export function RegisterPage() {
         setSuccess(true);
         setTimeout(() => navigate("/login"), 2000);
       } else {
-        setError(response.message || "Registration failed");
+        setError(response.message || "Đăng ký thất bại");
       }
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Registration failed. Please try again."
+          : "Đăng ký thất bại. Vui lòng thử lại."
       );
     } finally {
       setIsLoading(false);
@@ -52,9 +54,9 @@ export function RegisterPage() {
         <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8 text-center">
           <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
           <h2 className="mt-4 text-2xl font-bold text-gray-900">
-            Registration Successful!
+            Đăng Ký Thành Công!
           </h2>
-          <p className="mt-2 text-gray-600">Redirecting to login...</p>
+          <p className="mt-2 text-gray-600">Đang chuyển hướng đến đăng nhập...</p>
         </div>
       </div>
     );
@@ -64,9 +66,9 @@ export function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
+          <h2 className="text-3xl font-bold text-gray-900">Tạo Tài Khoản</h2>
           <p className="mt-2 text-sm text-gray-600">
-            Register as a new customer
+            Đăng ký tài khoản khách hàng mới
           </p>
         </div>
 
@@ -74,18 +76,18 @@ export function RegisterPage() {
           {error && <Alert type="error">{error}</Alert>}
 
           <FormInput
-            label="Full Name"
+            label="Tên Đầy Đủ"
             name="fullName"
             icon={User}
             type="text"
             required
             value={formData.fullName}
             onChange={handleChange}
-            placeholder="John Doe"
+            placeholder="Nguyễn Văn A"
           />
 
           <FormInput
-            label="Phone Number"
+            label="Số Điện Thoại"
             name="username"
             icon={Mail}
             type="text"
@@ -108,7 +110,7 @@ export function RegisterPage() {
           />
 
           <FormInput
-            label="Password"
+            label="Mật Khẩu"
             name="password"
             icon={Lock}
             type="password"
@@ -122,7 +124,10 @@ export function RegisterPage() {
           <AddressSelector
             label="Địa chỉ thường trú"
             required
-            onAddressChange={(val) => setFormData((prev) => ({ ...prev, address: val }))}
+            onAddressLine1Change={(val) => setFormData((prev) => ({ ...prev, addressLine1: val }))}
+            onAddressChange={() => { }} // legacy
+            onWardChange={(code) => setFormData((prev) => ({ ...prev, wardCode: code }))}
+            onProvinceChange={(code) => setFormData((prev) => ({ ...prev, provinceCode: code }))}
           />
 
           <Button
@@ -130,16 +135,16 @@ export function RegisterPage() {
             isLoading={isLoading}
             className="w-full py-3 mt-6"
           >
-            Create Account
+            Tạo Tài Khoản
           </Button>
 
           <p className="text-center text-sm text-gray-600">
-            Already have an account?{" "}
+            Đã có tài khoản?{" "}
             <Link
               to="/login"
               className="font-medium text-primary-600 hover:text-primary-500"
             >
-              Sign in
+              Đăng nhập
             </Link>
           </p>
         </form>

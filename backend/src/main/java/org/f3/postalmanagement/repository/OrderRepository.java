@@ -144,4 +144,33 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     Page<Order> findByAssignedShipperAccountAndStatus(@Param("account") org.f3.postalmanagement.entity.actor.Account account,
                                                        @Param("status") OrderStatus status,
                                                        Pageable pageable);
+
+    /**
+     * Find orders assigned to a shipper for delivery (last mile) with search
+     */
+    @Query("SELECT o FROM Order o WHERE o.assignedShipper.account = :account AND " +
+           "o.status = :status AND " +
+           "(LOWER(o.trackingNumber) LIKE LOWER(:search) OR " +
+           "LOWER(o.receiverName) LIKE LOWER(:search) OR " +
+           "LOWER(o.receiverPhone) LIKE LOWER(:search) OR " +
+           "LOWER(o.receiverAddressLine1) LIKE LOWER(:search)) " +
+           "ORDER BY o.createdAt DESC")
+    Page<Order> findByAssignedShipperAccountAndStatusWithSearch(@Param("account") org.f3.postalmanagement.entity.actor.Account account,
+                                                                 @Param("status") OrderStatus status,
+                                                                 @Param("search") String search,
+                                                                 Pageable pageable);
+
+    /**
+     * Find orders assigned to shipper for pickup (PENDING_PICKUP) with search
+     */
+    @Query("SELECT o FROM Order o WHERE o.assignedShipper.id = :shipperId AND " +
+           "o.status = org.f3.postalmanagement.enums.OrderStatus.PENDING_PICKUP AND " +
+           "(LOWER(o.trackingNumber) LIKE LOWER(:search) OR " +
+           "LOWER(o.senderName) LIKE LOWER(:search) OR " +
+           "LOWER(o.senderPhone) LIKE LOWER(:search) OR " +
+           "LOWER(o.senderAddressLine1) LIKE LOWER(:search)) " +
+           "ORDER BY o.createdAt DESC")
+    Page<Order> findAssignedPickupOrdersWithSearch(@Param("shipperId") UUID shipperId,
+                                                   @Param("search") String search,
+                                                   Pageable pageable);
 }

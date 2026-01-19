@@ -28,8 +28,12 @@ public class Office extends BaseEntity {
     @Column(name="office_phone_number", nullable = false)
     private String officePhoneNumber;
 
-    @Column(name="office_address", nullable = false)
-    private String officeAddress;
+    @Column(name="office_address_line1", nullable = false)
+    private String officeAddressLine1;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="ward_code")
+    private Ward ward;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="region_id", nullable = false)

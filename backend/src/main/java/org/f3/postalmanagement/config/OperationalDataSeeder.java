@@ -108,7 +108,7 @@ public class OperationalDataSeeder implements CommandLineRunner {
             officeIndex++;
             for (int i = 1; i <= SHIPPERS_PER_OFFICE; i++) {
                 String provinceCode = office.getProvince().getCode().toLowerCase();
-                String phone = "094" + String.format("%02d", officeIndex) + String.format("%04d", i);
+                String phone = "094" + String.format("%02d", officeIndex) + String.format("%05d", i);
                 String email = "shipper." + provinceCode + "." + String.format("%02d", i) + "@f3postal.com";
 
                 // Check if shipper already exists by phone (which is the username)
@@ -172,7 +172,7 @@ public class OperationalDataSeeder implements CommandLineRunner {
             customer.setAccount(account);
             customer.setFullName(firstName + " " + lastName);
             customer.setPhoneNumber(phone);
-            customer.setAddress(generateAddress(i));
+            customer.setAddressLine1(generateAddress(i));
             customer.setSubscriptionPlan(SubscriptionPlan.BASIC);
             
             customers.add(customerRepository.save(customer));
@@ -239,11 +239,11 @@ public class OperationalDataSeeder implements CommandLineRunner {
             order.setSenderCustomer(sender);
             order.setSenderName(sender.getFullName());
             order.setSenderPhone(sender.getPhoneNumber());
-            order.setSenderAddress(sender.getAddress());
+            order.setSenderAddressLine1(sender.getAddressLine1());
             
             order.setReceiverName(receiver.getFullName());
             order.setReceiverPhone(receiver.getPhoneNumber());
-            order.setReceiverAddress(receiver.getAddress());
+            order.setReceiverAddressLine1(receiver.getAddressLine1());
             order.setOriginOffice(originOffice);
             order.setDestinationOffice(destOffice);
             order.setCreatedByEmployee(defaultCreator);
@@ -252,15 +252,15 @@ public class OperationalDataSeeder implements CommandLineRunner {
             List<Ward> provinceWards = wardRepository.findByProvince_Code(destOffice.getProvince().getCode());
             if (!provinceWards.isEmpty()) {
                 Ward randomWard = provinceWards.get(random.nextInt(provinceWards.size()));
-                order.setDestinationWard(randomWard);
+                order.setReceiverWard(randomWard);
                 // Update receiver address to include Ward and Province for realism
-                String streetAddr = receiver.getAddress().split(",")[0]; 
+                String streetAddr = receiver.getAddressLine1().split(",")[0]; 
                 if (streetAddr.contains("Phường") || streetAddr.contains("Xã")) {
                     streetAddr = generateAddress(created);
                 }
-                order.setReceiverAddress(streetAddr + ", " + randomWard.getName() + ", " + destOffice.getProvince().getName());
+                order.setReceiverAddressLine1(streetAddr + ", " + randomWard.getName() + ", " + destOffice.getProvince().getName());
             } else {
-                 order.setReceiverAddress(receiver.getAddress() + ", " + destOffice.getProvince().getName());
+                 order.setReceiverAddressLine1(receiver.getAddressLine1() + ", " + destOffice.getProvince().getName());
             }
             
             // Set current location based on status

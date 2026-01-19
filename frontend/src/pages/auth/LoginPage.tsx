@@ -26,13 +26,13 @@ export function LoginPage() {
       if (isAxiosError(err) && err.response?.data) {
         const data = err.response.data as ApiResponse<null>;
         if (data.errorCode === "BAD_CREDENTIALS") {
-          setError("Invalid phone number or password");
+          setError("Số điện thoại hoặc mật khẩu không hợp lệ");
         } else {
-          setError(data.message || "Login failed. Please try again.");
+          setError(data.message || "Đăng nhập thất bại. Vui lòng thử lại.");
         }
       } else {
         setError(
-          err instanceof Error ? err.message : "Login failed. Please try again."
+          err instanceof Error ? err.message : "Đăng nhập thất bại. Vui lòng thử lại."
         );
       }
     } finally {
@@ -45,9 +45,9 @@ export function LoginPage() {
       <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900">
-            Postal Management
+            Quản Lý Bưu Chính
           </h2>
-          <p className="mt-2 text-sm text-gray-600">Sign in to your account</p>
+          <p className="mt-2 text-sm text-gray-600">Đăng nhập vào tài khoản của bạn</p>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -55,7 +55,7 @@ export function LoginPage() {
 
           <div className="space-y-4">
             <FormInput
-              label="Phone Number"
+              label="Số Điện Thoại"
               icon={Mail}
               type="text"
               autoComplete="tel"
@@ -67,7 +67,7 @@ export function LoginPage() {
             />
 
             <FormInput
-              label="Password"
+              label="Mật Khẩu"
               icon={Lock}
               type="password"
               autoComplete="current-password"
@@ -80,16 +80,16 @@ export function LoginPage() {
           </div>
 
           <Button type="submit" isLoading={isLoading} className="w-full py-3">
-            Sign in
+            Đăng Nhập
           </Button>
 
           <p className="text-center text-sm text-gray-600">
-            Don't have an account?{" "}
+            Chưa có tài khoản?{" "}
             <Link
               to="/register"
               className="font-medium text-primary-600 hover:text-primary-500"
             >
-              Register here
+              Đăng ký tại đây
             </Link>
           </p>
         </form>

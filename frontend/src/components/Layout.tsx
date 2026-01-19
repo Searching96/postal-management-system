@@ -69,7 +69,6 @@ export function Layout() {
     primaryNav.push({ to: "/orders", icon: Package, label: "Quản lý đơn hàng" });
 
     if (isPO) {
-      primaryNav.push({ to: "/orders/create", icon: Plus, label: "Tạo vận đơn" });
       primaryNav.push({ to: "/orders/pending-pickups", icon: Truck, label: "Đơn chờ lấy hàng" });
     }
 
@@ -80,8 +79,8 @@ export function Layout() {
   }
 
   if (role === "SHIPPER") {
-    primaryNav.push({ to: "/shipper", icon: Truck, label: "Đơn hàng của tôi" });
-    primaryNav.push({ to: "/shipper/deliveries", icon: MapPin, label: "Giao hàng (Bản đồ)" });
+    primaryNav.push({ to: "/shipper/pickups", icon: Truck, label: "Đơn hàng cần lấy" });
+    primaryNav.push({ to: "/shipper/deliveries", icon: MapPin, label: "Đơn hàng cần giao" });
   }
 
   if (role === "CUSTOMER") {

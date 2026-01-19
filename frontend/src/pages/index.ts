@@ -1,5 +1,6 @@
 export { LoginPage } from './auth/LoginPage';
 export { RegisterPage } from './auth/RegisterPage';
+export { default as DebugLoginPage } from './auth/DebugLoginPage';
 export { DashboardPage } from './common/DashboardPage';
 export { ProvincesPage } from './common/ProvincesPage';
 export { ProfilePage } from './common/ProfilePage';
@@ -14,7 +15,6 @@ export { TrackOrderPage } from './orders/TrackOrderPage';
 export { BatchListPage } from './batches/BatchListPage';
 export { BatchDetailsPage } from './batches/BatchDetailsPage';
 export { ShipperManagementPage } from './admin/ShipperManagementPage';
-export { ShipperDashboardPage } from './shipper/ShipperDashboardPage';
 export { PendingPickupsPage } from './orders/PendingPickupsPage';
 export { CustomerPickupPage } from './customer/CustomerPickupPage';
 export { LiveTrackingPage } from './tracking/LiveTrackingPage';
@@ -23,4 +23,6 @@ export { AssignDeliveryPage } from './orders/AssignDeliveryPage';
 
 export { default as RouteManagementPage } from './admin/RouteManagementPage';
 export { default as MessagesPage } from './common/MessagesPage';
+export { default as ShipperDashboardPage } from './shipper/ShipperDashboardPage';
 export { default as ShipperDeliveryPage } from './shipper/ShipperDeliveryPage';
+export { default as ShipperPickupPage } from './shipper/ShipperPickupPage';

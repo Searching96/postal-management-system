@@ -17,6 +17,7 @@ import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.entity.actor.Customer;
 import org.f3.postalmanagement.entity.actor.Employee;
 import org.f3.postalmanagement.entity.administrative.Ward;
+import org.f3.postalmanagement.entity.administrative.Province;
 import org.f3.postalmanagement.entity.order.Order;
 import org.f3.postalmanagement.entity.order.OrderStatusHistory;
 import org.f3.postalmanagement.entity.unit.Office;
@@ -55,6 +56,7 @@ public class OrderServiceImpl implements IOrderService {
     private final EmployeeRepository employeeRepository;
     private final CustomerRepository customerRepository;
     private final WardRepository wardRepository;
+    private final ProvinceRepository provinceRepository;
     private final OfficeRepository officeRepository;
     private final INotificationService notificationService;
 
@@ -96,14 +98,14 @@ public class OrderServiceImpl implements IOrderService {
         if (currentAccount.getRole() == Role.CUSTOMER) {
             // Customer must provide originOfficeId
             if (request.getOriginOfficeId() == null) {
-                throw new IllegalArgumentException("Origin office ID is required for customers");
+                throw new IllegalArgumentException("ID bưu cục gốc là bắt buộc cho khách hàng");
             }
             originOffice = officeRepository.findById(request.getOriginOfficeId())
-                    .orElseThrow(() -> new IllegalArgumentException("Office not found: " + request.getOriginOfficeId()));
-            
+                    .orElseThrow(() -> new IllegalArgumentException("Bưu cục không tìm thấy: " + request.getOriginOfficeId()));
+
             // Get customer's subscription plan for discount
             Customer customer = customerRepository.findByAccountId(currentAccount.getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
+                    .orElseThrow(() -> new IllegalArgumentException("Khách hàng không tìm thấy"));
             subscriptionPlan = customer.getSubscriptionPlan();
         } else {
             // Staff uses their office or provided originOfficeId
@@ -211,9 +213,17 @@ public class OrderServiceImpl implements IOrderService {
             throw new IllegalArgumentException("Orders can only be created at post offices, not warehouses");
         }
         
-        // Get destination ward
-        Ward destinationWard = wardRepository.findById(request.getDestinationWardCode())
-                .orElseThrow(() -> new IllegalArgumentException("Destination ward not found: " + request.getDestinationWardCode()));
+        // Get receiver ward/province (destination)
+        Ward receiverWard = wardRepository.findById(request.getReceiverWardCode())
+                .orElseThrow(() -> new IllegalArgumentException("Receiver ward not found: " + request.getReceiverWardCode()));
+        Province receiverProvince = provinceRepository.findById(request.getReceiverProvinceCode())
+                .orElseThrow(() -> new IllegalArgumentException("Receiver province not found: " + request.getReceiverProvinceCode()));
+
+        // Get sender ward/province
+        Ward senderWard = wardRepository.findById(request.getSenderWardCode())
+                .orElseThrow(() -> new IllegalArgumentException("Sender ward not found: " + request.getSenderWardCode()));
+        Province senderProvince = provinceRepository.findById(request.getSenderProvinceCode())
+                .orElseThrow(() -> new IllegalArgumentException("Sender province not found: " + request.getSenderProvinceCode()));
         
         // Get or create sender customer
         Customer senderCustomer;
@@ -228,7 +238,9 @@ public class OrderServiceImpl implements IOrderService {
                         Customer newCustomer = new Customer();
                         newCustomer.setFullName(request.getSenderName());
                         newCustomer.setPhoneNumber(request.getSenderPhone());
-                        newCustomer.setAddress(request.getSenderAddress());
+                        newCustomer.setAddressLine1(request.getSenderAddressLine1());
+                        newCustomer.setWard(senderWard);
+                        newCustomer.setProvince(senderProvince);
                         newCustomer.setSubscriptionPlan(SubscriptionPlan.BASIC);
                         // No account for walk-in customer
                         return customerRepository.save(newCustomer);
@@ -241,8 +253,8 @@ public class OrderServiceImpl implements IOrderService {
         BigDecimal chargeableWeight = request.getWeightKg().max(volumetricWeight != null ? volumetricWeight : BigDecimal.ZERO);
         
         // Calculate pricing
-        boolean sameProvince = originOffice.getProvince().getCode().equals(destinationWard.getProvince().getCode());
-        boolean sameRegion = originOffice.getRegion().getId().equals(destinationWard.getProvince().getAdministrativeRegion().getId());
+        boolean sameProvince = originOffice.getProvince().getCode().equals(receiverWard.getProvince().getCode());
+        boolean sameRegion = originOffice.getRegion().getId().equals(receiverWard.getProvince().getAdministrativeRegion().getId());
         
         BigDecimal baseRate = getBaseRate(request.getServiceType());
         BigDecimal weightSurcharge = calculateWeightSurcharge(chargeableWeight);
@@ -270,13 +282,16 @@ public class OrderServiceImpl implements IOrderService {
         order.setSenderCustomer(senderCustomer);
         order.setSenderName(request.getSenderName());
         order.setSenderPhone(request.getSenderPhone());
-        order.setSenderAddress(request.getSenderAddress());
+        order.setSenderAddressLine1(request.getSenderAddressLine1());
+        order.setSenderWard(senderWard);
+        order.setSenderProvince(senderProvince);
         
         // Receiver info
         order.setReceiverName(request.getReceiverName());
         order.setReceiverPhone(request.getReceiverPhone());
-        order.setReceiverAddress(request.getReceiverAddress());
-        order.setDestinationWard(destinationWard);
+        order.setReceiverAddressLine1(request.getReceiverAddressLine1());
+        order.setReceiverWard(receiverWard);
+        order.setReceiverProvince(receiverProvince);
         
         // Package info
         order.setPackageType(request.getPackageType());
@@ -382,18 +397,23 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<OrderResponse> getOrdersByCustomerId(UUID customerId, Pageable pageable, Account currentAccount) {
+        // Get the actual customer for authorization
+        Customer customer = customerRepository.findByAccountId(currentAccount.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Customer not found for account"));
+
         // Customers can only view their own orders
         if (currentAccount.getRole() == Role.CUSTOMER) {
-            Customer customer = customerRepository.findByAccountId(currentAccount.getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Customer not found for account"));
-            if (!customer.getId().equals(customerId)) {
+            // Allow if requested ID is either the Customer ID or the Account ID
+            if (!customer.getId().equals(customerId) && !currentAccount.getId().equals(customerId)) {
                 throw new AccessDeniedException("You can only view your own orders");
             }
+            // Use the actual customer ID for the query
+            customerId = customer.getId();
         }
-        
+
         Page<Order> orderPage = orderRepository.findBySenderCustomerId(customerId, pageable);
         Page<OrderResponse> responsePage = orderPage.map(this::mapToOrderResponse);
-        
+
         return mapToPageResponse(responsePage);
     }
 
@@ -540,12 +560,14 @@ public class OrderServiceImpl implements IOrderService {
                 .senderCustomerId(order.getSenderCustomer() != null ? order.getSenderCustomer().getId() : null)
                 .senderName(order.getSenderName())
                 .senderPhone(order.getSenderPhone())
-                .senderAddress(order.getSenderAddress())
+                .senderAddressLine1(order.getSenderAddressLine1())
+                .senderWardCode(order.getSenderWard() != null ? order.getSenderWard().getCode() : null)
+                .senderProvinceCode(order.getSenderProvince() != null ? order.getSenderProvince().getCode() : null)
                 .receiverName(order.getReceiverName())
                 .receiverPhone(order.getReceiverPhone())
-                .receiverAddress(order.getReceiverAddress())
-                .destinationWardName(order.getDestinationWard() != null ? order.getDestinationWard().getName() : null)
-                .destinationProvinceName(order.getDestinationWard() != null ? order.getDestinationWard().getProvince().getName() : null)
+                .receiverAddressLine1(order.getReceiverAddressLine1())
+                .receiverWardCode(order.getReceiverWard() != null ? order.getReceiverWard().getCode() : null)
+                .receiverProvinceCode(order.getReceiverProvince() != null ? order.getReceiverProvince().getCode() : null)
                 .packageType(order.getPackageType())
                 .packageDescription(order.getPackageDescription())
                 .weightKg(order.getWeightKg())
@@ -601,7 +623,7 @@ public class OrderServiceImpl implements IOrderService {
                 .map(h -> OrderResponse.StatusHistoryItem.builder()
                         .status(h.getStatus())
                         .description(h.getDescription() != null ? h.getDescription() : getStatusDescription(h.getStatus()))
-                        .location(h.getOffice() != null ? h.getOffice().getOfficeAddress() : h.getLocationDetails())
+                        .location(h.getOffice() != null ? h.getOffice().getOfficeAddressLine1() : h.getLocationDetails())
                         .timestamp(h.getCreatedAt())
                         .build())
                 .toList();
@@ -645,18 +667,26 @@ public class OrderServiceImpl implements IOrderService {
             throw new IllegalArgumentException("Selected office must be a post office, not a warehouse");
         }
         
-        // Get destination ward
-        Ward destinationWard = wardRepository.findById(request.getDestinationWardCode())
-                .orElseThrow(() -> new IllegalArgumentException("Destination ward not found: " + request.getDestinationWardCode()));
+        // Get receiver ward/province
+        Ward receiverWard = wardRepository.findById(request.getReceiverWardCode())
+                .orElseThrow(() -> new IllegalArgumentException("Receiver ward not found: " + request.getReceiverWardCode()));
+        Province receiverProvince = provinceRepository.findById(request.getReceiverProvinceCode())
+                .orElseThrow(() -> new IllegalArgumentException("Receiver province not found: " + request.getReceiverProvinceCode()));
+
+        // Get pickup ward/province
+        Ward pickupWard = wardRepository.findById(request.getPickupWardCode())
+                .orElseThrow(() -> new IllegalArgumentException("Pickup ward not found: " + request.getPickupWardCode()));
+        Province pickupProvince = provinceRepository.findById(request.getPickupProvinceCode())
+                .orElseThrow(() -> new IllegalArgumentException("Pickup province not found: " + request.getPickupProvinceCode()));
         
         // Calculate weights
         BigDecimal volumetricWeight = calculateVolumetricWeight(request.getLengthCm(), request.getWidthCm(), request.getHeightCm());
         BigDecimal chargeableWeight = request.getWeightKg().max(volumetricWeight != null ? volumetricWeight : BigDecimal.ZERO);
         
         // Calculate pricing
-        boolean sameProvince = originOffice.getProvince().getCode().equals(destinationWard.getProvince().getCode());
+        boolean sameProvince = originOffice.getProvince().getCode().equals(receiverWard.getProvince().getCode());
         boolean sameRegion = originOffice.getRegion().getId()
-                .equals(destinationWard.getProvince().getAdministrativeRegion().getId());
+                .equals(receiverWard.getProvince().getAdministrativeRegion().getId());
         
         BigDecimal baseRate = getBaseRate(request.getServiceType());
         BigDecimal weightSurcharge = calculateWeightSurcharge(chargeableWeight);
@@ -689,13 +719,16 @@ public class OrderServiceImpl implements IOrderService {
         order.setSenderCustomer(customer);
         order.setSenderName(customer.getFullName());
         order.setSenderPhone(customer.getPhoneNumber());
-        order.setSenderAddress(request.getPickupAddress());
+        order.setSenderAddressLine1(request.getPickupAddressLine1());
+        order.setSenderWard(pickupWard);
+        order.setSenderProvince(pickupProvince);
         
         // Receiver info
         order.setReceiverName(request.getReceiverName());
         order.setReceiverPhone(request.getReceiverPhone());
-        order.setReceiverAddress(request.getReceiverAddress());
-        order.setDestinationWard(destinationWard);
+        order.setReceiverAddressLine1(request.getReceiverAddressLine1());
+        order.setReceiverWard(receiverWard);
+        order.setReceiverProvince(receiverProvince);
         
         // Package info
         order.setPackageType(request.getPackageType());
@@ -735,12 +768,12 @@ public class OrderServiceImpl implements IOrderService {
         history.setOrder(savedOrder);
         history.setStatus(OrderStatus.PENDING_PICKUP);
         history.setOffice(originOffice);
-        history.setDescription("Order created online by customer. Awaiting shipper pickup at: " + request.getPickupAddress());
-        history.setLocationDetails(request.getPickupAddress());
+        history.setDescription("Order created online by customer. Awaiting shipper pickup at: " + request.getPickupAddressLine1());
+        history.setLocationDetails(request.getPickupAddressLine1());
         statusHistoryRepository.save(history);
         
         log.info("Customer created pickup order {} for pickup at {}", 
-                trackingNumber, request.getPickupAddress());
+                trackingNumber, request.getPickupAddressLine1());
         
         // Send notification to office staff
         NotificationMessage notification = NotificationMessage.createNewOrderNotification(
@@ -749,7 +782,7 @@ public class OrderServiceImpl implements IOrderService {
                 originOffice.getId(),
                 originOffice.getOfficeName(),
                 customer.getFullName(),
-                request.getPickupAddress()
+                request.getPickupAddressLine1()
         );
         notificationService.notifyOfficeNewPickupOrder(
                 originOffice.getId(), 
@@ -837,7 +870,7 @@ public class OrderServiceImpl implements IOrderService {
                 shipper.getId(),
                 shipper.getFullName(),
                 order.getSenderName(),
-                order.getSenderAddress(),
+                order.getSenderAddressLine1(),
                 currentEmployee.getFullName()
         );
         notificationService.notifyShipperAssignment(shipper.getId(), notification);
@@ -847,36 +880,56 @@ public class OrderServiceImpl implements IOrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<OrderResponse> getShipperDeliveryOrders(Pageable pageable, Account currentAccount) {
+    public PageResponse<OrderResponse> getShipperDeliveryOrders(String search, Pageable pageable, Account currentAccount) {
         if (currentAccount.getRole() != Role.SHIPPER) {
             throw new AccessDeniedException("Only shippers can view assigned deliveries");
         }
 
         // Find orders assigned to this shipper with status OUT_FOR_DELIVERY
-        Page<Order> orderPage = orderRepository.findByAssignedShipperAccountAndStatus(
-                currentAccount, 
-                OrderStatus.OUT_FOR_DELIVERY, 
-                pageable
-        );
-        
+        Page<Order> orderPage;
+
+        if (search != null && !search.trim().isEmpty()) {
+            String searchTerm = "%" + search.trim().toLowerCase() + "%";
+            orderPage = orderRepository.findByAssignedShipperAccountAndStatusWithSearch(
+                    currentAccount,
+                    OrderStatus.OUT_FOR_DELIVERY,
+                    searchTerm,
+                    pageable
+            );
+        } else {
+            orderPage = orderRepository.findByAssignedShipperAccountAndStatus(
+                    currentAccount,
+                    OrderStatus.OUT_FOR_DELIVERY,
+                    pageable
+            );
+        }
+
         Page<OrderResponse> responsePage = orderPage.map(this::mapToOrderResponse);
         return mapToPageResponse(responsePage);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<OrderResponse> getShipperAssignedOrders(Pageable pageable, Account currentAccount) {
+    public PageResponse<OrderResponse> getShipperAssignedOrders(String search, Pageable pageable, Account currentAccount) {
         // Validate shipper role
         if (currentAccount.getRole() != Role.SHIPPER) {
             throw new AccessDeniedException("Only shippers can access this endpoint");
         }
-        
+
         Employee shipper = employeeRepository.findById(currentAccount.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Shipper not found"));
-        
-        Page<Order> orderPage = orderRepository.findAssignedPickupOrders(shipper.getId(), pageable);
+
+        Page<Order> orderPage;
+
+        if (search != null && !search.trim().isEmpty()) {
+            String searchTerm = "%" + search.trim().toLowerCase() + "%";
+            orderPage = orderRepository.findAssignedPickupOrdersWithSearch(shipper.getId(), searchTerm, pageable);
+        } else {
+            orderPage = orderRepository.findAssignedPickupOrders(shipper.getId(), pageable);
+        }
+
         Page<OrderResponse> responsePage = orderPage.map(this::mapToOrderResponse);
-        
+
         return mapToPageResponse(responsePage);
     }
 
@@ -918,7 +971,7 @@ public class OrderServiceImpl implements IOrderService {
         history.setPreviousStatus(previousStatus);
         history.setEmployee(shipper);
         history.setDescription("Package picked up from customer by shipper " + shipper.getFullName());
-        history.setLocationDetails(order.getSenderAddress());
+        history.setLocationDetails(order.getSenderAddressLine1());
         statusHistoryRepository.save(history);
         
         log.info("Order {} picked up by shipper {}", order.getTrackingNumber(), shipper.getFullName());

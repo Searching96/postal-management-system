@@ -157,7 +157,7 @@ public class HubAdminServiceImpl implements IHubAdminService {
                 .officeName(office.getOfficeName())
                 .officeEmail(office.getOfficeEmail())
                 .officePhoneNumber(office.getOfficePhoneNumber())
-                .officeAddress(office.getOfficeAddress())
+                .officeAddressLine1(office.getOfficeAddressLine1())
                 .officeType(office.getOfficeType().name())
                 .provinceCode(office.getProvince() != null ? office.getProvince().getCode() : null)
                 .provinceName(office.getProvince() != null ? office.getProvince().getName() : null)

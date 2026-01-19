@@ -46,7 +46,7 @@ public class UserServiceImpl implements IUserService {
                     .isActive(account.isActive())
                     .fullName(customer.getFullName())
                     .phoneNumber(customer.getPhoneNumber())
-                    .address(customer.getAddress())
+                    .address(customer.getAddressLine1())
                     .subscriptionPlan(customer.getSubscriptionPlan().name())
                     .build();
 
@@ -86,7 +86,7 @@ public class UserServiceImpl implements IUserService {
                         .name(office.getOfficeName())
                         .email(office.getOfficeEmail())
                         .phoneNumber(office.getOfficePhoneNumber())
-                        .address(office.getOfficeAddress())
+                        .address(office.getOfficeAddressLine1())
                         .type(office.getOfficeType().name());
 
                 // Add region info

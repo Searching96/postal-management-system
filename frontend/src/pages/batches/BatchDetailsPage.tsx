@@ -210,7 +210,7 @@ export function BatchDetailsPage() {
                                 <tr key={order.id} className="border-t">
                                     <td className="py-3 px-6 font-medium text-primary-600">{order.trackingNumber}</td>
                                     <td className="py-3 px-4">{order.receiverName}</td>
-                                    <td className="py-3 px-4 max-w-xs truncate">{order.receiverAddress}</td>
+                                    <td className="py-3 px-4 max-w-xs truncate">{`${order.receiverAddressLine1}, ${order.receiverWardName}, ${order.receiverProvinceName}`}</td>
                                     <td className="py-3 px-4 text-center">{order.weightKg} kg</td>
                                     <td className="py-3 px-6 text-right">
                                         <Button variant="ghost" size="sm" onClick={() => navigate(`/orders/${order.id}`)}>

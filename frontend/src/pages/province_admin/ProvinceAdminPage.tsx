@@ -273,14 +273,39 @@ export function ProvinceAdminPage() {
     warehouseName: "",
     warehouseEmail: "",
     warehousePhoneNumber: "",
-    warehouseAddress: "",
+    warehouseAddressLine1: "",
     warehouseCapacity: 1000,
     postOfficeName: "",
     postOfficeEmail: "",
     postOfficePhoneNumber: "",
-    postOfficeAddress: "",
+    postOfficeAddressLine1: "",
+    wardCode: "",
     provinceCode: "",
   });
+
+  const [wards, setWards] = useState<any[]>([]);
+  const [isWardsLoading, setIsWardsLoading] = useState(false);
+
+  useEffect(() => {
+    if (officeFormData.provinceCode) {
+      const fetchWards = async () => {
+        setIsWardsLoading(true);
+        try {
+          const response = await administrativeService.getWardsByProvince(officeFormData.provinceCode as string);
+          if (response.success) {
+            setWards(response.data);
+          }
+        } catch (error) {
+          console.error("Failed to fetch wards", error);
+        } finally {
+          setIsWardsLoading(false);
+        }
+      };
+      fetchWards();
+    } else {
+      setWards([]);
+    }
+  }, [officeFormData.provinceCode]);
 
   const [officeErrors, setOfficeErrors] = useState<Record<string, string>>({});
 
@@ -290,14 +315,18 @@ export function ProvinceAdminPage() {
 
     if (!officeFormData.provinceCode) errors.provinceCode = "Vui lòng chọn Tỉnh/Thành quản lý";
 
+    if (!officeFormData.wardCode) {
+      errors.wardCode = "Vui lòng chọn Phường/Xã cho cặp bưu cục";
+    }
+
     // Warehouse
     if (!officeFormData.warehouseName) errors.warehouseName = "Tên kho không được để trống";
     if (!officeFormData.warehouseEmail) errors.warehouseEmail = "Email không được để trống";
     if (!phoneRegex.test(officeFormData.warehousePhoneNumber)) {
       errors.warehousePhoneNumber = "Số điện thoại kho phải từ 10-11 chữ số";
     }
-    if (!officeFormData.warehouseAddress || officeFormData.warehouseAddress.split(", ").length < 2) {
-      errors.warehouseAddress = "Vui lòng chọn đầy đủ địa chỉ kho (Phường/Xã và Số nhà)";
+    if (!officeFormData.warehouseAddressLine1) {
+      errors.warehouseAddressLine1 = "Vui lòng nhập địa chỉ kho";
     }
     if (!officeFormData.warehouseCapacity || officeFormData.warehouseCapacity <= 0) {
       errors.warehouseCapacity = "Công suất kho phải lớn hơn 0";
@@ -309,8 +338,8 @@ export function ProvinceAdminPage() {
     if (!phoneRegex.test(officeFormData.postOfficePhoneNumber)) {
       errors.postOfficePhoneNumber = "Số điện thoại bưu cục phải từ 10-11 chữ số";
     }
-    if (!officeFormData.postOfficeAddress || officeFormData.postOfficeAddress.split(", ").length < 2) {
-      errors.postOfficeAddress = "Vui lòng chọn đầy đủ địa chỉ bưu cục (Phường/Xã và Số nhà)";
+    if (!officeFormData.postOfficeAddressLine1) {
+      errors.postOfficeAddressLine1 = "Vui lòng nhập địa chỉ bưu cục";
     }
 
     setOfficeErrors(errors);
@@ -330,8 +359,9 @@ export function ProvinceAdminPage() {
         setSuccess("Tạo bưu cục và kho thành công");
         setIsOfficeModalOpen(false);
         setOfficeFormData({
-          warehouseName: "", warehouseEmail: "", warehousePhoneNumber: "", warehouseAddress: "", warehouseCapacity: 1000,
-          postOfficeName: "", postOfficeEmail: "", postOfficePhoneNumber: "", postOfficeAddress: "",
+          warehouseName: "", warehouseEmail: "", warehousePhoneNumber: "", warehouseAddressLine1: "", warehouseCapacity: 1000,
+          postOfficeName: "", postOfficeEmail: "", postOfficePhoneNumber: "", postOfficeAddressLine1: "",
+          wardCode: "",
           provinceCode: currentAdminProvince?.code || "",
         });
         fetchData();
@@ -858,6 +888,32 @@ export function ProvinceAdminPage() {
               </div>
             )}
 
+            {/* Shared Ward Selection - Always required for Ward Office Pair */}
+            <div className="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-1.5 bg-gray-100 rounded-lg">
+                  <MapPin className="w-4 h-4 text-gray-600" />
+                </div>
+                <h4 className="font-bold text-gray-900">Khu vực Phường/Xã</h4>
+              </div>
+
+              <FormSelect
+                label="Chọn Phường/Xã đặt cặp bưu cục"
+                placeholder={isWardsLoading ? "Đang tải danh sách..." : "-- Chọn Phường/Xã --"}
+                icon={MapPin}
+                required
+                value={officeFormData.wardCode}
+                onChange={val => setOfficeFormData(prev => ({ ...prev, wardCode: val as string }))}
+                error={officeErrors.wardCode}
+                disabled={!officeFormData.provinceCode || isWardsLoading}
+                options={wards.map(w => ({ value: w.code, label: w.name }))}
+                searchable
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                Lưu ý: Cả Kho và Bưu cục sẽ được liên kết với Phường/Xã này.
+              </p>
+            </div>
+
             {/* Warehouse Section */}
             <div className="space-y-6 p-6 bg-indigo-50/30 border border-indigo-100 rounded-3xl relative">
               <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
@@ -936,10 +992,12 @@ export function ProvinceAdminPage() {
                   required
                   provinceCode={officeFormData.provinceCode}
                   hideProvince
-                  onAddressChange={val => setOfficeFormData(prev => ({ ...prev, warehouseAddress: val }))}
+                  hideWard
+                  onAddressLine1Change={val => setOfficeFormData(prev => ({ ...prev, warehouseAddressLine1: val }))}
+                  onAddressChange={() => { }} // legacy
                 />
-                {officeErrors.warehouseAddress && (
-                  <p className="text-xs font-medium text-red-500 mt-1 ml-1">{officeErrors.warehouseAddress}</p>
+                {officeErrors.warehouseAddressLine1 && (
+                  <p className="text-xs font-medium text-red-500 mt-1 ml-1">{officeErrors.warehouseAddressLine1}</p>
                 )}
               </div>
             </div>
@@ -999,10 +1057,12 @@ export function ProvinceAdminPage() {
                   required
                   provinceCode={officeFormData.provinceCode}
                   hideProvince
-                  onAddressChange={val => setOfficeFormData(prev => ({ ...prev, postOfficeAddress: val }))}
+                  hideWard
+                  onAddressLine1Change={val => setOfficeFormData(prev => ({ ...prev, postOfficeAddressLine1: val }))}
+                  onAddressChange={() => { }} // legacy
                 />
-                {officeErrors.postOfficeAddress && (
-                  <p className="text-xs font-medium text-red-500 mt-1 ml-1">{officeErrors.postOfficeAddress}</p>
+                {officeErrors.postOfficeAddressLine1 && (
+                  <p className="text-xs font-medium text-red-500 mt-1 ml-1">{officeErrors.postOfficeAddressLine1}</p>
                 )}
               </div>
             </div>

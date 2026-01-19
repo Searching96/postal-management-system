@@ -77,14 +77,14 @@ export const generateReceiptContent = (order: any) => {
         <div class="label">Người gửi:</div>
         <div>${order.senderName}</div>
         <div>${order.senderPhone}</div>
-        <div>${order.senderAddress}</div>
+        <div>${order.senderAddressLine1}, ${order.senderWardName}, ${order.senderProvinceName}</div>
       </div>
       
       <div class="section">
         <div class="label">Người nhận:</div>
         <div>${order.receiverName}</div>
         <div>${order.receiverPhone}</div>
-        <div>${order.receiverAddress}</div>
+        <div>${order.receiverAddressLine1}, ${order.receiverWardName}, ${order.receiverProvinceName}</div>
       </div>
       
       <div class="section">
@@ -190,14 +190,14 @@ export const generateStickerContent = (order: any) => {
         <div class="label">Từ:</div>
         <div>${order.senderName}</div>
         <div>${order.senderPhone}</div>
-        <div>${order.senderAddress}</div>
+        <div>${order.senderAddressLine1}, ${order.senderWardName}, ${order.senderProvinceName}</div>
       </div>
       
       <div class="section">
         <div class="label">Đến:</div>
         <div>${order.receiverName}</div>
         <div>${order.receiverPhone}</div>
-        <div>${order.receiverAddress}</div>
+        <div>${order.receiverAddressLine1}, ${order.receiverWardName}, ${order.receiverProvinceName}</div>
       </div>
       
       <div class="section">

@@ -104,7 +104,7 @@ public class BatchPackageResponse {
     public static class OfficeInfo {
         private UUID id;
         private String name;
-        private String address;
+        private String addressLine1;
         private String province;
     }
 }

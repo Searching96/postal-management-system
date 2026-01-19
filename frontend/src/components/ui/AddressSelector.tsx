@@ -7,23 +7,27 @@ import { MapPin, Building2, Map as MapIcon } from "lucide-react";
 interface AddressSelectorProps {
     label: string;
     onAddressChange: (fullAddress: string) => void;
+    onAddressLine1Change?: (addressLine1: string) => void;
     onProvinceChange?: (provinceCode: string) => void;
     onWardChange?: (wardCode: string) => void;
     initialValue?: string;
     required?: boolean;
     provinceCode?: string; // External province code
     hideProvince?: boolean; // Option to hide province selector
+    hideWard?: boolean; // Option to hide ward selector
 }
 
 export function AddressSelector({
     label,
     onAddressChange,
+    onAddressLine1Change,
     onProvinceChange,
     onWardChange,
     initialValue = "",
     required = false,
     provinceCode: externalProvinceCode,
-    hideProvince = false
+    hideProvince = false,
+    hideWard = false
 }: AddressSelectorProps) {
     const [provinces, setProvinces] = useState<ProvinceResponse[]>([]);
     const [wards, setWards] = useState<WardResponse[]>([]);
@@ -137,7 +141,11 @@ export function AddressSelector({
             lastEmittedWard.current = selectedWard;
             onWardChange(selectedWard);
         }
-    }, [selectedProvince, selectedWard, street, provinces, wards, onAddressChange, onWardChange]);
+
+        if (onAddressLine1Change) {
+            onAddressLine1Change(street.trim());
+        }
+    }, [selectedProvince, selectedWard, street, provinces, wards, onAddressChange, onWardChange, onAddressLine1Change]);
 
     return (
         <div className="space-y-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
@@ -148,7 +156,7 @@ export function AddressSelector({
                 <span className="text-sm font-bold text-gray-900">{label}</span>
             </div>
 
-            <div className={`grid grid-cols-1 ${hideProvince ? '' : 'md:grid-cols-2'} gap-4`}>
+            <div className={`grid grid-cols-1 ${hideProvince && hideWard ? '' : 'md:grid-cols-2'} gap-4`}>
                 {!hideProvince && (
                     <FormSelect
                         label="Tỉnh / Thành phố"
@@ -164,24 +172,26 @@ export function AddressSelector({
                     />
                 )}
 
-                <FormSelect
-                    label="Phường / Xã"
-                    icon={MapIcon}
-                    required={required}
-                    value={selectedWard}
-                    disabled={!selectedProvince || isLoadingWards}
-                    onChange={(val) => {
-                        setSelectedWard(val as string);
-                    }}
-                    options={[
-                        {
-                            value: "",
-                            label: isLoadingWards ? "Đang tải..." : "-- Chọn Phường/Xã --"
-                        },
-                        ...wards.map(w => ({ value: w.code, label: w.name }))
-                    ]}
-                    searchable
-                />
+                {!hideWard && (
+                    <FormSelect
+                        label="Phường / Xã"
+                        icon={MapIcon}
+                        required={required}
+                        value={selectedWard}
+                        disabled={!selectedProvince || isLoadingWards}
+                        onChange={(val) => {
+                            setSelectedWard(val as string);
+                        }}
+                        options={[
+                            {
+                                value: "",
+                                label: isLoadingWards ? "Đang tải..." : "-- Chọn Phường/Xã --"
+                            },
+                            ...wards.map(w => ({ value: w.code, label: w.name }))
+                        ]}
+                        searchable
+                    />
+                )}
             </div>
 
             <FormInput

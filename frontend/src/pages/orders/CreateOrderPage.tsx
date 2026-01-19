@@ -45,14 +45,16 @@ const createOrderSchema = z.object({
     senderPhone: z.string()
         .min(10, "Số điện thoại phải có ít nhất 10 số")
         .regex(phoneRegex, "Số điện thoại không hợp lệ (VD: 0912345678)"),
-    senderAddress: z.string().min(1, "Địa chỉ người gửi là bắt buộc"),
+    senderAddressLine1: z.string().min(1, "Địa chỉ người gửi là bắt buộc"),
+    senderWardCode: z.string().min(1, "Phường/Xã người gửi là bắt buộc"),
+    senderProvinceCode: z.string().min(1, "Tỉnh/Thành người gửi là bắt buộc"),
     receiverName: z.string().min(1, "Họ tên người nhận là bắt buộc"),
     receiverPhone: z.string()
         .min(10, "Số điện thoại phải có ít nhất 10 số")
         .regex(phoneRegex, "Số điện thoại không hợp lệ (VD: 0912345678)"),
-    receiverAddress: z.string().min(1, "Địa chỉ người nhận là bắt buộc"),
-    destinationWardCode: z.string().min(1, "Vui lòng chọn phường/xã"),
-    originWardCode: z.string().optional(),
+    receiverAddressLine1: z.string().min(1, "Địa chỉ người nhận là bắt buộc"),
+    receiverWardCode: z.string().min(1, "Phường/Xã người nhận là bắt buộc"),
+    receiverProvinceCode: z.string().min(1, "Tỉnh/Thành người nhận là bắt buộc"),
     packageType: z.string(),
     packageDescription: z.string().optional(),
     weightKg: z.coerce.number().min(0.01, "Trọng lượng phải lớn hơn 0"),
@@ -79,12 +81,14 @@ export function CreateOrderPage() {
         defaultValues: {
             senderName: "",
             senderPhone: "",
-            senderAddress: "",
+            senderAddressLine1: "",
+            senderWardCode: "",
+            senderProvinceCode: "",
             receiverName: "",
             receiverPhone: "",
-            receiverAddress: "",
-            destinationWardCode: "",
-            originWardCode: "",
+            receiverAddressLine1: "",
+            receiverWardCode: "",
+            receiverProvinceCode: "",
             packageType: "BOX",
             packageDescription: "",
             weightKg: 0.5,
@@ -102,8 +106,8 @@ export function CreateOrderPage() {
 
     // Watch fields for price calculation
     const watchedValues = watch([
-        "destinationWardCode",
-        "originWardCode",
+        "receiverWardCode",
+        "senderWardCode",
         "weightKg",
         "lengthCm",
         "widthCm",
@@ -131,7 +135,9 @@ export function CreateOrderPage() {
             if (res && res.content && res.content.length > 0) {
                 const lastOrder = res.content[0];
                 setValue("senderName", lastOrder.senderName);
-                setValue("senderAddress", lastOrder.senderAddress);
+                setValue("senderAddressLine1", lastOrder.senderAddressLine1);
+                setValue("senderWardCode", lastOrder.senderWardCode);
+                setValue("senderProvinceCode", lastOrder.senderProvinceCode);
                 toast.success("Đã tìm thấy thông tin khách hàng!", { duration: 2000 });
             }
         } catch {
@@ -145,15 +151,15 @@ export function CreateOrderPage() {
 
 
 
-        if (!values.destinationWardCode) {
+        if (!values.receiverWardCode) {
             return;
         }
 
         setIsCalculating(true);
         try {
             const payload = {
-                originWardCode: values.originWardCode || undefined,
-                destinationWardCode: values.destinationWardCode,
+                originWardCode: values.senderWardCode || undefined,
+                destinationWardCode: values.receiverWardCode,
                 packageType: values.packageType,
                 weightKg: Number(values.weightKg) || 0,
                 lengthCm: Number(values.lengthCm) || 0,
@@ -265,7 +271,7 @@ export function CreateOrderPage() {
                                                         handleSenderPhoneBlur();
                                                     }}
                                                     className={`pl-9 ${errors.senderPhone ? "border-red-500" : ""}`}
-                                                    placeholder="09..."
+                                                    placeholder="VD: 0912345678"
                                                 />
                                                 <button
                                                     onClick={handleSenderPhoneBlur}
@@ -290,17 +296,19 @@ export function CreateOrderPage() {
                                         <div className="md:col-span-2">
                                             <Controller
                                                 control={control}
-                                                name="senderAddress"
+                                                name="senderAddressLine1"
                                                 render={({ field }) => (
                                                     <AddressSelector
                                                         label="Địa chỉ gửi"
                                                         initialValue={field.value}
-                                                        onAddressChange={field.onChange}
-                                                        onWardChange={(code) => setValue("originWardCode", code || "")}
+                                                        onAddressLine1Change={field.onChange}
+                                                        onAddressChange={() => { }} // legacy
+                                                        onWardChange={(code) => setValue("senderWardCode", code)}
+                                                        onProvinceChange={(code) => setValue("senderProvinceCode", code)}
                                                     />
                                                 )}
                                             />
-                                            {errors.senderAddress && <p className="text-red-500 text-xs mt-1">{errors.senderAddress.message}</p>}
+                                            {errors.senderAddressLine1 && <p className="text-red-500 text-xs mt-1">{errors.senderAddressLine1.message}</p>}
                                         </div>
                                     </div>
                                 </div>
@@ -318,7 +326,7 @@ export function CreateOrderPage() {
                                                 label="Số điện thoại"
                                                 {...register("receiverPhone")}
                                                 error={errors.receiverPhone?.message}
-                                                placeholder="09..."
+                                                placeholder="VD: 0912345678"
                                                 icon={Phone}
                                             />
                                         </div>
@@ -334,23 +342,20 @@ export function CreateOrderPage() {
                                         <div className="md:col-span-2">
                                             <Controller
                                                 control={control}
-                                                name="receiverAddress"
+                                                name="receiverAddressLine1"
                                                 render={({ field }) => (
                                                     <AddressSelector
                                                         label="Địa chỉ nhận"
                                                         required
                                                         initialValue={field.value}
-                                                        onAddressChange={(val) => {
-                                                            field.onChange(val);
-                                                        }}
-                                                        onWardChange={(wardCode) => {
-                                                            setValue("destinationWardCode", wardCode || "");
-                                                        }}
+                                                        onAddressLine1Change={field.onChange}
+                                                        onAddressChange={() => { }} // legacy
+                                                        onWardChange={(code) => setValue("receiverWardCode", code)}
+                                                        onProvinceChange={(code) => setValue("receiverProvinceCode", code)}
                                                     />
                                                 )}
                                             />
-                                            {errors.receiverAddress && <p className="text-red-500 text-xs mt-1">{errors.receiverAddress.message}</p>}
-                                            {errors.destinationWardCode && <p className="text-red-500 text-xs mt-1">{errors.destinationWardCode.message}</p>}
+                                            {errors.receiverAddressLine1 && <p className="text-red-500 text-xs mt-1">{errors.receiverAddressLine1.message}</p>}
                                         </div>
                                     </div>
                                 </div>
@@ -586,11 +591,14 @@ export function CreateOrderPage() {
                                 form.reset({
                                     senderName: getValues("senderName"),
                                     senderPhone: getValues("senderPhone"),
-                                    senderAddress: getValues("senderAddress"),
+                                    senderAddressLine1: getValues("senderAddressLine1"),
+                                    senderWardCode: getValues("senderWardCode"),
+                                    senderProvinceCode: getValues("senderProvinceCode"),
                                     receiverName: "",
                                     receiverPhone: "",
-                                    receiverAddress: "",
-                                    destinationWardCode: "",
+                                    receiverAddressLine1: "",
+                                    receiverWardCode: "",
+                                    receiverProvinceCode: "",
                                     packageType: "BOX",
                                     packageDescription: "",
                                     weightKg: 0.5,

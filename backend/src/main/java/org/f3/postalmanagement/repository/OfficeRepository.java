@@ -60,7 +60,7 @@ public interface OfficeRepository extends JpaRepository<Office, UUID> {
     @Query("SELECT o FROM Office o WHERE " +
            "(:search IS NULL OR :search = '' OR " +
            "LOWER(o.officeName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(o.officeAddress) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "LOWER(o.officeAddressLine1) LIKE LOWER(CONCAT('%', :search, '%'))) " +
            "ORDER BY o.officeName ASC")
     Page<Office> searchOffices(@Param("search") String search, Pageable pageable);
 

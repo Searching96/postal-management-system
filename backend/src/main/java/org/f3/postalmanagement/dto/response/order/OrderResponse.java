@@ -31,7 +31,6 @@ public class OrderResponse {
     private String trackingNumber;
 
     // ==================== SENDER INFO ====================
-
     @Schema(description = "Sender customer ID (if registered)")
     private UUID senderCustomerId;
 
@@ -41,8 +40,14 @@ public class OrderResponse {
     @Schema(description = "Sender phone", example = "0901234567")
     private String senderPhone;
 
-    @Schema(description = "Sender address")
-    private String senderAddress;
+    @Schema(description = "Sender address line 1 (full text for display)")
+    private String senderAddressLine1;
+
+    @Schema(description = "Sender ward code (for backend operations)")
+    private String senderWardCode;
+
+    @Schema(description = "Sender province code (for backend operations)")
+    private String senderProvinceCode;
 
     // ==================== RECEIVER INFO ====================
 
@@ -52,14 +57,14 @@ public class OrderResponse {
     @Schema(description = "Receiver phone", example = "0912345678")
     private String receiverPhone;
 
-    @Schema(description = "Receiver address")
-    private String receiverAddress;
+    @Schema(description = "Receiver address line 1 (full text for display)")
+    private String receiverAddressLine1;
 
-    @Schema(description = "Destination ward name")
-    private String destinationWardName;
+    @Schema(description = "Receiver ward code (for backend operations)")
+    private String receiverWardCode;
 
-    @Schema(description = "Destination province name")
-    private String destinationProvinceName;
+    @Schema(description = "Receiver province code (for backend operations)")
+    private String receiverProvinceCode;
 
     // ==================== PACKAGE INFO ====================
 

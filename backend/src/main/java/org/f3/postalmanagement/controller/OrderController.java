@@ -276,7 +276,7 @@ public class OrderController {
     @PreAuthorize("hasRole('SHIPPER')")
     @Operation(
             summary = "Get shipper's assigned last-mile deliveries",
-            description = "Shipper views their assigned orders that are out for delivery to consumers.",
+            description = "Shipper views their assigned orders that are out for delivery to consumers. Supports search by tracking number, receiver name, phone, or address.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses({
@@ -284,11 +284,13 @@ public class OrderController {
                     content = @Content(schema = @Schema(implementation = PageResponse.class)))
     })
     public ResponseEntity<PageResponse<OrderResponse>> getShipperDeliveryOrders(
+            @Parameter(description = "Search by tracking number, receiver name, phone, or address")
+            @RequestParam(required = false) String search,
             @ParameterObject
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
-        PageResponse<OrderResponse> response = orderService.getShipperDeliveryOrders(pageable, currentAccount);
+        PageResponse<OrderResponse> response = orderService.getShipperDeliveryOrders(search, pageable, currentAccount);
         return ResponseEntity.ok(response);
     }
 
@@ -296,7 +298,7 @@ public class OrderController {
     @PreAuthorize("hasRole('SHIPPER')")
     @Operation(
             summary = "Get shipper's assigned pickup orders",
-            description = "Shipper views their assigned orders that need to be picked up from customers.",
+            description = "Shipper views their assigned orders that need to be picked up from customers. Supports search by tracking number, sender name, phone, or address.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses({
@@ -304,11 +306,13 @@ public class OrderController {
                     content = @Content(schema = @Schema(implementation = PageResponse.class)))
     })
     public ResponseEntity<PageResponse<OrderResponse>> getShipperAssignedOrders(
+            @Parameter(description = "Search by tracking number, sender name, phone, or address")
+            @RequestParam(required = false) String search,
             @ParameterObject
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal(expression = "account") Account currentAccount
     ) {
-        PageResponse<OrderResponse> response = orderService.getShipperAssignedOrders(pageable, currentAccount);
+        PageResponse<OrderResponse> response = orderService.getShipperAssignedOrders(search, pageable, currentAccount);
         return ResponseEntity.ok(response);
     }
 

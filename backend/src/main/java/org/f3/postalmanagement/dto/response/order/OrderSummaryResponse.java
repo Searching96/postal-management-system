@@ -35,8 +35,8 @@ public class OrderSummaryResponse {
     @Schema(description = "Receiver name")
     private String receiverName;
 
-    @Schema(description = "Receiver address")
-    private String receiverAddress;
+    @Schema(description = "Receiver address line 1")
+    private String receiverAddressLine1;
 
     @Schema(description = "Package type")
     private PackageType packageType;

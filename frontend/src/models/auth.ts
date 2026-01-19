@@ -8,7 +8,9 @@ export interface CustomerRegisterRequest {
   username: string;
   password: string;
   email: string;
-  address: string;
+  addressLine1: string;
+  wardCode: string;
+  provinceCode: string;
 }
 
 export interface AuthResponse {

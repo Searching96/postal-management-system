@@ -1,371 +1,365 @@
-import { useState, useEffect } from "react";
-import { Package, MapPin, Phone, User, CheckCircle, Clock, Navigation, XCircle, Play, Map } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { orderService, Order } from '../../services/orderService';
 import {
-    Card, Button, PageHeader, Badge, LoadingSpinner, Alert, PaginationControls,
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Input
-} from "../../components/ui";
-import { orderService, Order } from "../../services/orderService";
-import { startDelivery, openGoogleMapsDirections } from "../../services/trackingService";
-import { useLocationTracking } from "../../hooks/useLocationTracking";
-import { toast } from "sonner";
-import { formatDate } from "../../lib/utils";
+    Package, MapPin, Navigation, Phone, CheckCircle, Loader2
+} from 'lucide-react';
+import { toast } from 'sonner';
 
-export function ShipperDashboardPage() {
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState("");
+const ShipperDashboardPage = () => {
     const [page, setPage] = useState(0);
+    const [orders, setOrders] = useState<Order[]>([]);
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
-    const pageSize = 10;
+    const [isLoading, setIsLoading] = useState(true);
+    const [processingId, setProcessingId] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [pageSize, setPageSize] = useState(10);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
-    const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
-
-    const fetchAssignedOrders = async () => {
-        setIsLoading(true);
-        setError("");
-        try {
-            const res = await orderService.getShipperAssignedOrders({ page, size: pageSize });
-            if (res && res.content) {
-                setOrders(res.content);
-                setTotalPages(res.totalPages);
-                setTotalElements(res.totalElements);
-            }
-        } catch (err: unknown) {
-            setError("Không thể tải danh sách đơn hàng được giao");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
+    // Calculate page size based on screen height
     useEffect(() => {
-        fetchAssignedOrders();
-    }, [page]);
+        const updatePageSize = () => {
+            const height = window.innerHeight;
+            const itemHeight = window.innerWidth >= 1024 ? 120 : 160;
+            const availableHeight = height - 400;
+            const calculatedSize = Math.max(5, Math.floor(availableHeight / itemHeight));
+            setPageSize(calculatedSize);
+        };
 
-    const [failReason, setFailReason] = useState("");
-    const [selectedOrderForFail, setSelectedOrderForFail] = useState<Order | null>(null);
+        updatePageSize();
+        window.addEventListener('resize', updatePageSize);
+        return () => window.removeEventListener('resize', updatePageSize);
+    }, []);
 
-    // Location tracking hook
-    const { location, startTracking } = useLocationTracking();
-
-    // Start delivery - update status and begin GPS tracking
-    const handleStartDelivery = async (orderId: string) => {
-        setProcessingOrderId(orderId);
-        try {
-            await startDelivery(orderId);
-            startTracking(); // Start GPS broadcasting
-            toast.success("Đã bắt đầu giao hàng! Đang chia sẻ vị trí...");
-            fetchAssignedOrders();
-        } catch (err: unknown) {
-            toast.error("Không thể bắt đầu giao hàng");
-        } finally {
-            setProcessingOrderId(null);
+    const fetchOrders = useCallback(async (searchQuery: string) => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
         }
-    };
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
 
-    // Open Google Maps for navigation
-    const handleNavigate = (order: Order) => {
-        openGoogleMapsDirections(
-            order.receiverAddress,
-            location?.latitude,
-            location?.longitude
-        );
-    };
+        setIsLoading(true);
+        try {
+            const res = await orderService.getShipperAssignedOrders({
+                page,
+                size: pageSize,
+                search: searchQuery.trim() || undefined
+            });
+            if (controller.signal.aborted) return;
+            setOrders(res.content);
+            setTotalPages(res.totalPages);
+            setTotalElements(res.totalElements);
+        } catch (error) {
+            if ((error as any).name === "CanceledError" || (error as any).code === "ERR_CANCELED") {
+                return;
+            }
+            console.error(error);
+            toast.error('Không thể tải đơn hàng cần lấy');
+        } finally {
+            if (!controller.signal.aborted) {
+                setIsLoading(false);
+            }
+        }
+    }, [page, pageSize]);
+
+    // Pagination on page/size change
+    useEffect(() => {
+        fetchOrders(searchQuery);
+    }, [page, pageSize]);
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setPage(0);
+            fetchOrders(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery, fetchOrders]);
 
     const handleMarkPickedUp = async (orderId: string) => {
-        setProcessingOrderId(orderId);
+        if (!window.confirm('Xác nhận lấy hàng?')) return;
+
+        setProcessingId(orderId);
         try {
-            await orderService.markOrderPickedUp(orderId);
-            toast.success("Đã xác nhận lấy hàng thành công!");
-            fetchAssignedOrders();
-        } catch (err: unknown) {
-            toast.error("Không thể xác nhận lấy hàng. Vui lòng thử lại.");
+            const res = await orderService.markOrderPickedUp(orderId);
+            if (res.success) {
+                toast.success('Đơn hàng đã được lấy');
+                fetchOrders(searchQuery);
+            } else {
+                toast.error(res.message || 'Không thể cập nhật đơn hàng');
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Không thể xác nhận lấy hàng');
         } finally {
-            setProcessingOrderId(null);
+            setProcessingId(null);
         }
     };
 
-    const handleDeliverSuccess = async (orderId: string) => {
-        if (!confirm("Xác nhận đã giao hàng thành công?")) return;
-        setProcessingOrderId(orderId);
-        try {
-            await orderService.markOrderDelivered(orderId);
-            toast.success("Đã giao hàng thành công!");
-            fetchAssignedOrders();
-        } catch (err: unknown) {
-            toast.error("Thao tác thất bại. Vui lòng thử lại.");
-        } finally {
-            setProcessingOrderId(null);
-        }
+    const handleNavigate = (address: string) => {
+        const encodedAddress = encodeURIComponent(address);
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
     };
 
-    const openFailDialog = (order: Order) => {
-        setSelectedOrderForFail(order);
-        setFailReason("");
+    const handleCall = (phone: string) => {
+        window.open(`tel:${phone}`, '_self');
     };
 
-    const handleDeliverFail = async () => {
-        if (!selectedOrderForFail) return;
-        setProcessingOrderId(selectedOrderForFail.orderId || selectedOrderForFail.id!);
-        try {
-            await orderService.markOrderDeliveryFailed(selectedOrderForFail.orderId || selectedOrderForFail.id!, failReason);
-            toast.warning("Đã ghi nhận giao hàng thất bại");
-            setSelectedOrderForFail(null);
-            fetchAssignedOrders();
-        } catch (err: unknown) {
-            toast.error("Thao tác thất bại.");
-        } finally {
-            setProcessingOrderId(null);
-        }
-    };
-
-    const getStatusBadge = (status: string) => {
-        const map: Record<string, "success" | "warning" | "info" | "secondary"> = {
-            PENDING_PICKUP: "warning",
-            PICKED_UP: "success",
-            OUT_FOR_DELIVERY: "info",
-        };
-        const labels: Record<string, string> = {
-            PENDING_PICKUP: "Chờ lấy hàng",
-            PICKED_UP: "Đã lấy hàng",
-            OUT_FOR_DELIVERY: "Đang giao",
-        };
-        return <Badge variant={map[status] || "secondary"}>{labels[status] || status}</Badge>;
-    };
-
-    const canPickUp = (status: string) => status === "PENDING_PICKUP";
-    const canStartDelivery = (status: string) => status === "PICKED_UP";
-    const canDeliver = (status: string) => status === "OUT_FOR_DELIVERY";
+    if (isLoading && orders.length === 0) {
+        return (
+            <div className="flex justify-center items-center h-[calc(100vh-4rem)]">
+                <Loader2 className="animate-spin h-10 w-10 text-primary-600" />
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-6">
-            <PageHeader
-                title="Đơn hàng được giao"
-                description="Danh sách đơn hàng bạn được phân công lấy và giao"
-            />
+        <div className="pb-20">
+            <div className="p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
+                <h1 className="text-2xl font-bold mb-2 flex items-center">
+                    <Package className="mr-2 h-6 w-6 text-primary-600" />
+                    Lấy hàng
+                </h1>
+                <p className="text-gray-600 text-sm">Danh sách đơn hàng cần lấy từ khách hàng (Giai đoạn lấy hàng)</p>
+            </div>
 
-            {error && (
-                <Alert type="error">{error}</Alert>
-            )}
-
-            {isLoading ? (
-                <div className="flex justify-center py-12">
-                    <LoadingSpinner />
-                </div>
-            ) : orders.length === 0 ? (
-                <Card className="p-12 text-center">
-                    <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 text-lg">Bạn chưa được giao đơn hàng nào</p>
-                    <p className="text-gray-400 text-sm mt-2">Các đơn hàng mới sẽ xuất hiện ở đây khi được phân công</p>
-                </Card>
-            ) : (
-                <>
-                    {/* Stats Summary */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <Card className="p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-yellow-100 rounded-lg">
-                                    <Clock className="h-5 w-5 text-yellow-600" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-500">Chờ lấy</p>
-                                    <p className="text-xl font-bold text-gray-900">
-                                        {orders.filter(o => o.status === "PENDING_PICKUP").length}
-                                    </p>
-                                </div>
-                            </div>
-                        </Card>
-                        <Card className="p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-100 rounded-lg">
-                                    <Navigation className="h-5 w-5 text-blue-600" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-500">Đang giao</p>
-                                    <p className="text-xl font-bold text-gray-900">
-                                        {orders.filter(o => o.status === "OUT_FOR_DELIVERY").length}
-                                    </p>
-                                </div>
-                            </div>
-                        </Card>
-                        <Card className="p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-100 rounded-lg">
-                                    <CheckCircle className="h-5 w-5 text-green-600" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-500">Đã lấy</p>
-                                    <p className="text-xl font-bold text-gray-900">
-                                        {orders.filter(o => o.status === "PICKED_UP").length}
-                                    </p>
-                                </div>
-                            </div>
-                        </Card>
+            {/* Mobile layout - full width list */}
+            <div className="lg:hidden p-4">
+                {/* Search card for mobile */}
+                <div className="mb-4 bg-white border border-gray-200 rounded-lg p-3 flex items-center gap-3">
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                        <span className="inline-block bg-primary-100 text-primary-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                            {totalElements}
+                        </span>
+                        <span className="text-sm font-semibold text-gray-700">đơn hàng</span>
                     </div>
+                    <input
+                        type="text"
+                        placeholder="Tìm kiếm..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                </div>
 
-                    {/* Order Cards */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {orders.length === 0 ? (
+                    <div className="text-center py-10 text-gray-500 bg-white rounded-lg shadow p-4">
+                        <p>Không có đơn hàng nào cần lấy lúc này</p>
+                        <p className="text-gray-400 text-sm mt-2">Đơn hàng mới trong giai đoạn lấy hàng sẽ xuất hiện ở đây</p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
                         {orders.map((order) => (
-                            <Card key={order.orderId} className="p-5 hover:shadow-md transition-shadow">
-                                {/* Header */}
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <p className="text-sm text-gray-500">Mã vận đơn</p>
-                                        <p className="font-bold text-gray-900">{order.trackingNumber}</p>
-                                    </div>
-                                    {getStatusBadge(order.status)}
+                            <div key={order.orderId} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                                {/* Header - Tracking & Price */}
+                                <div className="bg-gray-50 p-3 border-b border-gray-100 flex justify-between items-center">
+                                    <span className="font-mono font-bold text-primary-700">{order.trackingNumber}</span>
                                 </div>
 
-                                {/* Sender Info */}
-                                <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-2">
-                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Người gửi</p>
-                                    <div className="flex items-center gap-2 text-gray-700">
-                                        <User className="h-4 w-4 text-gray-400" />
-                                        <span className="font-medium">{order.senderName}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-gray-600">
-                                        <Phone className="h-4 w-4 text-gray-400" />
-                                        <a href={`tel:${order.senderPhone}`} className="hover:text-primary-600">
-                                            {order.senderPhone}
-                                        </a>
-                                    </div>
-                                    <div className="flex items-start gap-2 text-gray-600">
-                                        <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                                        <span className="text-sm">{order.senderAddress}</span>
-                                    </div>
-                                </div>
-
-                                {/* Receiver Info */}
-                                <div className="bg-primary-50 rounded-lg p-4 mb-4 space-y-2">
-                                    <p className="text-xs font-medium text-primary-600 uppercase tracking-wide">Người nhận</p>
-                                    <div className="flex items-center gap-2 text-gray-700">
-                                        <User className="h-4 w-4 text-primary-400" />
-                                        <span className="font-medium">{order.receiverName}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-gray-600">
-                                        <Phone className="h-4 w-4 text-primary-400" />
-                                        <a href={`tel:${order.receiverPhone}`} className="hover:text-primary-600">
-                                            {order.receiverPhone}
-                                        </a>
-                                    </div>
-                                    <div className="flex items-start gap-2 text-gray-600">
-                                        <MapPin className="h-4 w-4 text-primary-400 mt-0.5 flex-shrink-0" />
-                                        <span className="text-sm">{order.receiverAddress}</span>
-                                    </div>
-                                </div>
-
-                                {/* Footer */}
-                                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                                    <span className="text-xs text-gray-400">
-                                        {formatDate(order.createdAt)}
-                                    </span>
-                                    {canPickUp(order.status) && (
-                                        <Button
-                                            onClick={() => handleMarkPickedUp(order.orderId || order.id!)}
-                                            disabled={!!processingOrderId}
-                                            size="sm"
-                                        >
-                                            {processingOrderId === (order.orderId || order.id!) ? (
-                                                <LoadingSpinner size="sm" />
-                                            ) : (
-                                                <>
-                                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                                    Lấy hàng
-                                                </>
-                                            )}
-                                        </Button>
-                                    )}
-                                    {canStartDelivery(order.status) && (
-                                        <Button
-                                            onClick={() => handleStartDelivery(order.orderId || order.id!)}
-                                            disabled={!!processingOrderId}
-                                            size="sm"
-                                            className="bg-blue-600 hover:bg-blue-700"
-                                        >
-                                            {processingOrderId === (order.orderId || order.id!) ? (
-                                                <LoadingSpinner size="sm" />
-                                            ) : (
-                                                <>
-                                                    <Play className="h-4 w-4 mr-1" />
-                                                    Bắt đầu giao
-                                                </>
-                                            )}
-                                        </Button>
-                                    )}
-                                    {canDeliver(order.status) && (
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => handleNavigate(order)}
-                                                size="sm"
-                                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                                            >
-                                                <Map className="h-4 w-4 mr-1" />
-                                                Chỉ đường
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => openFailDialog(order)}
-                                                disabled={!!processingOrderId}
-                                                size="sm"
-                                                className="text-red-600 border-red-200 hover:bg-red-50"
-                                            >
-                                                <XCircle className="h-4 w-4 mr-1" />
-                                                Thất bại
-                                            </Button>
-                                            <Button
-                                                onClick={() => handleDeliverSuccess(order.orderId || order.id!)}
-                                                disabled={!!processingOrderId}
-                                                size="sm"
-                                                className="bg-green-600 hover:bg-green-700 text-white"
-                                            >
-                                                {processingOrderId === (order.orderId || order.id!) ? (
-                                                    <LoadingSpinner size="sm" />
-                                                ) : (
-                                                    <>
-                                                        <CheckCircle className="h-4 w-4 mr-1" />
-                                                        Đã giao
-                                                    </>
-                                                )}
-                                            </Button>
+                                <div className="p-4">
+                                    {/* Sender Info */}
+                                    <div className="mb-4">
+                                        <h3 className="font-semibold text-gray-900">{order.senderName}</h3>
+                                        <div className="flex items-start mt-1 text-gray-600 text-sm">
+                                            <MapPin className="h-4 w-4 mt-0.5 mr-1 flex-shrink-0" />
+                                            {/* Refactored: Display sender address using names for UI (codes available for API) */}
+                                            <p>{`${order.senderAddressLine1}, ${order.senderWardName}, ${order.senderProvinceName}`}</p>
                                         </div>
-                                    )}
+                                        <div className="flex items-center mt-1 text-gray-600 text-sm">
+                                            <Phone className="h-4 w-4 mr-1" />
+                                            <p>{order.senderPhone}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Package Info */}
+                                    <div className="text-sm text-gray-500 mb-4 bg-gray-50 p-2 rounded">
+                                        <p>Type: {order.packageType}</p>
+                                    </div>
+
+                                    {/* Actions Row */}
+                                    <div className="grid grid-cols-3 gap-2 mt-2">
+                                        <button
+                                            onClick={() => handleNavigate(`${order.senderAddressLine1}, ${order.senderWardName}, ${order.senderProvinceName}`)}
+                                            className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
+                                        >
+                                            <Navigation className="h-5 w-5 mb-1" />
+                                            <span className="text-xs font-medium">Bản đồ</span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => handleCall(order.senderPhone)}
+                                            className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition"
+                                        >
+                                            <Phone className="h-5 w-5 mb-1" />
+                                            <span className="text-xs font-medium">Gọi</span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => handleMarkPickedUp(order.orderId)}
+                                            disabled={processingId === order.orderId}
+                                            className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 transition disabled:opacity-50"
+                                        >
+                                            {processingId === order.orderId ? (
+                                                <Loader2 className="h-5 w-5 mb-1 animate-spin" />
+                                            ) : (
+                                                <CheckCircle className="h-5 w-5 mb-1" />
+                                            )}
+                                            <span className="text-xs font-medium">Lấy</span>
+                                        </button>
+                                    </div>
                                 </div>
-                            </Card>
+                            </div>
                         ))}
                     </div>
+                )}
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                        <PaginationControls
-                            page={page}
-                            totalPages={totalPages}
-                            totalElements={totalElements}
-                            pageSize={pageSize}
-                            onPageChange={setPage}
-                        />
-                    )}
-                </>
-            )}
-            {/* Fail Dialog */}
-            <Dialog open={!!selectedOrderForFail} onOpenChange={(open) => !open && setSelectedOrderForFail(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Báo cáo giao hàng thất bại</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <Input
-                            placeholder="Lý do thất bại (Vd: Khách không nghe máy, Sai địa chỉ...)"
-                            value={failReason}
-                            onChange={(e) => setFailReason(e.target.value)}
-                        />
+                {/* Mobile Pagination */}
+                {totalPages > 1 && (
+                    <div className="flex justify-center mt-6 gap-2">
+                        <button
+                            onClick={() => setPage(p => Math.max(0, p - 1))}
+                            disabled={page === 0}
+                            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 text-sm"
+                        >
+                            Trước
+                        </button>
+                        <span className="px-4 py-2 text-sm font-medium">
+                            {page + 1} / {totalPages}
+                        </span>
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                            disabled={page === totalPages - 1}
+                            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 text-sm"
+                        >
+                            Sau
+                        </button>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setSelectedOrderForFail(null)}>Hủy</Button>
-                        <Button variant="danger" onClick={handleDeliverFail} disabled={!failReason}>Xác nhận thất bại</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                )}
+            </div>
+
+            {/* Wide screen layout: List only (no map needed for pickup) */}
+            <div className="hidden lg:grid lg:grid-cols-1 lg:gap-4 lg:p-4 lg:h-[calc(100vh-10rem)]">
+                {/* List panel */}
+                <div className="overflow-y-auto border border-gray-200 rounded-lg">
+                    <div className="sticky top-0 bg-white mb-3 p-4 border-b border-gray-200">
+                        <div className="bg-white flex items-center gap-3">
+                            <div className="flex items-center gap-2 whitespace-nowrap">
+                                <span className="inline-block bg-primary-100 text-primary-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                                    {totalElements}
+                                </span>
+                                <span className="text-sm font-semibold text-gray-700">đơn hàng</span>
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Tìm kiếm..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            />
+                        </div>
+                    </div>
+                    {orders.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500 p-4">
+                            <p className="text-sm">
+                                {searchQuery ? 'Không tìm thấy kết quả' : 'Không có đơn hàng'}
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="space-y-2 p-4">
+                                {orders.map((order) => (
+                                    <div key={order.orderId} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow flex items-stretch">
+                                        {/* Left Section - Tracking */}
+                                        <div className="bg-gray-50 px-3 py-2 border-r border-gray-200 flex items-center min-w-fit">
+                                            <div>
+                                                <p className="font-mono font-bold text-primary-700 text-xs">{order.trackingNumber}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Middle Section - Info */}
+                                        <div className="flex-1 px-3 py-2 flex flex-col justify-center min-w-0">
+                                            <p className="font-semibold text-gray-900 text-xs truncate">{order.senderName}</p>
+                                            <div className="flex items-center gap-2 text-gray-600 text-xs mt-0.5">
+                                                <div className="flex items-center gap-0.5 truncate">
+                                                    <MapPin className="h-3 w-3 flex-shrink-0" />
+                                                    {/* Refactored: Display sender address using names for UI */}
+                                                    <p className="truncate">{`${order.senderAddressLine1}, ${order.senderWardName}, ${order.senderProvinceName}`}</p>
+                                                </div>
+                                                <span className="text-gray-400">•</span>
+                                                <div className="flex items-center gap-0.5 flex-shrink-0">
+                                                    <Phone className="h-3 w-3" />
+                                                    <a href={`tel:${order.senderPhone}`} className="hover:text-primary-600">
+                                                        {order.senderPhone}
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Right Section - Actions */}
+                                        <div className="flex items-center gap-1 px-2 py-2 bg-gray-50 border-l border-gray-200 flex-shrink-0">
+                                            <button
+                                                onClick={() => handleNavigate(`${order.senderAddressLine1}, ${order.senderWardName}, ${order.senderProvinceName}`)}
+                                                className="p-1.5 rounded text-blue-700 hover:bg-blue-100 transition"
+                                                title="Bản đồ"
+                                            >
+                                                <Navigation className="h-4 w-4" />
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleCall(order.senderPhone)}
+                                                className="p-1.5 rounded text-green-700 hover:bg-green-100 transition"
+                                                title="Gọi"
+                                            >
+                                                <Phone className="h-4 w-4" />
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleMarkPickedUp(order.orderId)}
+                                                disabled={processingId === order.orderId}
+                                                className="p-1.5 rounded bg-primary-100 text-primary-700 hover:bg-primary-200 transition disabled:opacity-50"
+                                                title="Xác nhận lấy hàng"
+                                            >
+                                                {processingId === order.orderId ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <CheckCircle className="h-4 w-4" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Wide-screen Pagination */}
+                            {orders.length > 0 && (
+                                <div className="flex justify-between items-center py-3 border-t border-gray-200 mt-3 px-4">
+                                    <span className="text-xs text-gray-600">
+                                        Trang {page + 1} / {totalPages} ({totalElements} kết quả)
+                                    </span>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={() => setPage(p => Math.max(0, p - 1))}
+                                            disabled={page === 0}
+                                            className="px-2 py-1 text-xs bg-gray-100 rounded disabled:opacity-50 hover:bg-gray-200"
+                                        >
+                                            ← Trước
+                                        </button>
+                                        <button
+                                            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                                            disabled={page >= totalPages - 1}
+                                            className="px-2 py-1 text-xs bg-gray-100 rounded disabled:opacity-50 hover:bg-gray-200"
+                                        >
+                                            Sau →
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            </div>
         </div>
     );
-}
+};
+
+export default ShipperDashboardPage;

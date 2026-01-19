@@ -247,7 +247,8 @@ export function OrderDetailsPage() {
                                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                                     <div className="font-bold text-gray-900 text-lg">{order.senderName}</div>
                                     <div className="text-primary-600 font-mono mb-2">{order.senderPhone}</div>
-                                    <div className="text-gray-600 text-sm leading-relaxed">{order.senderAddress}</div>
+                                    {/* Refactored: Display sender address using names for UI */}
+                                    <div className="text-gray-600 text-sm leading-relaxed">{`${order.senderAddressLine1}, ${order.senderWardName}, ${order.senderProvinceName}`}</div>
                                 </div>
                             </div>
 
@@ -257,7 +258,8 @@ export function OrderDetailsPage() {
                                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                                     <div className="font-bold text-gray-900 text-lg">{order.receiverName}</div>
                                     <div className="text-primary-600 font-mono mb-2">{order.receiverPhone}</div>
-                                    <div className="text-gray-600 text-sm leading-relaxed text-right md:text-left">{order.receiverAddress}</div>
+                                    {/* Refactored: Display receiver address using names for UI */}
+                                    <div className="text-gray-600 text-sm leading-relaxed text-right md:text-left">{`${order.receiverAddressLine1}, ${order.receiverWardName}, ${order.receiverProvinceName}`}</div>
                                 </div>
                             </div>
                         </div>
@@ -300,7 +302,7 @@ export function OrderDetailsPage() {
                                 <Calendar className="mr-2 text-primary-600" size={20} /> Lịch sử hành trình
                             </h3>
                             <div className="relative pl-4 border-l-2 border-gray-100 space-y-8">
-                                {order.statusHistory.map((item: any, i: number) => (
+                                {[...order.statusHistory].reverse().map((item: any, i: number) => (
                                     <div key={i} className="relative">
                                         <div className={`absolute -left-[21px] top-1 w-4 h-4 rounded-full border-2 border-white ${i === 0 ? 'bg-primary-500 ring-2 ring-primary-100' : 'bg-gray-300'}`}></div>
                                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">

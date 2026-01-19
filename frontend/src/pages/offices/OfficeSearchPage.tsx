@@ -104,7 +104,7 @@ export function OfficeSearchPage() {
                                     <div className="mt-2 space-y-1 text-sm text-gray-600">
                                         <div className="flex items-start gap-2">
                                             <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
-                                            <span>{office.officeAddress}</span>
+                                            <span>{office.officeAddressLine1}</span>
                                         </div>
                                         {office.officePhoneNumber && (
                                             <div className="flex items-center gap-2">
@@ -162,7 +162,7 @@ export function OfficeSearchPage() {
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <MapPin className="h-4 w-4 text-gray-400 mt-1 shrink-0" />
-                                        <span className="leading-relaxed">{selectedOffice.officeAddress}</span>
+                                        <span className="leading-relaxed">{selectedOffice.officeAddressLine1}</span>
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <Phone className="h-4 w-4 text-gray-400 mt-1 shrink-0" />

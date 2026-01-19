@@ -12,6 +12,10 @@ import org.f3.postalmanagement.enums.SubscriptionPlan;
 import org.f3.postalmanagement.jwt.JwtUtil;
 import org.f3.postalmanagement.repository.AccountRepository;
 import org.f3.postalmanagement.repository.CustomerRepository;
+import org.f3.postalmanagement.repository.ProvinceRepository;
+import org.f3.postalmanagement.repository.WardRepository;
+import org.f3.postalmanagement.entity.administrative.Ward;
+import org.f3.postalmanagement.entity.administrative.Province;
 import org.f3.postalmanagement.service.IAuthService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -32,6 +36,8 @@ public class IAuthServiceImpl implements IAuthService {
     private final JwtUtil jwtUtil;
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository;
+    private final WardRepository wardRepository;
+    private final ProvinceRepository provinceRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -42,7 +48,7 @@ public class IAuthServiceImpl implements IAuthService {
 
         if (account.isEmpty()) {
             log.error("Username not found: {}", username);
-            throw new BadCredentialsException("Invalid username or password.");
+            throw new BadCredentialsException("Tên người dùng hoặc mật khẩu không hợp lệ.");
         }
 
         Authentication authentication = authenticationManager.authenticate(
@@ -66,12 +72,12 @@ public class IAuthServiceImpl implements IAuthService {
         // Check if username already exists
         if (accountRepository.findByUsername(request.getUsername()).isPresent()) {
             log.error("Username already exists with phone number: {}", request.getUsername());
-            throw new IllegalArgumentException("Username already exists as phone number already exists");
+            throw new IllegalArgumentException("Số điện thoại này đã được đăng ký");
         }
 
         if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
             log.error("Username already exists with email: {}", request.getEmail());
-            throw new IllegalArgumentException("Username already exists as email already exists");
+            throw new IllegalArgumentException("Email này đã được đăng ký");
         }
 
         // Create account
@@ -89,11 +95,18 @@ public class IAuthServiceImpl implements IAuthService {
     }
 
     private void createCustomer(CustomerRegisterRequest request, Account account) {
+        Ward ward = wardRepository.findById(request.getWardCode())
+                .orElseThrow(() -> new IllegalArgumentException("Ward not found: " + request.getWardCode()));
+        Province province = provinceRepository.findById(request.getProvinceCode())
+                .orElseThrow(() -> new IllegalArgumentException("Province not found: " + request.getProvinceCode()));
+
         Customer customer = new Customer();
         customer.setAccount(account);
         customer.setFullName(request.getFullName());
         customer.setPhoneNumber(request.getUsername());
-        customer.setAddress(request.getAddress());
+        customer.setAddressLine1(request.getAddressLine1());
+        customer.setWard(ward);
+        customer.setProvince(province);
         customer.setSubscriptionPlan(SubscriptionPlan.BASIC);
         customerRepository.save(customer);
         log.debug("Customer created with account ID: {}", account.getId());

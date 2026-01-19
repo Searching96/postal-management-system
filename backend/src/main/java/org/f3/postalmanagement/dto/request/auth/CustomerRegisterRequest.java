@@ -45,11 +45,27 @@ public class CustomerRegisterRequest {
     )
     private String email;
 
-    @NotNull(message = "Address is required")
+    @NotNull(message = "Address line 1 is required")
     @Schema(
-            description = "Address",
-            example = "123, ABC Street, A Ward, B Province",
+            description = "Address line 1",
+            example = "123, ABC Street",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
-    private String address;
+    private String addressLine1;
+
+    @NotNull(message = "Ward code is required")
+    @Schema(
+            description = "Ward code",
+            example = "00001",
+            requiredMode = Schema.RequiredMode.REQUIRED
+    )
+    private String wardCode;
+
+    @NotNull(message = "Province code is required")
+    @Schema(
+            description = "Province code",
+            example = "79",
+            requiredMode = Schema.RequiredMode.REQUIRED
+    )
+    private String provinceCode;
 }

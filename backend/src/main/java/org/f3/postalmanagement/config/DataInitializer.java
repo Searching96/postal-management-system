@@ -22,6 +22,7 @@ import org.f3.postalmanagement.repository.TransferRouteRepository;
 import org.f3.postalmanagement.repository.WardRepository;
 import org.f3.postalmanagement.repository.OfficePairRepository;
 import org.f3.postalmanagement.entity.unit.OfficePair;
+import org.f3.postalmanagement.util.PhoneNumberValidator;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -85,7 +86,7 @@ public class DataInitializer implements CommandLineRunner {
 
     private void initSystemAdmin(Office defaultOffice) {
         Account adminAccount = accountRepository.findByUsername("0000000000").orElse(null);
-        
+
         if (adminAccount == null) {
             adminAccount = new Account();
             adminAccount.setUsername("0000000000");
@@ -104,7 +105,7 @@ public class DataInitializer implements CommandLineRunner {
             Employee adminEmployee = new Employee();
             adminEmployee.setAccount(adminAccount);
             adminEmployee.setFullName("Hệ thống (Admin)");
-            adminEmployee.setPhoneNumber("0000000000");
+            adminEmployee.setPhoneNumber(PhoneNumberValidator.padToTenDigits("0000000000"));
             // Admin must belong to an office due to DB constraints
             if (defaultOffice != null) {
                 adminEmployee.setOffice(defaultOffice);
@@ -135,8 +136,8 @@ public class DataInitializer implements CommandLineRunner {
                 Office hub = new Office();
                 hub.setOfficeName("HUB " + region.getName());
                 hub.setOfficeEmail("hub" + region.getId() + "@f3postal.com");
-                hub.setOfficePhoneNumber("190000000" + region.getId());
-                hub.setOfficeAddress("Address HUB " + region.getName());
+                hub.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + String.format("%08d", region.getId())));
+                hub.setOfficeAddressLine1("Address HUB " + region.getName());
                 hub.setRegion(region);
                 hub.setOfficeType(OfficeType.HUB);
                 hub.setCapacity(10000);
@@ -145,7 +146,7 @@ public class DataInitializer implements CommandLineRunner {
                 hubsByRegion.put(region.getId(), savedHub);
                 
                 // Create HUB_ADMIN for this hub
-                createOfficeManager(savedHub, Role.HUB_ADMIN, "hub.admin" + region.getId(), String.format("09%08d", region.getId()));
+                createOfficeManager(savedHub, Role.HUB_ADMIN, "hub.admin" + region.getId(), PhoneNumberValidator.padToTenDigits(String.format("09%08d", region.getId())));
                 
                 log.info("Created HUB for region: {}", region.getName());
             }
@@ -172,8 +173,8 @@ public class DataInitializer implements CommandLineRunner {
                 Office warehouse = new Office();
                 warehouse.setOfficeName("Kho " + province.getName());
                 warehouse.setOfficeEmail(warehouseEmail);
-                warehouse.setOfficePhoneNumber("09" + province.getCode() + "0000");
-                warehouse.setOfficeAddress("Địa chỉ Kho " + province.getName());
+                warehouse.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + province.getCode() + "0000"));
+                warehouse.setOfficeAddressLine1("Địa chỉ Kho " + province.getName());
                 warehouse.setRegion(region);
                 warehouse.setProvince(province);
                 warehouse.setParent(parentHub);
@@ -182,7 +183,7 @@ public class DataInitializer implements CommandLineRunner {
                 Office savedWarehouse = officeRepository.save(warehouse);
                 
                 // Create WH_PROVINCE_ADMIN for this warehouse
-                createOfficeManager(savedWarehouse, Role.WH_PROVINCE_ADMIN, "wh.admin." + province.getCode(), "091" + province.getCode() + "00");
+                createOfficeManager(savedWarehouse, Role.WH_PROVINCE_ADMIN, "wh.admin." + province.getCode(), PhoneNumberValidator.padToTenDigits("091" + province.getCode() + "00"));
                 log.info("Created PROVINCE_WAREHOUSE for province: {}", province.getName());
             }
 
@@ -192,8 +193,8 @@ public class DataInitializer implements CommandLineRunner {
                 Office postOffice = new Office();
                 postOffice.setOfficeName("Bưu cục " + province.getName());
                 postOffice.setOfficeEmail(postOfficeEmail);
-                postOffice.setOfficePhoneNumber("09" + province.getCode() + "1000");
-                postOffice.setOfficeAddress("Địa chỉ Bưu cục " + province.getName());
+                postOffice.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + province.getCode() + "1000"));
+                postOffice.setOfficeAddressLine1("Địa chỉ Bưu cục " + province.getName());
                 postOffice.setRegion(region);
                 postOffice.setProvince(province);
                 postOffice.setParent(parentHub);
@@ -201,7 +202,7 @@ public class DataInitializer implements CommandLineRunner {
                 Office savedPostOffice = officeRepository.save(postOffice);
                 
                 // Create PO_PROVINCE_ADMIN for this post office
-                createOfficeManager(savedPostOffice, Role.PO_PROVINCE_ADMIN, "po.admin." + province.getCode(), "092" + province.getCode() + "00");
+                createOfficeManager(savedPostOffice, Role.PO_PROVINCE_ADMIN, "po.admin." + province.getCode(), PhoneNumberValidator.padToTenDigits("092" + province.getCode() + "00"));
                 log.info("Created PROVINCE_POST for province: {}", province.getName());
             }
         }
@@ -227,36 +228,42 @@ public class DataInitializer implements CommandLineRunner {
             Office provincePo = officeRepository.findByOfficeEmail(poEmail).orElse(null);
 
             if (provinceWh != null && provincePo != null) {
+                // Lookup default ward (created in initWards)
+                String defaultWardCode = provinceCode + "00001";
+                Ward defaultWard = wardRepository.findById(defaultWardCode).orElse(null);
+
                 // Create Ward Warehouse
                 Office wardWh = new Office();
                 wardWh.setOfficeName("Kho Phường 1 " + province.getName());
                 wardWh.setOfficeEmail("wh.ward1." + provinceCode + "@f3postal.com");
-                wardWh.setOfficePhoneNumber("09" + province.getCode() + "2000");
-                wardWh.setOfficeAddress("Address Kho Ward 1 " + province.getName());
+                wardWh.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + province.getCode() + "2000"));
+                wardWh.setOfficeAddressLine1("Address Kho Ward 1 " + province.getName());
                 wardWh.setRegion(province.getAdministrativeRegion());
                 wardWh.setProvince(province);
+                wardWh.setWard(defaultWard);
                 wardWh.setParent(provinceWh);
                 wardWh.setOfficeType(OfficeType.WARD_WAREHOUSE);
                 wardWh.setCapacity(2000);
                 Office savedWardWh = officeRepository.save(wardWh);
                 
                 // Create Ward Manager for Warehouse
-                createOfficeManager(savedWardWh, Role.WH_WARD_MANAGER, "wh.manager.w1." + provinceCode, "093" + province.getCode() + "10");
+                createOfficeManager(savedWardWh, Role.WH_WARD_MANAGER, "wh.manager.w1." + provinceCode, PhoneNumberValidator.padToTenDigits("093" + province.getCode() + "10"));
 
                 // Create Ward Post Office
                 Office wardPo = new Office();
                 wardPo.setOfficeName("Bưu cục Phường 1 " + province.getName());
                 wardPo.setOfficeEmail("po.ward1." + provinceCode + "@f3postal.com");
-                wardPo.setOfficePhoneNumber("09" + province.getCode() + "3000");
-                wardPo.setOfficeAddress("Address PO Ward 1 " + province.getName());
+                wardPo.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + province.getCode() + "3000"));
+                wardPo.setOfficeAddressLine1("Address PO Ward 1 " + province.getName());
                 wardPo.setRegion(province.getAdministrativeRegion());
                 wardPo.setProvince(province);
+                wardPo.setWard(defaultWard);
                 wardPo.setParent(provincePo);
                 wardPo.setOfficeType(OfficeType.WARD_POST);
                 Office savedWardPo = officeRepository.save(wardPo);
                 
                 // Create Ward Manager for Post Office
-                createOfficeManager(savedWardPo, Role.PO_WARD_MANAGER, "po.manager.w1." + provinceCode, "094" + province.getCode() + "10");
+                createOfficeManager(savedWardPo, Role.PO_WARD_MANAGER, "po.manager.w1." + provinceCode, PhoneNumberValidator.padToTenDigits("094" + province.getCode() + "10"));
 
                 // Create OfficePair
                 OfficePair pair = new OfficePair();

@@ -344,28 +344,34 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
             throw new IllegalArgumentException("Post office email already exists: " + request.getPostOfficeEmail());
         }
 
+        // Lookup Ward
+        Ward ward = wardRepository.findById(request.getWardCode())
+                .orElseThrow(() -> new IllegalArgumentException("Ward not found: " + request.getWardCode()));
+        
         // Create Ward Warehouse (without ward assignment initially)
         Office wardWarehouse = new Office();
         wardWarehouse.setOfficeName(request.getWarehouseName());
         wardWarehouse.setOfficeEmail(request.getWarehouseEmail());
         wardWarehouse.setOfficePhoneNumber(request.getWarehousePhoneNumber());
-        wardWarehouse.setOfficeAddress(request.getWarehouseAddress());
+        wardWarehouse.setOfficeAddressLine1(request.getWarehouseAddressLine1());
         wardWarehouse.setOfficeType(OfficeType.WARD_WAREHOUSE);
         wardWarehouse.setProvince(parentWarehouse.getProvince());
         wardWarehouse.setRegion(parentWarehouse.getRegion());
         wardWarehouse.setParent(parentWarehouse);
         wardWarehouse.setCapacity(request.getWarehouseCapacity());
+        wardWarehouse.setWard(ward);
 
         // Create Ward Post Office (without ward assignment initially)
         Office wardPostOffice = new Office();
         wardPostOffice.setOfficeName(request.getPostOfficeName());
         wardPostOffice.setOfficeEmail(request.getPostOfficeEmail());
         wardPostOffice.setOfficePhoneNumber(request.getPostOfficePhoneNumber());
-        wardPostOffice.setOfficeAddress(request.getPostOfficeAddress());
+        wardPostOffice.setOfficeAddressLine1(request.getPostOfficeAddressLine1());
         wardPostOffice.setOfficeType(OfficeType.WARD_POST);
         wardPostOffice.setProvince(parentPostOffice.getProvince());
         wardPostOffice.setRegion(parentPostOffice.getRegion());
         wardPostOffice.setParent(parentPostOffice);
+        wardPostOffice.setWard(ward);
 
         // Save both offices
         Office savedWarehouse = officeRepository.save(wardWarehouse);
@@ -632,7 +638,9 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
                 .officeName(warehouse.getOfficeName())
                 .officeEmail(warehouse.getOfficeEmail())
                 .officePhoneNumber(warehouse.getOfficePhoneNumber())
-                .officeAddress(warehouse.getOfficeAddress())
+                .officeAddressLine1(warehouse.getOfficeAddressLine1())
+                .wardCode(warehouse.getWard() != null ? warehouse.getWard().getCode() : null)
+                .wardName(warehouse.getWard() != null ? warehouse.getWard().getName() : null)
                 .officeType(warehouse.getOfficeType().name())
                 .parentOfficeId(warehouse.getParent() != null ? warehouse.getParent().getId() : null)
                 .parentOfficeName(warehouse.getParent() != null ? warehouse.getParent().getOfficeName() : null)
@@ -645,7 +653,9 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
                     .officeName(postOffice.getOfficeName())
                     .officeEmail(postOffice.getOfficeEmail())
                     .officePhoneNumber(postOffice.getOfficePhoneNumber())
-                    .officeAddress(postOffice.getOfficeAddress())
+                    .officeAddressLine1(postOffice.getOfficeAddressLine1())
+                    .wardCode(postOffice.getWard() != null ? postOffice.getWard().getCode() : null)
+                    .wardName(postOffice.getWard() != null ? postOffice.getWard().getName() : null)
                     .officeType(postOffice.getOfficeType().name())
                     .parentOfficeId(postOffice.getParent() != null ? postOffice.getParent().getId() : null)
                     .parentOfficeName(postOffice.getParent() != null ? postOffice.getParent().getOfficeName() : null)
@@ -853,7 +863,7 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
                 .officeName(office.getOfficeName())
                 .officeEmail(office.getOfficeEmail())
                 .officePhoneNumber(office.getOfficePhoneNumber())
-                .officeAddress(office.getOfficeAddress())
+                .officeAddressLine1(office.getOfficeAddressLine1())
                 .officeType(office.getOfficeType().name())
                 .provinceCode(office.getProvince() != null ? office.getProvince().getCode() : null)
                 .provinceName(office.getProvince() != null ? office.getProvince().getName() : null)
