@@ -1,0 +1,1955 @@
+import copy
+import random
+from dataclasses import dataclass, field
+from typing import List, Dict
+import numpy as np
+import plotly.graph_objects as go
+import base64
+import io
+
+# ==========================================================
+# VEHICLE & BUNDLE CONFIGURATION - VIETNAM POSTAL LOGISTICS
+# ==========================================================
+# Đơn vị: mm (millimeters)
+#
+# Hệ thống vận tải bưu phẩm 3 cấp:
+#   1. Xe tập kết (Ward → District Hub): Thu gom hàng từ các điểm giao dịch
+#   2. Xe liên tỉnh (District Hub → Province Hub): Vận chuyển trong tỉnh
+#   3. Xe liên miền (Province Hub → Regional Hub): Vận chuyển liên miền
+#
+# ==========================================================
+
+# -----------------------------
+# 1. VEHICLE SPECIFICATIONS
+# -----------------------------
+# Kích thước thùng xe thực tế ngành vận tải bưu phẩm Việt Nam
+
+VEHICLES = {
+    # Xe tập kết hàng - Kia Bongo / Suzuki Carry 0.5-1 tấn
+    # Thùng xe nhỏ, linh hoạt di chuyển trong đô thị, thu gom hàng từ bưu cục
+    "COLLECTION": {
+        "name": "Xe tập kết (Collection Truck)",
+        "description": "Thu gom hàng từ Ward đến District Hub",
+        "capacity_kg": 800,
+        "dimensions": {
+            "length": 2700,   # mm - chiều dài thùng
+            "width": 1500,    # mm - chiều rộng thùng  
+            "height": 1400,   # mm - chiều cao thùng
+        },
+        "color": "#4CAF50"    # Green
+    },
+    
+    # Xe liên tỉnh - Hyundai Porter / Isuzu QKR 2-3 tấn
+    # Vận chuyển giữa các hub trong cùng tỉnh
+    "INTER_DISTRICT": {
+        "name": "Xe liên tỉnh (Inter-District Truck)",
+        "description": "Vận chuyển từ District Hub đến Province Hub",
+        "capacity_kg": 2500,
+        "dimensions": {
+            "length": 4200,   # mm
+            "width": 1900,    # mm
+            "height": 1800,   # mm
+        },
+        "color": "#2196F3"    # Blue
+    },
+    
+    # Xe liên miền - Hino 500 / Isuzu FVR 5-10 tấn
+    # Container nhỏ hoặc thùng kín, vận chuyển đường dài liên miền
+    "INTER_REGION": {
+        "name": "Xe liên miền (Inter-Region Truck)",
+        "description": "Vận chuyển từ Province Hub đến Regional Hub",
+        "capacity_kg": 8000,
+        "dimensions": {
+            "length": 6200,   # mm - tương đương container 20ft nội địa
+            "width": 2400,    # mm
+            "height": 2400,   # mm
+        },
+        "color": "#9C27B0"    # Purple
+    }
+}
+
+# -----------------------------
+# 2. BUNDLE SPECIFICATIONS  
+# -----------------------------
+# NGUYÊN TẮC THIẾT KẾ BUNDLE:
+# =========================
+# Bundle được đóng 1 LẦN DUY NHẤT tại điểm tập kết (Ward level)
+# và giữ nguyên xuyên suốt quá trình vận chuyển qua các cấp.
+#
+# CONSTRAINT QUAN TRỌNG:
+#   - Bundle phải vừa với xe NHỎ NHẤT (xe tập kết: 1400mm height)
+#   - Max bundle total height = bundle_height + pallet_height ≤ 700mm
+#   - Cho phép xếp 2 layers (700mm × 2 = 1400mm) trong xe nhỏ nhất
+#   - Floor dimensions khớp HOÀN HẢO với xe tập kết (2700x1500mm)
+#
+# THIẾT KẾ FLOOR (L x W) - tối ưu cho xe tập kết 2700x1500:
+#   - SMALL: 450x300 → 6x5=30/layer (100% floor)
+#   - MEDIUM: 675x500 → 4x3=12/layer (96% floor)
+#   - LARGE: 900x750 → 3x2=6/layer (100% floor)
+#
+# THIẾT KẾ HEIGHT (đảm bảo total ≤ 700mm):
+#   - SMALL: 600mm + 100mm pallet = 700mm → 2 layers trong mọi xe
+#   - MEDIUM: 600mm + 100mm pallet = 700mm → 2 layers trong mọi xe
+#   - LARGE: 600mm + 100mm pallet = 700mm → 2 layers trong mọi xe
+#
+# PHÂN TÍCH KHẢ NĂNG XẾP:
+#   Xe tập kết (2700x1500x1400):
+#       + SMALL (450x300x700): 6x5=30/layer × 2 layers = 60 bundles (100% floor)
+#       + MEDIUM (675x500x700): 4x3=12/layer × 2 layers = 24 bundles (96% floor)
+#       + LARGE (900x750x700): 3x2=6/layer × 2 layers = 12 bundles (100% floor)
+#
+#   Xe liên tỉnh (4200x1900x1800):
+#       + SMALL: 7x4=28/layer × 2 layers = 56 bundles
+#       + MEDIUM: 5x3=15/layer × 2 layers = 30 bundles
+#       + LARGE: 4x2=8/layer × 2 layers = 16 bundles
+#
+#   Xe liên miền (6200x2400x2400):
+#       + SMALL: 10x6=60/layer × 3 layers = 180 bundles
+#       + MEDIUM: 7x4=28/layer × 3 layers = 84 bundles
+#       + LARGE: 6x3=18/layer × 3 layers = 54 bundles
+
+BUNDLES = {
+    # Bundle nhỏ - cho thư từ, phụ kiện nhỏ, mỹ phẩm
+    # Thiết kế để khớp tốt với tất cả xe:
+    #   Xe tập kết 2700x1500: 6x5=30/layer (100% floor)
+    #   Xe liên tỉnh 4200x1900: 9x6=54/layer (96.4% floor)
+    #   Xe liên miền 6200x2400: 13x8=104/layer (93.5% floor)
+    "SMALL": {
+        "name": "Bundle Nhỏ (Small Parcel Bundle)",
+        "description": "Gom bưu phẩm XS, S - thư từ, phụ kiện nhỏ",
+        "dimensions": {
+            "length": 450,    # mm - 2700/6=450 khớp hoàn hảo
+            "width": 300,     # mm - 1500/5=300 khớp hoàn hảo
+            "height": 350,    # mm - giảm để khớp với XS/S parcels (50-150mm)
+        },
+        "max_weight_kg": 40,
+        "pallet_height": 50,   # Total: 400mm max - 3 layers trong 1400mm
+        "color": "#FFC107"     # Amber
+    },
+    
+    # Bundle trung - cho quần áo, giày dép, đồ gia dụng nhỏ
+    # Thiết kế để khớp tốt với tất cả xe:
+    #   Xe tập kết 2700x1500: 4x3=12/layer (96% floor)
+    #   Xe liên tỉnh 4200x1900: 6x3=18/layer (91.4% floor)
+    #   Xe liên miền 6200x2400: 9x4=36/layer (96.8% floor)
+    "MEDIUM": {
+        "name": "Bundle Trung (Standard Bundle)",
+        "description": "Gom bưu phẩm M, L - quần áo, gia dụng nhỏ",
+        "dimensions": {
+            "length": 675,    # mm - 2700/4=675 khớp hoàn hảo
+            "width": 500,     # mm - 1500/3=500 khớp hoàn hảo
+            "height": 400,    # mm - giảm để khớp với M/L parcels (110-220mm)
+        },
+        "max_weight_kg": 100,
+        "pallet_height": 50,   # Total: 450mm max - 3 layers trong 1400mm
+        "color": "#FF9800"     # Orange
+    },
+    
+    # Bundle lớn - cho điện tử, nội thất nhỏ
+    # Thiết kế để khớp tốt với tất cả xe:
+    #   Xe tập kết 2700x1500: 3x2=6/layer (100% floor)
+    #   Xe liên tỉnh 4200x1900: 4x2=8/layer (76.2% floor)
+    #   Xe liên miền 6200x2400: 6x3=18/layer (96.8% floor)
+    "LARGE": {
+        "name": "Bundle Lớn (Bulk Bundle)",
+        "description": "Gom bưu phẩm XL, XXL - điện tử, nội thất",
+        "dimensions": {
+            "length": 900,    # mm - 2700/3=900 khớp hoàn hảo
+            "width": 750,     # mm - 1500/2=750 khớp hoàn hảo
+            "height": 450,    # mm - giảm để khớp với parcel heights
+        },
+        "max_weight_kg": 200,
+        "pallet_height": 50,   # Total: 500mm - 2 layers trong 1400mm
+        "color": "#FF5722"     # Deep Orange
+    }
+}
+
+# -----------------------------
+# 3. PARCEL SIZE CATEGORIES
+# -----------------------------
+# Phân loại kích thước bưu phẩm để tự động chọn bundle phù hợp
+# Kích thước parcel phải <= bundle dimensions để đảm bảo fit
+#
+# MAPPING: Parcel Size → Bundle Type (với bundle dimensions mới)
+#   XS, S → SMALL bundle (450x300x600)
+#   M, L → MEDIUM bundle (675x500x600)
+#   XL, XXL → LARGE bundle (900x750x600)
+
+PARCEL_SIZES = {
+    # Parcels phải fit vào bundle tương ứng
+    # SMALL bundle: 450x300x600 → parcels XS, S
+    # MEDIUM bundle: 675x500x600 → parcels M, L  
+    # LARGE bundle: 900x750x600 → parcels XL, XXL
+    
+    "XS": {  # Extra Small - Thư từ, tài liệu, phong bì
+        "max_dimensions": (220, 150, 50),   # Fit nhiều trong SMALL bundle (450x300x600)
+        "max_weight_kg": 1,
+        "preferred_bundle": "SMALL"
+    },
+    "S": {   # Small - Điện thoại, mỹ phẩm, phụ kiện nhỏ
+        "max_dimensions": (300, 200, 150),  # ~6-10 items/SMALL bundle
+        "max_weight_kg": 3,
+        "preferred_bundle": "SMALL"
+    },
+    "M": {   # Medium - Giày dép, quần áo, sách
+        "max_dimensions": (400, 300, 200),  # ~4-6 items/MEDIUM bundle (675x500x600)
+        "max_weight_kg": 10,
+        "preferred_bundle": "MEDIUM"
+    },
+    "L": {   # Large - Đồ gia dụng nhỏ, túi xách
+        "max_dimensions": (500, 400, 300),  # ~2-3 items/MEDIUM bundle
+        "max_weight_kg": 20,
+        "preferred_bundle": "MEDIUM"
+    },
+    "XL": {  # Extra Large - Đồ điện tử, monitor, lò vi sóng
+        "max_dimensions": (600, 500, 350),  # ~2-4 items/LARGE bundle (900x750x600)
+        "max_weight_kg": 35,
+        "preferred_bundle": "LARGE"
+    },
+    "XXL": { # Bulky - Tivi nhỏ, máy in, đồ nội thất nhỏ
+        "max_dimensions": (800, 650, 500),  # 1-2 items/LARGE bundle (900x750x600)
+        "max_weight_kg": 60,
+        "preferred_bundle": "LARGE"
+    }
+}
+
+# -----------------------------
+# 4. HELPER FUNCTIONS
+# -----------------------------
+
+def get_vehicle_box(vehicle_type: str) -> 'Box':
+    """Tạo Box object từ vehicle config"""
+    v = VEHICLES[vehicle_type]
+    dims = v["dimensions"]
+    return Box(dims["length"], dims["width"], dims["height"])
+
+def get_bundle_config(bundle_type: str) -> Dict:
+    """Lấy config của bundle type"""
+    return BUNDLES[bundle_type]
+
+def create_bundle(bundle_id: int, bundle_type: str = "MEDIUM") -> 'Bundle':
+    """Factory function tạo bundle với type cụ thể"""
+    config = BUNDLES[bundle_type]
+    dims = config["dimensions"]
+    return Bundle(
+        id=bundle_id,
+        bundle_type=bundle_type,
+        dim_l=dims["length"],
+        dim_w=dims["width"],
+        dim_h=dims["height"],
+        pallet_height=config["pallet_height"],
+        max_weight=config["max_weight_kg"]
+    )
+
+def classify_parcel(length: int, width: int, height: int, weight_kg: float = 0) -> str:
+    """Phân loại bưu phẩm theo kích thước"""
+    dims = sorted([length, width, height], reverse=True)
+    for size_code, spec in PARCEL_SIZES.items():
+        max_dims = sorted(spec["max_dimensions"], reverse=True)
+        if dims[0] <= max_dims[0] and dims[1] <= max_dims[1] and dims[2] <= max_dims[2]:
+            if weight_kg <= spec["max_weight_kg"] or weight_kg == 0:
+                return size_code
+    return "XXL"
+
+def get_preferred_bundle_type(parcel_size: str) -> str:
+    """Lấy bundle type phù hợp cho loại bưu phẩm"""
+    return PARCEL_SIZES.get(parcel_size, {"preferred_bundle": "LARGE"})["preferred_bundle"]
+
+def print_vehicle_bundle_analysis():
+    """In phân tích khả năng xếp bundle vào các loại xe"""
+    print("\n" + "="*70)
+    print("📊 VEHICLE-BUNDLE COMPATIBILITY ANALYSIS")
+    print("="*70)
+    
+    for v_name, v_config in VEHICLES.items():
+        dims = v_config["dimensions"]
+        v_l, v_w, v_h = dims["length"], dims["width"], dims["height"]
+        print(f"\n🚛 {v_config['name']}")
+        print(f"   Thùng xe: {v_l} x {v_w} x {v_h} mm")
+        print(f"   Tải trọng: {v_config['capacity_kg']} kg")
+        print(f"   Khả năng xếp bundle:")
+        
+        for b_name, b_config in BUNDLES.items():
+            b_dims = b_config["dimensions"]
+            b_l, b_w, b_h = b_dims["length"], b_dims["width"], b_dims["height"]
+            
+            # Tính số bundle xếp được
+            # Thử cả 2 chiều xoay của bundle trên mặt sàn
+            fit1_l = v_l // b_l
+            fit1_w = v_w // b_w
+            fit2_l = v_l // b_w
+            fit2_w = v_w // b_l
+            
+            # Lấy cách xếp tốt nhất
+            bundles_per_layer = max(fit1_l * fit1_w, fit2_l * fit2_w)
+            layers = v_h // (b_h + b_config["pallet_height"])
+            total_bundles = bundles_per_layer * layers
+            
+            efficiency = (bundles_per_layer * b_l * b_w) / (v_l * v_w) * 100
+            
+            print(f"      - {b_name} ({b_l}x{b_w}x{b_h}): "
+                  f"{bundles_per_layer}/layer × {layers} layers = {total_bundles} bundles "
+                  f"({efficiency:.1f}% floor efficiency)")
+    
+    print("\n" + "="*70)
+
+
+# ==========================================================
+# 1. DATA STRUCTURES & 2. ENGINE
+# ==========================================================
+@dataclass(frozen=True)
+class Box:
+    l: int
+    w: int
+    h: int
+    id: int = -1
+    color: str = 'blue'
+    
+    @property
+    def volume(self): return self.l * self.w * self.h
+    @property
+    def area(self): return self.l * self.w
+
+    def get_orientations(self):
+        unique = set()
+        perms = [
+            (self.l, self.w, self.h), (self.l, self.h, self.w),
+            (self.w, self.l, self.h), (self.w, self.h, self.l),
+            (self.h, self.l, self.w), (self.h, self.w, self.l)
+        ]
+        res = []
+        for p in perms:
+            if p not in unique:
+                unique.add(p)
+                res.append(Box(*p, id=self.id, color=self.color))
+        return res
+
+@dataclass
+class Placement:
+    x: int
+    y: int
+    z: int
+    box: Box
+
+class PackerEngine:
+    def __init__(self, container_dims: Box):
+        self.container = container_dims
+        self.placements = []
+        self.ep = [(0, 0, 0)] 
+        self.occupied_volume = 0
+    
+    def intersect(self, x, y, z, b, p):
+        return (x < p.x + p.box.l and x + b.l > p.x and
+                y < p.y + p.box.w and y + b.w > p.y and
+                z < p.z + p.box.h and z + b.h > p.z)
+
+    def check_support(self, x, y, z, width, length):
+        if z == 0: return True
+        box_area = width * length
+        supported_area = 0
+        for p in self.placements:
+            if abs((p.z + p.box.h) - z) < 1:
+                ix = max(x, p.x); iy = max(y, p.y)
+                ix2 = min(x + length, p.x + p.box.l); iy2 = min(y + width, p.y + p.box.w)
+                if ix < ix2 and iy < iy2: supported_area += (ix2 - ix) * (iy2 - iy)
+        return (supported_area / box_area) >= 0.60
+
+    def can_place(self, x, y, z, box):
+        if x + box.l > self.container.l or y + box.w > self.container.w or z + box.h > self.container.h: return False
+        for p in self.placements:
+            if self.intersect(x, y, z, box, p): return False
+        if not self.check_support(x, y, z, box.w, box.l): return False
+        return True
+
+    def add_item(self, box: Box) -> bool:
+        best_ep, best_orient = None, None
+        best_score = float('inf')
+        sorted_eps = sorted(self.ep, key=lambda p: (p[2], p[1], p[0]))
+
+        for ep in sorted_eps: 
+            for orient in box.get_orientations():
+                if self.can_place(*ep, orient):
+                    gap_x = self.container.l - (ep[0] + orient.l)
+                    gap_y = self.container.w - (ep[1] + orient.w)
+                    dead_space_penalty = 0
+                    if 0 < gap_x < 50: dead_space_penalty += 100000
+                    if 0 < gap_y < 50: dead_space_penalty += 100000
+                    area_score = -orient.area 
+                    score = (ep[2] * 1000000) + (ep[1] * 100) + ep[0] + dead_space_penalty + (area_score / 100)
+                    if score < best_score:
+                        best_score = score
+                        best_ep, best_orient = ep, orient
+            if best_ep and best_ep[2] == 0 and best_score < -100: break
+        
+        if best_ep:
+            self.placements.append(Placement(*best_ep, best_orient))
+            self.occupied_volume += best_orient.volume
+            self._update_eps(*best_ep, best_orient)
+            return True
+        return False
+
+    def _update_eps(self, x, y, z, box):
+        new_candidates = [(x + box.l, y, z), (x, y + box.w, z), (x, y, z + box.h)]
+        for nc in new_candidates:
+            if nc[0] < self.container.l and nc[1] < self.container.w and nc[2] < self.container.h:
+                if not any(self.intersect(nc[0], nc[1], nc[2], Box(1,1,1), p) for p in self.placements):
+                    if nc not in self.ep: self.ep.append(nc)
+        valid_eps = []
+        for ep in self.ep:
+            if (ep[0] >= x and ep[0] < x + box.l and
+                ep[1] >= y and ep[1] < y + box.w and
+                ep[2] >= z and ep[2] < z + box.h): continue
+            valid_eps.append(ep)
+        self.ep = valid_eps
+
+# ==========================================================
+# 3. REPORT GENERATOR (OPTIMIZED - STATIC IMAGES)
+# ==========================================================
+def create_plotly_figure(container_dims, placements, title, static=False):
+    """
+    Creates a Plotly figure.
+    If static=True, layout is optimized for a static image snapshot.
+    """
+    fig = go.Figure()
+    
+    # 1. Items
+    for p in placements:
+        x, y, z = p.x, p.y, p.z
+        l, w, h = p.box.l, p.box.w, p.box.h
+        
+        # Vertices
+        x_coords = [x, x+l, x+l, x, x, x+l, x+l, x]
+        y_coords = [y, y, y+w, y+w, y, y, y+w, y+w]
+        z_coords = [z, z, z, z, z+h, z+h, z+h, z+h]
+        
+        i = [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2]
+        j = [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3]
+        k = [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6]
+
+        # Use lighter rendering for static images
+        fig.add_trace(go.Mesh3d(
+            x=x_coords, y=y_coords, z=z_coords,
+            i=i, j=j, k=k,
+            color=p.box.color, opacity=1.0, flatshading=True,
+            name=f"ID:{p.box.id}", hoverinfo='name' if not static else 'skip'
+        ))
+        
+        # Wireframe
+        lines_x = [x, x+l, x+l, x, x, None, x, x, None, x+l, x+l, None, x+l, x+l, None, x, x, x+l, x+l, x, x]
+        lines_y = [y, y, y+w, y+w, y, None, y, y, None, y, y, None, y+w, y+w, None, y+w, y+w, y, y, y+w, y+w]
+        lines_z = [z, z, z, z, z, None, z, z+h, None, z, z+h, None, z, z+h, None, z, z+h, z+h, z+h, z+h, z+h]
+        
+        fig.add_trace(go.Scatter3d(
+            x=lines_x, y=lines_y, z=lines_z,
+            mode='lines', line=dict(color='black', width=2),
+            showlegend=False, hoverinfo='skip'
+        ))
+
+    # 2. Container Frame
+    cx, cy, cz = container_dims.l, container_dims.w, container_dims.h
+    fig.add_trace(go.Mesh3d(
+        x=[0, cx, cx, 0, 0, cx, cx, 0],
+        y=[0, 0, cy, cy, 0, 0, cy, cy],
+        z=[0, 0, 0, 0, cz, cz, cz, cz],
+        i=[7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+        j=[3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+        k=[0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+        color='gray', opacity=0.1, name='Frame', hoverinfo='skip'
+    ))
+
+    # Layout optimization
+    layout_args = dict(
+        title=title,
+        margin=dict(l=0, r=0, b=0, t=30),
+        scene=dict(
+            xaxis=dict(range=[0, max(cx,cy,cz)], title='L'),
+            yaxis=dict(range=[0, max(cx,cy,cz)], title='W'),
+            zaxis=dict(range=[0, max(cx,cy,cz)], title='H'),
+            aspectmode='data',
+            camera=dict(eye=dict(x=1.5, y=1.5, z=1.5)) # Better angle
+        )
+    )
+    
+    if static:
+        layout_args['height'] = 400
+        layout_args['width'] = 500
+        layout_args['title'] = None # Remove title from image, use HTML text instead
+    else:
+        layout_args['height'] = 600
+
+    fig.update_layout(**layout_args)
+    return fig
+
+def generate_full_report(bundles, container, container_placements, filename="Full_Packing_Report.html"):
+    """
+    Generate interactive HTML report using Plotly.js only (no Kaleido).
+    Uses lazy loading to prevent WebGL context overflow.
+    """
+    print(f"\n📊 Generating Interactive Report...")
+    
+    # Convert all figures to JSON for embedding
+    bundle_data = []
+    for b in bundles:
+        if len(b.items) == 0: 
+            continue
+        dims = b.as_box()
+        fig = create_plotly_figure(Box(dims.l, dims.w, dims.h), b.packer.placements, "", static=False)
+        bundle_data.append({
+            "id": b.id,
+            "type": b.bundle_type,
+            "items": len(b.items),
+            "size": f"{dims.l}x{dims.w}x{dims.h}",
+            "fill_rate": f"{b.fill_rate*100:.1f}%",
+            "fig_json": fig.to_json()
+        })
+    
+    # Container figure
+    fig_container = create_plotly_figure(container, container_placements, "")
+    container_json = fig_container.to_json()
+    
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Packing Report</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{ 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }}
+        .container {{ max-width: 1400px; margin: 0 auto; }}
+        .header {{ 
+            background: rgba(255,255,255,0.95); 
+            padding: 30px; 
+            border-radius: 16px; 
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }}
+        .header h1 {{ 
+            font-size: 2.5em; 
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }}
+        .header p {{ color: #666; font-size: 1.1em; }}
+        .section {{ 
+            background: rgba(255,255,255,0.95); 
+            border-radius: 16px; 
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        }}
+        .section-title {{ 
+            font-size: 1.5em; 
+            color: #333; 
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .container-viz {{ height: 500px; }}
+        .bundle-grid {{ 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+            gap: 15px; 
+        }}
+        .bundle-card {{ 
+            background: #f8f9fa; 
+            border-radius: 12px; 
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+        }}
+        .bundle-card:hover {{ 
+            transform: translateY(-3px); 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }}
+        .bundle-card.active {{
+            border: 2px solid #667eea;
+            box-shadow: 0 10px 25px rgba(102,126,234,0.3);
+        }}
+        .bundle-header {{ 
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 15px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .bundle-header .type {{ 
+            background: rgba(255,255,255,0.2);
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+        }}
+        .bundle-stats {{
+            display: flex;
+            gap: 15px;
+            padding: 12px 15px;
+            background: #fff;
+            font-size: 0.85em;
+            flex-wrap: wrap;
+        }}
+        .stat {{ 
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }}
+        .stat-value {{ font-weight: 600; color: #667eea; }}
+        .bundle-viewer {{
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 450px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        .bundle-viewer-placeholder {{
+            text-align: center;
+            color: #999;
+        }}
+        .bundle-viewer-placeholder .icon {{ font-size: 4em; margin-bottom: 10px; }}
+        #bundle-detail-viz {{ width: 100%; height: 400px; }}
+        .tabs {{
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }}
+        .tab {{
+            padding: 10px 20px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }}
+        .tab.active {{
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }}
+        .tab:hover:not(.active) {{ background: #ccc; }}
+        .summary-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }}
+        .summary-card {{
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }}
+        .summary-card .value {{ font-size: 1.8em; font-weight: 700; }}
+        .summary-card .label {{ opacity: 0.9; margin-top: 5px; font-size: 0.9em; }}
+        .bundle-detail-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }}
+        .close-btn {{
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }}
+        .close-btn:hover {{ background: #c0392b; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 3D Packing Visualization</h1>
+            <p>Interactive bin packing report - Click on a bundle to view details</p>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">🚛 Vehicle Container</div>
+            <div id="container-viz" class="container-viz"></div>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="value">{len(bundle_data)}</div>
+                    <div class="label">Bundles</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value">{len(container_placements)}</div>
+                    <div class="label">Loaded</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value">{container.l}x{container.w}x{container.h}</div>
+                    <div class="label">Size (mm)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">📦 Bundle Details ({len(bundle_data)} bundles) - Click to view 3D</div>
+            <div class="tabs">
+                <button class="tab active" onclick="filterBundles('all')">All ({len(bundle_data)})</button>
+                <button class="tab" onclick="filterBundles('SMALL')">Small</button>
+                <button class="tab" onclick="filterBundles('MEDIUM')">Medium</button>
+                <button class="tab" onclick="filterBundles('LARGE')">Large</button>
+            </div>
+            
+            <div class="bundle-viewer" id="bundle-viewer">
+                <div class="bundle-viewer-placeholder">
+                    <div class="icon">👆</div>
+                    <p>Click on a bundle card below to view its 3D visualization</p>
+                </div>
+            </div>
+            
+            <div id="bundle-grid" class="bundle-grid" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Bundle data
+        const bundleData = {bundle_data};
+        const containerData = {container_json};
+        let currentBundleId = null;
+        
+        // Render container
+        Plotly.newPlot('container-viz', containerData.data, {{
+            ...containerData.layout,
+            title: 'Container Overview - Drag to rotate, scroll to zoom',
+            height: 500,
+            margin: {{l:0, r:0, t:40, b:0}}
+        }}, {{responsive: true}});
+        
+        // Render bundle cards (without 3D - lazy load on click)
+        function renderBundleCards(filter = 'all') {{
+            const grid = document.getElementById('bundle-grid');
+            grid.innerHTML = '';
+            
+            bundleData.forEach((bundle) => {{
+                if (filter !== 'all' && bundle.type !== filter) return;
+                
+                const card = document.createElement('div');
+                card.className = 'bundle-card' + (bundle.id === currentBundleId ? ' active' : '');
+                card.dataset.id = bundle.id;
+                card.innerHTML = `
+                    <div class="bundle-header">
+                        <span>Bundle #${{bundle.id}}</span>
+                        <span class="type">${{bundle.type}}</span>
+                    </div>
+                    <div class="bundle-stats">
+                        <div class="stat">📦 <span class="stat-value">${{bundle.items}}</span> items</div>
+                        <div class="stat">📐 <span class="stat-value">${{bundle.size}}</span></div>
+                        <div class="stat">📊 <span class="stat-value">${{bundle.fill_rate}}</span></div>
+                    </div>
+                `;
+                card.onclick = () => showBundleDetail(bundle.id);
+                grid.appendChild(card);
+            }});
+        }}
+        
+        // Show bundle 3D detail (lazy load)
+        function showBundleDetail(bundleId) {{
+            const bundle = bundleData.find(b => b.id === bundleId);
+            if (!bundle) return;
+            
+            currentBundleId = bundleId;
+            
+            // Update active state on cards
+            document.querySelectorAll('.bundle-card').forEach(c => {{
+                c.classList.toggle('active', parseInt(c.dataset.id) === bundleId);
+            }});
+            
+            const viewer = document.getElementById('bundle-viewer');
+            viewer.innerHTML = `
+                <div style="width: 100%;">
+                    <div class="bundle-detail-header">
+                        <h3>Bundle #${{bundle.id}} - ${{bundle.type}} (${{bundle.items}} items, ${{bundle.fill_rate}} fill)</h3>
+                        <button class="close-btn" onclick="closeBundleDetail()">✕ Close</button>
+                    </div>
+                    <div id="bundle-detail-viz"></div>
+                </div>
+            `;
+            
+            // Render the 3D plot
+            const figData = JSON.parse(bundle.fig_json);
+            Plotly.newPlot('bundle-detail-viz', figData.data, {{
+                ...figData.layout,
+                height: 400,
+                margin: {{l:0, r:0, t:10, b:0}}
+            }}, {{responsive: true}});
+        }}
+        
+        function closeBundleDetail() {{
+            currentBundleId = null;
+            document.querySelectorAll('.bundle-card').forEach(c => c.classList.remove('active'));
+            
+            const viewer = document.getElementById('bundle-viewer');
+            // Cleanup WebGL context
+            Plotly.purge('bundle-detail-viz');
+            
+            viewer.innerHTML = `
+                <div class="bundle-viewer-placeholder">
+                    <div class="icon">👆</div>
+                    <p>Click on a bundle card below to view its 3D visualization</p>
+                </div>
+            `;
+        }}
+        
+        function filterBundles(type) {{
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            renderBundleCards(type);
+        }}
+        
+        // Initial render
+        renderBundleCards();
+    </script>
+</body>
+</html>"""
+    
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(html_content)
+    
+    print(f"✅ Report saved to: {filename}")
+
+
+def generate_animated_report(bundles, container, container_placements, filename="Packing_Animation.html"):
+    """
+    Generate animated packing visualization with timeline controls.
+    Features:
+    - Items appear outside bundle with ID label
+    - Animate sliding into position
+    - Timeline slider to step through placements
+    - Same for bundles into container
+    """
+    print(f"\n🎬 Generating Animated Report...")
+    
+    # Prepare placement data with order (placement order = animation order)
+    bundle_animations = []
+    for b in bundles:
+        if len(b.items) == 0:
+            continue
+        dims = b.as_box()
+        # Each placement has order based on when it was added
+        placements_data = []
+        for idx, p in enumerate(b.packer.placements):
+            placements_data.append({
+                "order": idx,
+                "id": p.box.id,
+                "x": p.x, "y": p.y, "z": p.z,
+                "l": p.box.l, "w": p.box.w, "h": p.box.h,
+                "color": p.box.color if hasattr(p.box, 'color') else '#3498db'
+            })
+        bundle_animations.append({
+            "id": b.id,
+            "type": b.bundle_type,
+            "dim_l": dims.l, "dim_w": dims.w, "dim_h": dims.h,
+            "items": len(b.items),
+            "fill_rate": f"{b.fill_rate*100:.1f}%",
+            "placements": placements_data
+        })
+    
+    # Container placements (bundles)
+    container_animation = []
+    for idx, p in enumerate(container_placements):
+        original_bundle = next((b for b in bundles if b.id == p.box.id), None)
+        container_animation.append({
+            "order": idx,
+            "id": p.box.id,
+            "x": p.x, "y": p.y, "z": p.z,
+            "l": p.box.l, "w": p.box.w, "h": p.box.h,
+            "color": p.box.color if hasattr(p.box, 'color') else '#FF9800',
+            "type": original_bundle.bundle_type if original_bundle else "UNKNOWN",
+            "items": len(original_bundle.items) if original_bundle else 0
+        })
+    
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Animated Packing Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{ 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }}
+        .container {{ max-width: 1400px; margin: 0 auto; }}
+        .header {{ 
+            text-align: center;
+            margin-bottom: 30px;
+        }}
+        .header h1 {{ 
+            font-size: 2.5em; 
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }}
+        .header p {{ color: #888; }}
+        .main-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }}
+        @media (max-width: 1200px) {{
+            .main-grid {{ grid-template-columns: 1fr; }}
+        }}
+        .panel {{ 
+            background: rgba(255,255,255,0.05); 
+            border-radius: 16px; 
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }}
+        .panel-title {{ 
+            font-size: 1.3em; 
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .viz-container {{ 
+            height: 450px; 
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            overflow: hidden;
+        }}
+        .controls {{
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+        }}
+        .timeline {{
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }}
+        .timeline input[type="range"] {{
+            flex: 1;
+            height: 8px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            outline: none;
+        }}
+        .timeline input[type="range"]::-webkit-slider-thumb {{
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            border-radius: 50%;
+            cursor: pointer;
+        }}
+        .step-display {{
+            background: rgba(0,217,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            min-width: 100px;
+            text-align: center;
+        }}
+        .btn-group {{
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }}
+        .btn {{
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }}
+        .btn:hover {{ 
+            background: rgba(0,217,255,0.3);
+            border-color: #00d9ff;
+        }}
+        .btn.primary {{
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            border: none;
+            color: #1a1a2e;
+            font-weight: 600;
+        }}
+        .btn.primary:hover {{ opacity: 0.9; }}
+        .info-bar {{
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }}
+        .info-item {{
+            background: rgba(255,255,255,0.1);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }}
+        .info-item .label {{ color: #888; margin-right: 5px; }}
+        .info-item .value {{ color: #00d9ff; font-weight: 600; }}
+        .bundle-selector {{
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }}
+        .bundle-btn {{
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.3s ease;
+        }}
+        .bundle-btn:hover {{ border-color: #00d9ff; }}
+        .bundle-btn.active {{
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            color: #1a1a2e;
+            border: none;
+            font-weight: 600;
+        }}
+        .speed-control {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: center;
+        }}
+        .speed-control label {{ color: #888; }}
+        .speed-control select {{
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Animated Packing Visualization</h1>
+            <p>Watch items slide into bundles and bundles load into container</p>
+        </div>
+        
+        <div class="main-grid">
+            <!-- Left Panel: Bundle Animation -->
+            <div class="panel">
+                <div class="panel-title">📦 Bundle Packing</div>
+                <div class="bundle-selector" id="bundle-selector"></div>
+                <div id="bundle-viz" class="viz-container"></div>
+                <div class="controls">
+                    <div class="timeline">
+                        <span>Step</span>
+                        <input type="range" id="bundle-slider" min="0" max="10" value="0">
+                        <span id="bundle-step" class="step-display">0 / 0</span>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn" onclick="bundleStepBack()">⏮ Back</button>
+                        <button class="btn primary" onclick="bundlePlayPause()">▶ Play</button>
+                        <button class="btn" onclick="bundleStepForward()">Next ⏭</button>
+                        <button class="btn" onclick="bundleReset()">↺ Reset</button>
+                    </div>
+                    <div class="speed-control">
+                        <label>Speed:</label>
+                        <select id="bundle-speed">
+                            <option value="1000">Slow</option>
+                            <option value="500" selected>Normal</option>
+                            <option value="200">Fast</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="info-bar" id="bundle-info"></div>
+            </div>
+            
+            <!-- Right Panel: Container Animation -->
+            <div class="panel">
+                <div class="panel-title">🚛 Container Loading</div>
+                <div id="container-viz" class="viz-container"></div>
+                <div class="controls">
+                    <div class="timeline">
+                        <span>Step</span>
+                        <input type="range" id="container-slider" min="0" max="{len(container_animation)}" value="0">
+                        <span id="container-step" class="step-display">0 / {len(container_animation)}</span>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn" onclick="containerStepBack()">⏮ Back</button>
+                        <button class="btn primary" onclick="containerPlayPause()">▶ Play</button>
+                        <button class="btn" onclick="containerStepForward()">Next ⏭</button>
+                        <button class="btn" onclick="containerReset()">↺ Reset</button>
+                    </div>
+                    <div class="speed-control">
+                        <label>Speed:</label>
+                        <select id="container-speed">
+                            <option value="1000">Slow</option>
+                            <option value="500" selected>Normal</option>
+                            <option value="200">Fast</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="info-bar" id="container-info">
+                    <div class="info-item"><span class="label">Container:</span><span class="value">{container.l}x{container.w}x{container.h}mm</span></div>
+                    <div class="info-item"><span class="label">Total Bundles:</span><span class="value">{len(container_animation)}</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data
+        const bundleData = {bundle_animations};
+        const containerData = {container_animation};
+        const containerDims = {{l: {container.l}, w: {container.w}, h: {container.h}}};
+        
+        // Color palette for items (distinct colors)
+        const colorPalette = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', 
+            '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+            '#F8B500', '#00CED1', '#FF7F50', '#9370DB', '#3CB371',
+            '#FF69B4', '#20B2AA', '#FFD700', '#87CEEB', '#FFA07A',
+            '#8FBC8F', '#DEB887', '#5F9EA0', '#D2691E', '#6495ED',
+            '#DC143C', '#00FFFF', '#FFE4B5', '#ADFF2F', '#FF1493'
+        ];
+        
+        function getItemColor(index) {{
+            return colorPalette[index % colorPalette.length];
+        }}
+        
+        // State
+        let currentBundleIdx = 0;
+        let bundleStep = 0;
+        let bundlePlaying = false;
+        let bundleInterval = null;
+        
+        let containerStep = 0;
+        let containerPlaying = false;
+        let containerInterval = null;
+        
+        // ==================== BUNDLE ANIMATION ====================
+        
+        function initBundleSelector() {{
+            const selector = document.getElementById('bundle-selector');
+            bundleData.forEach((b, idx) => {{
+                const btn = document.createElement('button');
+                btn.className = 'bundle-btn' + (idx === 0 ? ' active' : '');
+                btn.textContent = `#${{b.id}} (${{b.type}})`;
+                btn.onclick = () => selectBundle(idx);
+                selector.appendChild(btn);
+            }});
+        }}
+        
+        function selectBundle(idx) {{
+            currentBundleIdx = idx;
+            bundleStep = 0;
+            
+            // Update buttons
+            document.querySelectorAll('.bundle-btn').forEach((btn, i) => {{
+                btn.classList.toggle('active', i === idx);
+            }});
+            
+            // Update slider
+            const bundle = bundleData[idx];
+            const slider = document.getElementById('bundle-slider');
+            slider.max = bundle.placements.length;
+            slider.value = 0;
+            
+            // Update info
+            updateBundleInfo();
+            renderBundleAtStep(0);
+        }}
+        
+        function updateBundleInfo() {{
+            const bundle = bundleData[currentBundleIdx];
+            const info = document.getElementById('bundle-info');
+            info.innerHTML = `
+                <div class="info-item"><span class="label">Bundle:</span><span class="value">#${{bundle.id}} (${{bundle.type}})</span></div>
+                <div class="info-item"><span class="label">Size:</span><span class="value">${{bundle.dim_l}}x${{bundle.dim_w}}x${{bundle.dim_h}}mm</span></div>
+                <div class="info-item"><span class="label">Items:</span><span class="value">${{bundle.items}}</span></div>
+                <div class="info-item"><span class="label">Fill:</span><span class="value">${{bundle.fill_rate}}</span></div>
+            `;
+        }}
+        
+        function renderBundleAtStep(step) {{
+            const bundle = bundleData[currentBundleIdx];
+            const placements = bundle.placements.slice(0, step);
+            
+            // Update step display
+            document.getElementById('bundle-step').textContent = `${{step}} / ${{bundle.placements.length}}`;
+            document.getElementById('bundle-slider').value = step;
+            
+            const traces = [];
+            
+            // Container frame (bundle boundary)
+            traces.push({{
+                type: 'mesh3d',
+                x: [0, bundle.dim_l, bundle.dim_l, 0, 0, bundle.dim_l, bundle.dim_l, 0],
+                y: [0, 0, bundle.dim_w, bundle.dim_w, 0, 0, bundle.dim_w, bundle.dim_w],
+                z: [0, 0, 0, 0, bundle.dim_h, bundle.dim_h, bundle.dim_h, bundle.dim_h],
+                i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                color: 'rgba(100,100,100,0.1)',
+                flatshading: true,
+                hoverinfo: 'skip'
+            }});
+            
+            // Placed items - each with unique color from palette
+            placements.forEach((p, i) => {{
+                const isLatest = i === placements.length - 1;
+                const itemColor = getItemColor(i);  // Unique color per item
+                traces.push({{
+                    type: 'mesh3d',
+                    x: [p.x, p.x+p.l, p.x+p.l, p.x, p.x, p.x+p.l, p.x+p.l, p.x],
+                    y: [p.y, p.y, p.y+p.w, p.y+p.w, p.y, p.y, p.y+p.w, p.y+p.w],
+                    z: [p.z, p.z, p.z, p.z, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h],
+                    i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                    j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                    k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                    color: itemColor,
+                    opacity: isLatest ? 1 : 0.8,
+                    flatshading: true,
+                    name: `Item ${{p.id}}`,
+                    hovertemplate: `<b>Item #${{p.id}}</b><br>Size: ${{p.l}}x${{p.w}}x${{p.h}}<br>Pos: (${{p.x}}, ${{p.y}}, ${{p.z}})<extra></extra>`
+                }});
+                
+                // Wireframe for latest item (highlight effect)
+                if (isLatest) {{
+                    const lx = [p.x, p.x+p.l, p.x+p.l, p.x, p.x, null, p.x, p.x, null, p.x+p.l, p.x+p.l, null, p.x+p.l, p.x+p.l, null, p.x, p.x, p.x+p.l, p.x+p.l, p.x, p.x];
+                    const ly = [p.y, p.y, p.y+p.w, p.y+p.w, p.y, null, p.y, p.y, null, p.y, p.y, null, p.y+p.w, p.y+p.w, null, p.y+p.w, p.y+p.w, p.y, p.y, p.y+p.w, p.y+p.w];
+                    const lz = [p.z, p.z, p.z, p.z, p.z, null, p.z, p.z+p.h, null, p.z, p.z+p.h, null, p.z, p.z+p.h, null, p.z, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h];
+                    traces.push({{
+                        type: 'scatter3d',
+                        x: lx, y: ly, z: lz,
+                        mode: 'lines',
+                        line: {{ color: '#00ff88', width: 6 }},
+                        hoverinfo: 'skip'
+                    }});
+                    // Label
+                    traces.push({{
+                        type: 'scatter3d',
+                        x: [p.x + p.l/2],
+                        y: [p.y + p.w/2],
+                        z: [p.z + p.h + 20],
+                        mode: 'text',
+                        text: [`#${{p.id}}`],
+                        textfont: {{ size: 14, color: '#00ff88' }},
+                        hoverinfo: 'skip'
+                    }});
+                }}
+            }});
+            
+            Plotly.react('bundle-viz', traces, {{
+                scene: {{
+                    xaxis: {{ title: 'L', range: [0, bundle.dim_l] }},
+                    yaxis: {{ title: 'W', range: [0, bundle.dim_w] }},
+                    zaxis: {{ title: 'H', range: [0, bundle.dim_h] }},
+                    aspectmode: 'data',
+                    camera: {{ eye: {{ x: 1.5, y: 1.5, z: 1.2 }} }}
+                }},
+                margin: {{ l: 0, r: 0, t: 0, b: 0 }},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: false
+            }}, {{ responsive: true }});
+        }}
+        
+        function bundleStepForward() {{
+            const bundle = bundleData[currentBundleIdx];
+            if (bundleStep < bundle.placements.length) {{
+                bundleStep++;
+                renderBundleAtStep(bundleStep);
+            }}
+        }}
+        
+        function bundleStepBack() {{
+            if (bundleStep > 0) {{
+                bundleStep--;
+                renderBundleAtStep(bundleStep);
+            }}
+        }}
+        
+        function bundlePlayPause() {{
+            const btn = event.target;
+            if (bundlePlaying) {{
+                clearInterval(bundleInterval);
+                bundlePlaying = false;
+                btn.textContent = '▶ Play';
+            }} else {{
+                bundlePlaying = true;
+                btn.textContent = '⏸ Pause';
+                const speed = parseInt(document.getElementById('bundle-speed').value);
+                bundleInterval = setInterval(() => {{
+                    const bundle = bundleData[currentBundleIdx];
+                    if (bundleStep < bundle.placements.length) {{
+                        bundleStep++;
+                        renderBundleAtStep(bundleStep);
+                    }} else {{
+                        clearInterval(bundleInterval);
+                        bundlePlaying = false;
+                        btn.textContent = '▶ Play';
+                    }}
+                }}, speed);
+            }}
+        }}
+        
+        function bundleReset() {{
+            bundleStep = 0;
+            renderBundleAtStep(0);
+            if (bundlePlaying) {{
+                clearInterval(bundleInterval);
+                bundlePlaying = false;
+                document.querySelector('.panel:first-child .btn.primary').textContent = '▶ Play';
+            }}
+        }}
+        
+        // Bundle slider event
+        document.getElementById('bundle-slider').addEventListener('input', (e) => {{
+            bundleStep = parseInt(e.target.value);
+            renderBundleAtStep(bundleStep);
+        }});
+        
+        // ==================== CONTAINER ANIMATION ====================
+        
+        function renderContainerAtStep(step) {{
+            const placements = containerData.slice(0, step);
+            
+            // Update step display
+            document.getElementById('container-step').textContent = `${{step}} / ${{containerData.length}}`;
+            document.getElementById('container-slider').value = step;
+            
+            const traces = [];
+            
+            // Container frame
+            traces.push({{
+                type: 'mesh3d',
+                x: [0, containerDims.l, containerDims.l, 0, 0, containerDims.l, containerDims.l, 0],
+                y: [0, 0, containerDims.w, containerDims.w, 0, 0, containerDims.w, containerDims.w],
+                z: [0, 0, 0, 0, containerDims.h, containerDims.h, containerDims.h, containerDims.h],
+                i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                color: 'rgba(100,100,100,0.1)',
+                flatshading: true,
+                hoverinfo: 'skip'
+            }});
+            
+            // Loaded bundles - each with unique color based on type + index
+            placements.forEach((p, i) => {{
+                const isLatest = i === placements.length - 1;
+                // Base color by type, vary shade by index
+                const baseColors = {{ SMALL: '#FFC107', MEDIUM: '#FF9800', LARGE: '#FF5722' }};
+                const bundleColor = getItemColor(i);  // Unique color per bundle
+                traces.push({{
+                    type: 'mesh3d',
+                    x: [p.x, p.x+p.l, p.x+p.l, p.x, p.x, p.x+p.l, p.x+p.l, p.x],
+                    y: [p.y, p.y, p.y+p.w, p.y+p.w, p.y, p.y, p.y+p.w, p.y+p.w],
+                    z: [p.z, p.z, p.z, p.z, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h],
+                    i: [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                    j: [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                    k: [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                    color: bundleColor,
+                    opacity: isLatest ? 1 : 0.8,
+                    flatshading: true,
+                    name: `Bundle ${{p.id}}`,
+                    hovertemplate: `<b>Bundle #${{p.id}}</b><br>Type: ${{p.type}}<br>Items: ${{p.items}}<br>Size: ${{p.l}}x${{p.w}}x${{p.h}}<extra></extra>`
+                }});
+                
+                // Wireframe for latest bundle (highlight effect)
+                if (isLatest) {{
+                    const lx = [p.x, p.x+p.l, p.x+p.l, p.x, p.x, null, p.x, p.x, null, p.x+p.l, p.x+p.l, null, p.x+p.l, p.x+p.l, null, p.x, p.x, p.x+p.l, p.x+p.l, p.x, p.x];
+                    const ly = [p.y, p.y, p.y+p.w, p.y+p.w, p.y, null, p.y, p.y, null, p.y, p.y, null, p.y+p.w, p.y+p.w, null, p.y+p.w, p.y+p.w, p.y, p.y, p.y+p.w, p.y+p.w];
+                    const lz = [p.z, p.z, p.z, p.z, p.z, null, p.z, p.z+p.h, null, p.z, p.z+p.h, null, p.z, p.z+p.h, null, p.z, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h, p.z+p.h];
+                    traces.push({{
+                        type: 'scatter3d',
+                        x: lx, y: ly, z: lz,
+                        mode: 'lines',
+                        line: {{ color: '#00ff88', width: 6 }},
+                        hoverinfo: 'skip'
+                    }});
+                    // Label
+                    traces.push({{
+                        type: 'scatter3d',
+                        x: [p.x + p.l/2],
+                        y: [p.y + p.w/2],
+                        z: [p.z + p.h + 50],
+                        mode: 'text',
+                        text: [`#${{p.id}} (${{p.type}})`],
+                        textfont: {{ size: 14, color: '#00ff88' }},
+                        hoverinfo: 'skip'
+                    }});
+                }}
+            }});
+            
+            Plotly.react('container-viz', traces, {{
+                scene: {{
+                    xaxis: {{ title: 'L', range: [0, containerDims.l] }},
+                    yaxis: {{ title: 'W', range: [0, containerDims.w] }},
+                    zaxis: {{ title: 'H', range: [0, containerDims.h] }},
+                    aspectmode: 'data',
+                    camera: {{ eye: {{ x: 1.5, y: 1.5, z: 1.0 }} }}
+                }},
+                margin: {{ l: 0, r: 0, t: 0, b: 0 }},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: false
+            }}, {{ responsive: true }});
+        }}
+        
+        function containerStepForward() {{
+            if (containerStep < containerData.length) {{
+                containerStep++;
+                renderContainerAtStep(containerStep);
+            }}
+        }}
+        
+        function containerStepBack() {{
+            if (containerStep > 0) {{
+                containerStep--;
+                renderContainerAtStep(containerStep);
+            }}
+        }}
+        
+        function containerPlayPause() {{
+            const btn = event.target;
+            if (containerPlaying) {{
+                clearInterval(containerInterval);
+                containerPlaying = false;
+                btn.textContent = '▶ Play';
+            }} else {{
+                containerPlaying = true;
+                btn.textContent = '⏸ Pause';
+                const speed = parseInt(document.getElementById('container-speed').value);
+                containerInterval = setInterval(() => {{
+                    if (containerStep < containerData.length) {{
+                        containerStep++;
+                        renderContainerAtStep(containerStep);
+                    }} else {{
+                        clearInterval(containerInterval);
+                        containerPlaying = false;
+                        btn.textContent = '▶ Play';
+                    }}
+                }}, speed);
+            }}
+        }}
+        
+        function containerReset() {{
+            containerStep = 0;
+            renderContainerAtStep(0);
+            if (containerPlaying) {{
+                clearInterval(containerInterval);
+                containerPlaying = false;
+                document.querySelector('.panel:last-child .btn.primary').textContent = '▶ Play';
+            }}
+        }}
+        
+        // Container slider event
+        document.getElementById('container-slider').addEventListener('input', (e) => {{
+            containerStep = parseInt(e.target.value);
+            renderContainerAtStep(containerStep);
+        }});
+        
+        // ==================== INIT ====================
+        initBundleSelector();
+        if (bundleData.length > 0) {{
+            selectBundle(0);
+        }}
+        renderContainerAtStep(0);
+    </script>
+</body>
+</html>"""
+    
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(html_content)
+    
+    print(f"✅ Animated report saved to: {filename}")
+
+# ==========================================================
+# 4. LOGIC
+# ==========================================================
+@dataclass
+class Bundle:
+    """
+    Bundle - Đơn vị gom hàng trung gian
+    
+    Bundle giúp giảm fragmentation khi xếp hàng vào xe:
+    - Thay vì xếp từng bưu phẩm riêng lẻ vào xe (gây lãng phí không gian)
+    - Ta gom các bưu phẩm vào bundle trước, rồi xếp bundle vào xe
+    - Bundle có kích thước chuẩn, dễ xếp và tối ưu không gian xe
+    """
+    id: int
+    bundle_type: str = "MEDIUM"  # SMALL, MEDIUM, LARGE
+    dim_l: int = 800   # Default MEDIUM bundle
+    dim_w: int = 600 
+    dim_h: int = 700
+    pallet_height: int = 120  # Chiều cao đế bundle
+    max_weight: float = 150   # kg
+    items: List[Box] = field(default_factory=list)
+    packer: PackerEngine = None
+    current_weight: float = 0
+    
+    def __post_init__(self):
+        self.packer = PackerEngine(Box(self.dim_l, self.dim_w, self.dim_h))
+        
+    def add_item(self, item: Box, weight_kg: float = 0) -> bool:
+        """Thêm bưu phẩm vào bundle, kiểm tra cả không gian và trọng lượng"""
+        if self.current_weight + weight_kg > self.max_weight:
+            return False
+        if self.packer.add_item(item):
+            self.items.append(item)
+            self.current_weight += weight_kg
+            return True
+        return False
+    
+    @property
+    def current_volume(self): 
+        return self.packer.occupied_volume
+    
+    @property
+    def fill_rate(self) -> float:
+        """Tỷ lệ lấp đầy bundle"""
+        total_volume = self.dim_l * self.dim_w * self.dim_h
+        return self.current_volume / total_volume if total_volume > 0 else 0
+    
+    def as_box(self) -> Box:
+        """
+        Chuyển bundle thành Box để xếp vào xe.
+        Chiều cao = max height của items + pallet_height
+        QUAN TRỌNG: Cap height để không vượt max bundle height
+        """
+        if not self.packer.placements: 
+            return Box(self.dim_l, self.dim_w, self.pallet_height, id=self.id)
+        
+        max_h = max(p.z + p.box.h for p in self.packer.placements)
+        # Cap height: không vượt bundle max height + pallet
+        max_allowed_height = self.dim_h + self.pallet_height
+        actual_height = min(max_h + self.pallet_height, max_allowed_height)
+        
+        # Màu theo bundle type
+        colors = {"SMALL": "#FFC107", "MEDIUM": "#FF9800", "LARGE": "#FF5722"}
+        c = colors.get(self.bundle_type, f'rgb({random.randint(50,200)},{random.randint(50,200)},{random.randint(50,200)})')
+        return Box(self.dim_l, self.dim_w, actual_height, id=self.id, color=c)
+
+def run_packing(items: List[Box], vehicle_type: str = "INTER_REGION", auto_bundle_type: bool = True):
+    """
+    Thuật toán đóng gói 2 pha:
+    
+    Phase 1 - Palletizing: Gom các bưu phẩm vào bundles
+    Phase 2 - Loading: Xếp bundles vào xe tải
+    
+    Args:
+        items: Danh sách bưu phẩm cần đóng gói
+        vehicle_type: Loại xe (COLLECTION, INTER_DISTRICT, INTER_REGION)
+        auto_bundle_type: Tự động chọn bundle type dựa trên kích thước item
+    """
+    # Lấy thông tin xe
+    vehicle = VEHICLES[vehicle_type]
+    container = get_vehicle_box(vehicle_type)
+    
+    print(f"\n{'='*60}")
+    print(f"🚛 PACKING FOR: {vehicle['name']}")
+    print(f"   Container: {container.l} x {container.w} x {container.h} mm")
+    print(f"   Capacity: {vehicle['capacity_kg']} kg")
+    print(f"{'='*60}")
+    
+    print("\n📦 PHASE 1: Palletizing (Gom hàng vào bundles)...")
+    bundles = []
+    bundle_counters = {"SMALL": 0, "MEDIUM": 0, "LARGE": 0}
+    
+    # Phân loại items
+    loose_items = []
+    oversized_items = []  # Items quá lớn, không vào được bundle nào
+    
+    # Xác định bundle type phù hợp cho từng item
+    for item in items:
+        # Kiểm tra item có vừa với bundle LARGE không
+        large_dims = BUNDLES["LARGE"]["dimensions"]
+        if (item.l <= large_dims["length"] and 
+            item.w <= large_dims["width"] and 
+            item.h <= large_dims["height"]):
+            loose_items.append(item)
+        else:
+            oversized_items.append(item)
+            print(f"   ⚠️ Oversized item {item.id}: {item.l}x{item.w}x{item.h} - packed directly")
+    
+    # Tạo bundles cho oversized items (mỗi item 1 bundle riêng)
+    for item in oversized_items:
+        b = Bundle(
+            id=len(bundles),
+            bundle_type="OVERSIZED",
+            dim_l=item.l,
+            dim_w=item.w,
+            dim_h=item.h,
+            pallet_height=150
+        )
+        b.items.append(item)
+        b.packer.placements.append(Placement(0, 0, 0, item))
+        b.packer.occupied_volume = item.volume
+        bundles.append(b)
+    
+    # Sắp xếp items theo diện tích (lớn trước) - giúp bin packing hiệu quả hơn
+    loose_items.sort(key=lambda x: x.l * x.w * x.h, reverse=True)
+    
+    # TARGET_FILL_RATE: Khi bundle đạt tỷ lệ này, tạo bundle mới
+    # Điều này giúp tránh việc cố nhồi quá nhiều vào 1 bundle (gây fragmentation)
+    TARGET_FILL_RATE = 0.65  # 65% - realistic target
+    
+    # Gom items vào bundles với chiến lược mới
+    for item in loose_items:
+        # Xác định bundle type phù hợp
+        parcel_size = classify_parcel(item.l, item.w, item.h)
+        preferred_bundle = get_preferred_bundle_type(parcel_size) if auto_bundle_type else "MEDIUM"
+        
+        placed = False
+        
+        # Thử xếp vào bundle cùng loại đã có (ưu tiên bundle chưa đầy)
+        candidate_bundles = [b for b in bundles if b.bundle_type == preferred_bundle and b.fill_rate < TARGET_FILL_RATE]
+        candidate_bundles.sort(key=lambda b: b.fill_rate, reverse=True)  # Ưu tiên bundle gần đầy
+        
+        for b in candidate_bundles:
+            if b.add_item(item):
+                placed = True
+                break
+        
+        # Nếu không xếp được vào bundle ưu tiên, thử các bundle khác cùng type
+        if not placed:
+            for b in bundles:
+                if b.bundle_type == preferred_bundle and b.fill_rate < 0.95:  # Chừa 5% margin
+                    if b.add_item(item):
+                        placed = True
+                        break
+        
+        # Thử xếp vào bundle loại khác (lớn hơn)
+        if not placed:
+            bundle_order = ["SMALL", "MEDIUM", "LARGE"]
+            start_idx = bundle_order.index(preferred_bundle) if preferred_bundle in bundle_order else 0
+            
+            for bt in bundle_order[start_idx:]:
+                for b in bundles:
+                    if b.bundle_type == bt and b.fill_rate < 0.95:
+                        if b.add_item(item):
+                            placed = True
+                            break
+                if placed:
+                    break
+        
+        # Tạo bundle mới nếu cần
+        if not placed:
+            # Thử tạo bundle theo preferred type
+            new_b = create_bundle(len(bundles), preferred_bundle)
+            if new_b.add_item(item):
+                bundles.append(new_b)
+                bundle_counters[preferred_bundle] += 1
+            else:
+                # Thử bundle lớn hơn
+                for bt in ["MEDIUM", "LARGE"]:
+                    if bt != preferred_bundle:
+                        new_b = create_bundle(len(bundles), bt)
+                        if new_b.add_item(item):
+                            bundles.append(new_b)
+                            bundle_counters[bt] += 1
+                            break
+                else:
+                    print(f"   ⚠️ Cannot pack item {item.id}: {item.l}x{item.w}x{item.h}")
+    
+    # Thống kê bundles
+    print(f"\n   📊 Bundle Statistics:")
+    for bt, count in bundle_counters.items():
+        actual = len([b for b in bundles if b.bundle_type == bt])
+        if actual > 0:
+            avg_fill = sum(b.fill_rate for b in bundles if b.bundle_type == bt) / actual * 100
+            print(f"      - {bt}: {actual} bundles (avg fill: {avg_fill:.1f}%)")
+    oversized_count = len([b for b in bundles if b.bundle_type == "OVERSIZED"])
+    if oversized_count > 0:
+        print(f"      - OVERSIZED: {oversized_count} bundles")
+    print(f"   => Total: {len(bundles)} bundles created")
+    
+    # Tính bundle fill rate tổng
+    total_items_volume = sum(item.volume for item in items)
+    total_bundle_capacity = sum(b.dim_l * b.dim_w * b.dim_h for b in bundles)
+    avg_bundle_fill = (total_items_volume / total_bundle_capacity * 100) if total_bundle_capacity > 0 else 0
+    print(f"   📈 Average Bundle Fill Rate: {avg_bundle_fill:.1f}%")
+
+    print(f"\n🚛 PHASE 2: Loading bundles into {vehicle['name']}...")
+    container_packer = PackerEngine(container)
+    
+    # Chuyển bundles thành boxes để xếp
+    bundle_boxes = [b.as_box() for b in bundles]
+    # Sắp xếp: ưu tiên bundle lớn và thấp (dễ xếp chồng)
+    bundle_boxes.sort(key=lambda b: (b.h, b.area), reverse=True)
+    
+    loaded_count = 0
+    packed_volume = 0
+    total_weight_kg = 0
+    failed_bundles = []
+    bundle_type_stats = {"SMALL": {"count": 0, "volume": 0}, 
+                        "MEDIUM": {"count": 0, "volume": 0}, 
+                        "LARGE": {"count": 0, "volume": 0},
+                        "OVERSIZED": {"count": 0, "volume": 0}}
+    
+    for b_box in bundle_boxes:
+        if container_packer.add_item(b_box):
+            loaded_count += 1
+            original_bundle = next(b for b in bundles if b.id == b_box.id)
+            packed_volume += original_bundle.current_volume
+            total_weight_kg += original_bundle.current_weight
+            
+            # Track per bundle type
+            bt = original_bundle.bundle_type
+            if bt in bundle_type_stats:
+                bundle_type_stats[bt]["count"] += 1
+                bundle_type_stats[bt]["volume"] += original_bundle.current_volume
+        else:
+            failed_bundles.append(b_box)
+            print(f"   ❌ Failed: Bundle {b_box.id} (Size: {b_box.l}x{b_box.w}x{b_box.h})")
+
+    # Tính các metrics
+    container_volume = container.volume
+    container_floor = container.l * container.w
+    
+    # Volume của items thực tế đã load
+    loaded_items_volume = sum(
+        next(b for b in bundles if b.id == p.box.id).current_volume 
+        for p in container_packer.placements
+    )
+    
+    # Volume của bundles (boxes) đã load
+    loaded_bundles_volume = container_packer.occupied_volume
+    
+    # Floor utilization: Chỉ tính layer đầu tiên (z=0)
+    floor_placements = [p for p in container_packer.placements if p.z == 0]
+    floor_area_used = sum(p.box.l * p.box.w for p in floor_placements)
+    
+    volume_efficiency = (loaded_items_volume / container_volume) * 100  # Volume items thực
+    volume_efficiency_bundle = (loaded_bundles_volume / container_volume) * 100  # Volume bundles
+    floor_efficiency = min((floor_area_used / container_floor) * 100, 100)  # Cap at 100%
+    weight_utilization = (total_weight_kg / vehicle['capacity_kg']) * 100
+    
+    # Báo cáo cuối cùng
+    print("\n" + "="*70)
+    print("🏆 FINAL PACKING REPORT")
+    print("="*70)
+    print(f"📦 Container: {vehicle['name']}")
+    print(f"   Dimensions: {container.l} x {container.w} x {container.h} mm")
+    print(f"   Capacity: {vehicle['capacity_kg']} kg")
+    print()
+    print(f"📊 Items & Bundles:")
+    print(f"   Total parcels: {len(items)}")
+    print(f"   Bundles created: {len(bundles)}")
+    print(f"   Bundles loaded: {loaded_count}/{len(bundles)}")
+    if len(failed_bundles) > 0:
+        print(f"   ❌ Failed bundles: {len(failed_bundles)}")
+    print()
+    print(f"📈 Bundle Type Breakdown:")
+    for bt, stats in bundle_type_stats.items():
+        if stats["count"] > 0:
+            print(f"   {bt:12s}: {stats['count']:3d} bundles, Volume: {stats['volume']/1000000:8.2f} L")
+    print()
+    print(f"✅ Efficiency Metrics:")
+    print(f"   Volume (Items):   {volume_efficiency:6.2f}% - thể tích thực tế items trong xe")
+    print(f"   Volume (Bundles): {volume_efficiency_bundle:6.2f}% - thể tích bundles (bao gồm khoảng trống)")
+    print(f"   Floor Space:      {floor_efficiency:6.2f}% - diện tích sàn layer đầu")
+    print(f"   Weight:           {weight_utilization:6.2f}% - {total_weight_kg:.1f}/{vehicle['capacity_kg']} kg")
+    print(f"   Bundle Fill Rate: {avg_bundle_fill:6.2f}% - hiệu quả sử dụng không gian bundle")
+    print("="*70)
+    
+    # Tạo báo cáo HTML - Interactive Plotly (fast, no Kaleido)
+    generate_full_report(bundles, container, container_packer.placements, 
+                        f"Packing_Report_{vehicle_type}.html")
+    
+    # Tạo animated report
+    generate_animated_report(bundles, container, container_packer.placements,
+                            f"Packing_Animation_{vehicle_type}.html")
+    
+    return {
+        "bundles": bundles,
+        "loaded_count": loaded_count,
+        "failed_bundles": failed_bundles,
+        "efficiency": volume_efficiency,
+        "bundle_fill_rate": avg_bundle_fill,
+        "floor_efficiency": floor_efficiency,
+        "container_placements": container_packer.placements
+    }
+
+def generate_realistic_parcels(count: int, seed: int = 42) -> List[Box]:
+    """
+    Tạo dataset bưu phẩm thực tế với kích thước phù hợp để fill bundles tốt.
+    
+    Nguyên tắc:
+    - Parcels phải có kích thước sát với fraction của bundle dimensions
+    - Để đạt 70%+ fill rate, parcels cần "khớp" với nhau khi xếp
+    - Phân bố kích thước theo thực tế ngành bưu chính VN
+    """
+    random.seed(seed)
+    items = []
+    
+    # Phân bố theo thực tế:
+    # - 25% XS: Thư từ, tài liệu (rất mỏng, dễ xếp chồng)
+    # - 30% S: Điện thoại, phụ kiện, sách
+    # - 25% M: Giày dép, quần áo, hộp trung
+    # - 12% L: Đồ gia dụng nhỏ
+    # - 6% XL: Đồ điện tử lớn
+    # - 2% XXL: Nội thất, hàng cồng kềnh
+    
+    dist = {
+        'XS': int(count * 0.25),
+        'S': int(count * 0.30),
+        'M': int(count * 0.25),
+        'L': int(count * 0.12),
+        'XL': int(count * 0.06),
+        'XXL': int(count * 0.02)
+    }
+    
+    # Điều chỉnh để tổng = count
+    total = sum(dist.values())
+    dist['S'] += count - total
+    
+    colors = {
+        'XS': '#E3F2FD', 'S': '#BBDEFB', 'M': '#90CAF9',
+        'L': '#64B5F6', 'XL': '#42A5F5', 'XXL': '#1E88E5'
+    }
+    
+    # XS parcels - Thư từ, tài liệu, envelopes
+    # Phải fit SMALL bundle (450x300x600)
+    # Kích thước: ~1/4 bundle floor, thin height → nhiều items chồng được
+    for _ in range(dist['XS']):
+        l = random.choice([150, 180, 220])   # 450/3=150, 450/2=225
+        w = random.choice([100, 120, 150])   # 300/3=100, 300/2=150
+        h = random.randint(10, 50)           # Rất mỏng - xếp chồng nhiều
+        items.append(Box(l, w, h, id=len(items), color=colors['XS']))
+    
+    # S parcels - Điện thoại, phụ kiện nhỏ, sách
+    # Phải fit SMALL bundle (450x300x550)
+    # Kích thước: ~1/2 - 1/4 bundle floor
+    for _ in range(dist['S']):
+        l = random.choice([150, 225, 300])   # 450/3, 450/2, 450/1.5
+        w = random.choice([100, 150, 200])   # 300/3, 300/2, 300/1.5
+        h = random.choice([91, 110, 137])    # 550/6, 550/5, 550/4 - reduced
+        items.append(Box(l, w, h, id=len(items), color=colors['S']))
+    
+    # M parcels - Giày dép, quần áo
+    # Phải fit MEDIUM bundle (675x500x550)
+    # Kích thước: ~1/2 - 1/4 bundle floor
+    for _ in range(dist['M']):
+        l = random.choice([225, 337, 400])   # 675/3, 675/2, ~
+        w = random.choice([166, 250, 300])   # 500/3, 500/2, ~
+        h = random.choice([110, 137, 183])   # 550/5, 550/4, 550/3 - reduced
+        items.append(Box(l, w, h, id=len(items), color=colors['M']))
+    
+    # L parcels - Đồ gia dụng nhỏ
+    # Phải fit MEDIUM bundle (675x500x550)
+    # Kích thước: ~1/2 bundle floor
+    for _ in range(dist['L']):
+        l = random.choice([337, 400, 500])   # 675/2, ~, ~
+        w = random.choice([250, 300, 400])   # 500/2, ~, ~
+        h = random.choice([137, 183, 220])   # 550/4, 550/3, ~ - reduced
+        items.append(Box(l, w, h, id=len(items), color=colors['L']))
+    
+    # XL parcels - Đồ điện tử lớn (monitor, lò vi sóng)
+    # Phải fit LARGE bundle (900x750x550)
+    # Kích thước: ~1/2 bundle floor
+    for _ in range(dist['XL']):
+        l = random.choice([400, 450, 500])   # 900/2=450
+        w = random.choice([350, 375, 450])   # 750/2=375
+        h = random.choice([137, 183, 220])   # 550/4, 550/3, ~ - reduced
+        items.append(Box(l, w, h, id=len(items), color=colors['XL']))
+    
+    # XXL parcels - Nội thất, hàng cồng kềnh
+    # Phải fit LARGE bundle (900x750x550)
+    # Kích thước: gần full bundle
+    for _ in range(dist['XXL']):
+        l = random.choice([600, 700, 800])   # <=900
+        w = random.choice([500, 600, 650])   # <=750
+        h = random.choice([220, 275, 350])   # 550/2.5, 550/2, ~ - reduced
+        items.append(Box(l, w, h, id=len(items), color=colors['XXL']))
+    
+    random.shuffle(items)  # Xáo trộn để thực tế hơn
+    
+    print(f"📦 Total Parcels Generated: {len(items)}")
+    for size, cnt in dist.items():
+        desc = {'XS': 'thư từ', 'S': 'phụ kiện', 'M': 'quần áo', 
+                'L': 'gia dụng', 'XL': 'điện tử', 'XXL': 'nội thất'}
+        print(f"   - {size} ({desc[size]}): {cnt}")
+    
+    return items
+
+
+if __name__ == "__main__":
+    # In phân tích vehicle-bundle trước
+    print_vehicle_bundle_analysis()
+    
+    print("\n🔄 Generating Realistic Postal Parcel Dataset...")
+    
+    # Tạo dataset với số lượng khác nhau cho từng loại xe
+    # Xe tập kết: ~100-150 parcels (thu gom từ ward nhỏ)
+    # Xe liên tỉnh: ~300-500 parcels (gom từ nhiều ward)
+    # Xe liên miền: ~800-1500 parcels (gom từ nhiều province)
+    
+    all_items = generate_realistic_parcels(3000, seed=42)
+    
+    # Test cho 3 loại xe với datasets phù hợp quy mô
+    print("\n" + "="*70)
+    print("🚛 TEST 1: COLLECTION TRUCK - Xe tập kết (Ward → District Hub)")
+    print("="*70)
+    print("Scenario: Thu gom 600 bưu phẩm từ 1 ward\n")
+    result1 = run_packing(all_items[:600], vehicle_type="COLLECTION")
+    
+    print("\n" + "="*70)
+    print("🚛 TEST 2: INTER-DISTRICT TRUCK - Xe liên tỉnh (District → Province Hub)")
+    print("="*70)
+    print("Scenario: Vận chuyển 1500 bưu phẩm từ district hub\n")
+    result2 = run_packing(all_items[:1500], vehicle_type="INTER_DISTRICT")
+    
+    print("\n" + "="*70)
+    print("🚛 TEST 3: INTER-REGION TRUCK - Xe liên miền (Province → Regional Hub)")
+    print("="*70)
+    print("Scenario: Vận chuyển 3000 bưu phẩm từ province hub\n")
+    result3 = run_packing(all_items[:3000], vehicle_type="INTER_REGION")
+    
+    # Tóm tắt so sánh
+    print("\n" + "="*70)
+    print("📊 COMPARISON SUMMARY")
+    print("="*70)
+    print(f"{'Vehicle':<20} {'Bundles':>10} {'Loaded':>10} {'Volume Eff.':>12} {'Bundle Fill':>12}")
+    print("-"*70)
+    
+    for name, result in [("Xe tập kết", result1), ("Xe liên tỉnh", result2), ("Xe liên miền", result3)]:
+        bundles = result['bundles']
+        loaded = result['loaded_count']
+        eff = result['efficiency']
+        
+        # Tính average bundle fill rate
+        total_fill = sum(b.fill_rate for b in bundles if b.fill_rate > 0)
+        avg_fill = (total_fill / len(bundles) * 100) if bundles else 0
+        
+        print(f"{name:<20} {len(bundles):>10} {loaded:>10} {eff:>11.1f}% {avg_fill:>11.1f}%")
+    
+    print("="*70)

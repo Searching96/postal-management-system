@@ -36,19 +36,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
+        
+        log.debug("JWT Filter - Path: {}, Auth header present: {}", request.getRequestURI(), authHeader != null);
 
         UUID id = null;
         String jwt = null;
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
+            log.debug("JWT Filter - Token extracted, length: {}", jwt.length());
             try {
                 id = UUID.fromString(jwtUtil.extractUserId(jwt));
+                log.debug("JWT Filter - User ID extracted: {}", id);
             }
             catch (Exception e) {
                 // Log the exception or handle it as needed
-                log.error("Invalid JWT token", e);
+                log.error("JWT Filter - Invalid JWT token: {}", e.getMessage());
             }
+        } else {
+            log.debug("JWT Filter - No valid Authorization header");
         }
 
         if (id != null && SecurityContextHolder.getContext().getAuthentication() == null) {

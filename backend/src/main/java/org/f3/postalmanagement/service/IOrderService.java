@@ -3,11 +3,13 @@ package org.f3.postalmanagement.service;
 import org.f3.postalmanagement.dto.request.order.AssignShipperRequest;
 import org.f3.postalmanagement.enums.OrderStatus;
 import org.f3.postalmanagement.dto.request.order.CalculatePriceRequest;
+import org.f3.postalmanagement.dto.request.order.CreateCommentRequest;
 import org.f3.postalmanagement.dto.request.order.AssignDeliveryRequest;
 import org.f3.postalmanagement.dto.request.order.ReceiveIncomingRequest;
 import org.f3.postalmanagement.dto.request.order.CreateOrderRequest;
 import org.f3.postalmanagement.dto.request.order.CustomerCreateOrderRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
+import org.f3.postalmanagement.dto.response.order.CommentResponse;
 import org.f3.postalmanagement.dto.response.order.OrderResponse;
 import org.f3.postalmanagement.dto.response.order.GroupOrderResponse;
 import org.f3.postalmanagement.dto.response.order.PriceCalculationResponse;
@@ -139,6 +141,32 @@ public interface IOrderService {
      */
     OrderResponse markOrderPickedUp(UUID orderId, Account currentAccount);
 
+    // ==================== COMMENT ====================
+
+    /**
+     * Add or update the comment for an order.
+     * If a comment already exists, it will be updated.
+     * Staff can add both internal and public comments.
+     * Customers can only add public comments.
+     *
+     * @param orderId the order ID
+     * @param request the comment request
+     * @param currentAccount the account of the user making the request
+     * @return the created or updated comment
+     */
+    CommentResponse addOrUpdateComment(UUID orderId, CreateCommentRequest request, Account currentAccount);
+
+    /**
+     * Get the comment for an order.
+     * Customers only see public comments.
+     * Staff can see all comments including internal.
+     *
+     * @param orderId the order ID
+     * @param currentAccount the account of the user making the request
+     * @return the comment, or null if no comment exists or not accessible
+     */
+    CommentResponse getOrderComment(UUID orderId, Account currentAccount);
+  
     /**
      * Get orders assigned to a shipper for delivery (last mile).
      *
@@ -176,6 +204,7 @@ public interface IOrderService {
      * @return summary of the operation
      */
     GroupOrderResponse receiveOrders(ReceiveIncomingRequest request, Account currentAccount);
+  
     /**
      * Mark an order as delivered by shipper.
      *

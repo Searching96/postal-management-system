@@ -10,17 +10,21 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.f3.postalmanagement.dto.request.order.AssignShipperRequest;
 import org.f3.postalmanagement.dto.request.order.CalculatePriceRequest;
+import org.f3.postalmanagement.dto.request.order.CreateCommentRequest;
 import org.f3.postalmanagement.dto.request.order.AssignDeliveryRequest;
 import org.f3.postalmanagement.dto.request.order.ReceiveIncomingRequest;
 import org.f3.postalmanagement.dto.request.order.CreateOrderRequest;
 import org.f3.postalmanagement.dto.request.order.CustomerCreateOrderRequest;
 import org.f3.postalmanagement.dto.response.PageResponse;
+import org.f3.postalmanagement.dto.response.order.CommentResponse;
 import org.f3.postalmanagement.dto.response.order.OrderResponse;
 import org.f3.postalmanagement.dto.response.order.GroupOrderResponse;
 import org.f3.postalmanagement.dto.response.order.PriceCalculationResponse;
 import org.f3.postalmanagement.entity.actor.Account;
+import org.f3.postalmanagement.entity.actor.CustomUserDetails;
 import org.f3.postalmanagement.service.IOrderService;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -32,11 +36,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Order Management", description = "APIs for managing parcel orders at post offices")
 public class OrderController {
 
@@ -92,6 +98,12 @@ public class OrderController {
     }
 
     // ==================== ORDER RETRIEVAL ====================
+
+    @GetMapping("/test-endpoint")
+    public ResponseEntity<String> testEndpoint() {
+        log.info("=== TEST ENDPOINT REACHED ===");
+        return ResponseEntity.ok("Test endpoint works!");
+    }
 
     @GetMapping("/{orderId}")
     @PreAuthorize("hasAnyRole('PO_STAFF', 'WH_STAFF', 'SHIPPER', 'PO_WARD_MANAGER', 'WH_WARD_MANAGER', " +
@@ -337,6 +349,75 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
+    // ==================== COMMENT ====================
+
+    @PostMapping("/{orderId}/comment")
+    // @PreAuthorize("hasRole('CUSTOMER')") // Temporarily disabled for debugging
+    @Operation(
+            summary = "Add or update comment on order",
+            description = "Add or update the comment for an order (each order has only one comment). " +
+                    "Both sender and receiver customers can comment on the order. " +
+                    "If a comment already exists, only the original creator can update it. " +
+                    "Only one of the two parties (sender or receiver) can create the comment.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Comment created or updated successfully",
+                    content = @Content(schema = @Schema(implementation = CommentResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions - only sender/receiver can comment, or only creator can update"),
+            @ApiResponse(responseCode = "404", description = "Order not found")
+    })
+    public ResponseEntity<?> addOrUpdateComment(
+            @Parameter(description = "Order ID") @PathVariable UUID orderId,
+            @RequestBody(required = false) CreateCommentRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        try {
+            Account currentAccount = userDetails != null ? userDetails.getAccount() : null;
+            
+            log.info("=== CONTROLLER REACHED ===");
+            log.info("Order ID: {}", orderId);
+            log.info("Request body: {}", request);
+            log.info("User details: {}", userDetails != null ? userDetails.getUsername() : "null");
+            log.info("Current account: {}", currentAccount != null ? currentAccount.getUsername() : "null");
+            log.info("========================");
+            
+            if (request == null) {
+                return ResponseEntity.badRequest().body("Request body is required");
+            }
+            
+            CommentResponse response = orderService.addOrUpdateComment(orderId, request, currentAccount);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error creating/updating comment for order {}: {}", orderId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{orderId}/comment")
+    // @PreAuthorize("hasRole('CUSTOMER')") // Temporarily disabled for debugging
+    @Operation(
+            summary = "Get order comment",
+            description = "Retrieve the comment for an order. " +
+                    "Both sender and receiver customers can view the comment on their order.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Comment retrieved successfully"),
+            @ApiResponse(responseCode = "204", description = "No comment exists for this order"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+            @ApiResponse(responseCode = "404", description = "Order not found")
+    })
+    public ResponseEntity<CommentResponse> getOrderComment(
+            @Parameter(description = "Order ID") @PathVariable UUID orderId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Account currentAccount = userDetails != null ? userDetails.getAccount() : null;
+        CommentResponse response = orderService.getOrderComment(orderId, currentAccount);
+        if (response == null) {
+            return ResponseEntity.noContent().build();
+        }
     @PostMapping("/{orderId}/accept")
     @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN')")
     @Operation(

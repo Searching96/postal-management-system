@@ -1,5 +1,6 @@
 package org.f3.postalmanagement.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.f3.postalmanagement.entity.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccountNotFoundException.class)
@@ -126,6 +128,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleGenericException(Exception ex) {
+        log.error("=== GLOBAL EXCEPTION HANDLER ===");
+        log.error("Exception type: {}", ex.getClass().getName());
+        log.error("Exception message: {}", ex.getMessage());
+        log.error("Stack trace:", ex);
+        log.error("================================");
+        
         ApiResponse<?> apiResponse = new ApiResponse<>(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Đã xảy ra lỗi không mong muốn: " + ex.getMessage(),

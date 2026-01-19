@@ -41,5 +41,5 @@ public class Customer extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "subscription_plan", nullable = false)
-    private SubscriptionPlan subscriptionPlan;
+    private SubscriptionPlan subscriptionPlan = SubscriptionPlan.BASIC;
 }

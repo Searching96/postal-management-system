@@ -1,0 +1,1433 @@
+@startuml use-case-diagram
+' ============================================
+' SƠ ĐỒ USE CASE TỔNG THỂ
+' Hệ Thống Quản Lý Bưu Chính
+' ============================================
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+title Sơ Đồ Use Case - Hệ Thống Quản Lý Bưu Chính
+
+actor "System Admin" as SA #LightBlue
+actor "Hub Admin" as HA #LightGreen
+actor "Province Admin" as PA #LightYellow
+actor "Ward Manager" as WM #Orange
+actor "Warehouse Staff" as WS #Pink
+actor "Counter Staff" as CS #Cyan
+actor "Shipper" as SH #Lime
+actor "Customer" as CU #Gold
+actor "Guest" as GU #LightGray
+
+rectangle "Hệ Thống Quản Lý Bưu Chính" {
+    usecase "UC01: Tạo Đơn Hàng" as UC1
+    usecase "UC02: Theo Dõi Đơn Hàng" as UC2
+    usecase "UC03: Quản Lý Lô Hàng" as UC3
+    usecase "UC04: Giao Hàng" as UC4
+    usecase "UC05: Quản Lý Bưu Cục\n& Nhân Viên" as UC5
+}
+
+CS --> UC1
+CU --> UC1
+CU --> UC2
+GU --> UC2
+WS --> UC3
+SH --> UC4
+WM --> UC4
+WM --> UC5
+SA --> UC5
+HA --> UC5
+PA --> UC5
+
+@enduml
+
+
+@startuml actor-hierarchy
+' ============================================
+' SƠ ĐỒ PHÂN CẤP ACTOR
+' ============================================
+
+skinparam packageStyle rectangle
+
+title Phân Cấp Tổ Chức - Actor Hierarchy
+
+package "Trụ Sở Chính" {
+    actor "SYSTEM_ADMIN" as SA #LightBlue
+}
+
+package "Hub Miền Bắc" {
+    actor "HUB_ADMIN" as HA1 #LightGreen
+}
+
+package "Hub Miền Trung" {
+    actor "HUB_ADMIN" as HA2 #LightGreen
+}
+
+package "Hub Miền Nam" {
+    actor "HUB_ADMIN" as HA3 #LightGreen
+}
+
+package "Tỉnh" {
+    actor "PROVINCE_ADMIN\n(Kho)" as PA1 #LightYellow
+    actor "PROVINCE_ADMIN\n(Bưu cục)" as PA2 #LightYellow
+}
+
+package "Phường/Xã" {
+    actor "WARD_MANAGER" as WM1 #Orange
+    actor "WARD_MANAGER" as WM2 #Orange
+    actor "STAFF" as ST #Pink
+    actor "SHIPPER" as SH #Lime
+}
+
+SA --> HA1
+SA --> HA2
+SA --> HA3
+
+HA1 --> PA1
+HA1 --> PA2
+
+PA1 --> WM1
+PA1 --> WM2
+
+WM1 --> ST
+WM1 --> SH
+
+@enduml
+
+
+@startuml uc01-activity-create-order
+' ============================================
+' UC01: TẠO ĐƠN HÀNG - Activity Diagram
+' ============================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor green
+    EndColor red
+    DiamondBackgroundColor #FFFACD
+}
+
+title Activity Diagram - UC01: Tạo Đơn Hàng
+
+start
+
+:Chọn tạo đơn hàng mới;
+
+:Nhập SĐT người gửi;
+
+if (Đã có trong DB?) then (Có)
+    :Tự động điền thông tin;
+else (Không)
+    :Nhập thông tin mới;
+endif
+
+:Nhập thông tin người nhận và địa chỉ;
+
+:Nhập thông tin bưu kiện
+(Loại, cân nặng, kích thước);
+
+:Tính toán giá theo các dịch vụ
+EXPRESS / STANDARD / ECONOMY;
+
+:Chọn dịch vụ vận chuyển;
+
+:Thêm tùy chọn
+(Bảo hiểm, COD...);
+
+:Tạo mã tracking
+VN + 9 số + VN;
+
+:Lưu đơn hàng vào DB;
+
+if (Đơn online?) then (Có)
+    :Status: PENDING_PICKUP;
+else (Không)
+    :Status: AT_ORIGIN_OFFICE;
+endif
+
+:In phiếu gửi & mã vạch;
+
+stop
+
+@enduml
+
+
+@startuml uc01-sequence-create-order
+' ============================================
+' UC01: TẠO ĐƠN HÀNG - Sequence Diagram
+' ============================================
+
+skinparam sequenceArrowThickness 2
+skinparam participantPadding 20
+
+title Sequence Diagram - UC01: Tạo Đơn Hàng
+
+actor "Nhân viên Quầy" as NV #Gold
+participant "OrderUI" as UI #LightBlue
+participant "OrderController" as OC #LightGreen
+participant "OrderService" as OS #Pink
+participant "PricingService" as PS #Orange
+participant "TrackingGenerator" as TG #Cyan
+database "Database" as DB #LightGray
+
+autonumber
+
+NV -> UI: Mở form tạo đơn
+NV -> UI: Nhập SĐT người gửi
+
+UI -> OC: GET /customers?phone={phone}
+activate OC
+OC -> OS: findByPhone()
+activate OS
+OS -> DB: SELECT * FROM customers
+activate DB
+DB --> OS: Customer data
+deactivate DB
+OS --> OC: CustomerDTO
+deactivate OS
+OC --> UI: Thông tin khách hàng
+deactivate OC
+UI --> NV: Hiển thị thông tin (nếu có)
+
+NV -> UI: Nhập thông tin đơn hàng
+
+UI -> OC: POST /orders/preview
+activate OC
+OC -> OS: calculatePrice()
+activate OS
+OS -> PS: calculate(weight, distance, service)
+activate PS
+PS --> OS: PriceOptions[]
+deactivate PS
+OS --> OC: PreviewDTO
+deactivate OS
+OC --> UI: Giá các dịch vụ
+deactivate OC
+UI --> NV: Hiển thị bảng giá
+
+NV -> UI: Chọn dịch vụ & xác nhận
+
+UI -> OC: POST /orders
+activate OC
+OC -> OS: createOrder()
+activate OS
+OS -> TG: generate()
+activate TG
+TG --> OS: "VN123456789VN"
+deactivate TG
+OS -> DB: INSERT INTO orders
+activate DB
+DB --> OS: Order created
+deactivate DB
+OS --> OC: OrderDTO
+deactivate OS
+OC --> UI: Order + Tracking number
+deactivate OC
+UI --> NV: Hiển thị đơn + phiếu in
+
+@enduml
+
+
+@startuml uc02-activity-tracking
+' ============================================
+' UC02: THEO DÕI ĐƠN HÀNG - Activity Diagram
+' ============================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor green
+    EndColor red
+}
+
+title Activity Diagram - UC02: Theo Dõi Đơn Hàng
+
+start
+
+:Nhập mã tracking;
+
+:Gửi request tra cứu;
+
+if (Mã tracking hợp lệ?) then (Có)
+    :Truy vấn thông tin đơn hàng;
+    
+    :Hiển thị thông tin cơ bản
+    (Người gửi/nhận, Trạng thái);
+    
+    :Hiển thị timeline
+    trạng thái với thời gian;
+    
+    if (Trạng thái = OUT_FOR_DELIVERY?) then (Có)
+        :Hiển thị nút "Xem vị trí shipper";
+        
+        if (Nhấn xem?) then (Có)
+            :Kết nối WebSocket;
+            
+            :Hiển thị bản đồ với vị trí GPS;
+            
+            repeat
+                :Cập nhật vị trí mỗi 5 giây;
+            repeat while (Đã giao?) is (Chưa)
+            ->Rồi;
+        endif
+    endif
+else (Không)
+    :Hiển thị lỗi
+    "Không tìm thấy đơn hàng";
+endif
+
+stop
+
+@enduml
+
+
+@startuml uc02-sequence-tracking
+' ============================================
+' UC02: THEO DÕI ĐƠN HÀNG - Sequence Diagram
+' ============================================
+
+skinparam sequenceArrowThickness 2
+
+title Sequence Diagram - UC02: Theo Dõi Đơn Hàng
+
+actor "Khách hàng" as KH #Gold
+participant "TrackingUI" as UI #LightBlue
+participant "TrackingController" as TC #LightGreen
+participant "TrackingService" as TS #Pink
+participant "WebSocket" as WS #Orange
+database "Database" as DB #LightGray
+
+autonumber
+
+KH -> UI: Nhập mã tracking
+
+UI -> TC: GET /tracking/{trackingNumber}
+activate TC
+TC -> TS: getOrderStatus()
+activate TS
+TS -> DB: SELECT order + status_history
+activate DB
+DB --> TS: Order + History
+deactivate DB
+TS --> TC: TrackingDTO
+deactivate TS
+TC --> UI: Order info + timeline
+deactivate TC
+UI --> KH: Hiển thị thông tin + timeline
+
+alt Trạng thái = OUT_FOR_DELIVERY
+    KH -> UI: Nhấn "Xem vị trí shipper"
+    
+    UI -> WS: Connect /ws/tracking/{orderId}
+    activate WS
+    WS --> UI: Connected
+    
+    loop Mỗi 5 giây
+        WS --> UI: Push location {lat, lng}
+        UI --> KH: Cập nhật marker trên bản đồ
+    end
+    deactivate WS
+end
+
+@enduml
+
+
+@startuml order-state-diagram
+' ============================================
+' STATE DIAGRAM - TRẠNG THÁI ĐƠN HÀNG
+' ============================================
+
+skinparam state {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor green
+    EndColor red
+}
+
+title State Diagram - Trạng Thái Đơn Hàng
+
+[*] --> CREATED : Tạo đơn mới
+
+CREATED --> PENDING_PICKUP : Đơn online
+CREATED --> AT_ORIGIN_OFFICE : Đơn tại quầy
+
+PENDING_PICKUP --> PICKED_UP : Shipper lấy hàng
+PICKED_UP --> AT_ORIGIN_OFFICE : Mang về bưu cục
+
+AT_ORIGIN_OFFICE --> SORTED_AT_ORIGIN : Phân loại xong
+SORTED_AT_ORIGIN --> IN_TRANSIT_TO_HUB : Gom lô & xuất kho
+
+IN_TRANSIT_TO_HUB --> AT_HUB : Đến hub
+AT_HUB --> IN_TRANSIT_TO_DESTINATION : Chuyển tiếp
+IN_TRANSIT_TO_DESTINATION --> AT_DESTINATION_HUB : Đến hub đích
+
+AT_DESTINATION_HUB --> IN_TRANSIT_TO_OFFICE : Vận chuyển về bưu cục
+IN_TRANSIT_TO_OFFICE --> AT_DESTINATION_OFFICE : Đến bưu cục đích
+
+AT_DESTINATION_OFFICE --> OUT_FOR_DELIVERY : Giao cho shipper
+
+OUT_FOR_DELIVERY --> DELIVERED : Giao thành công ✓
+OUT_FOR_DELIVERY --> DELIVERY_FAILED : Giao thất bại ✗
+
+DELIVERY_FAILED --> OUT_FOR_DELIVERY : Giao lại
+DELIVERY_FAILED --> RETURNING : Trả hàng
+
+RETURNING --> RETURNED : Đã trả về
+
+DELIVERED --> [*]
+RETURNED --> [*]
+
+@enduml
+
+
+@startuml uc03-activity-batch
+' ============================================
+' UC03: QUẢN LÝ LÔ HÀNG - Activity Diagram
+' ============================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor green
+    EndColor red
+}
+
+title Activity Diagram - UC03: Quản Lý Lô Hàng
+
+start
+
+:Xem danh sách lô hàng;
+
+if (Tạo mới hay xử lý lô đang đến?) then (Tạo mới)
+    if (Thủ công hay tự động?) then (Thủ công)
+        :Chọn đích đến;
+        
+        repeat
+            :Chọn đơn hàng;
+            :Thêm đơn vào lô;
+        repeat while (Thêm nữa?) is (Có)
+        ->Không;
+    else (Tự động)
+        :Hệ thống tự động phân bổ
+        theo thuật toán FFD;
+    endif
+    
+    :Niêm phong lô (SEAL);
+    
+    :Xuất kho (DISPATCH);
+    
+else (Xử lý đến)
+    :Xem lô hàng đang đến
+    Status: IN_TRANSIT;
+    
+    :Chọn lô cần xác nhận;
+    
+    :Xác nhận nhận hàng (ARRIVED);
+    
+    :Phân phối đơn hàng (DISTRIBUTE);
+    
+    :Cập nhật trạng thái từng đơn;
+endif
+
+stop
+
+@enduml
+
+
+@startuml uc03-sequence-batch
+' ============================================
+' UC03: QUẢN LÝ LÔ HÀNG - Sequence Diagram
+' ============================================
+
+skinparam sequenceArrowThickness 2
+
+title Sequence Diagram - UC03: Quản Lý Lô Hàng
+
+actor "Nhân viên Kho" as NV #Gold
+participant "BatchUI" as UI #LightBlue
+participant "BatchController" as BC #LightGreen
+participant "BatchService" as BS #Pink
+participant "OrderService" as OS #Orange
+database "Database" as DB #LightGray
+
+autonumber
+
+== Tạo Lô Mới ==
+
+NV -> UI: Tạo lô mới
+UI -> BC: POST /batches
+activate BC
+BC -> BS: createBatch(destination)
+activate BS
+BS -> DB: INSERT INTO batches
+activate DB
+DB --> BS: Batch created
+deactivate DB
+BS --> BC: BatchDTO
+deactivate BS
+BC --> UI: Batch info
+deactivate BC
+UI --> NV: Hiển thị lô mới
+
+== Thêm Đơn Vào Lô ==
+
+NV -> UI: Thêm đơn vào lô
+UI -> BC: POST /batches/{id}/add-orders
+activate BC
+BC -> BS: addOrders(batchId, orderIds)
+activate BS
+BS -> OS: validateOrders()
+activate OS
+OS -> DB: SELECT orders
+activate DB
+DB --> OS: Orders data
+deactivate DB
+OS --> BS: Valid orders
+deactivate OS
+BS -> DB: UPDATE orders SET batch_id
+activate DB
+DB --> BS: Updated
+deactivate DB
+BS --> BC: Success
+deactivate BS
+BC --> UI: Orders added
+deactivate BC
+UI --> NV: Cập nhật danh sách
+
+== Niêm Phong ==
+
+NV -> UI: Niêm phong lô
+UI -> BC: POST /batches/{id}/seal
+activate BC
+BC -> BS: sealBatch()
+activate BS
+BS -> DB: UPDATE status='SEALED'
+activate DB
+DB --> BS: Updated
+deactivate DB
+BS --> BC: Sealed
+deactivate BS
+BC --> UI: Status: SEALED
+deactivate BC
+UI --> NV: Lô đã niêm phong
+
+== Xuất Kho ==
+
+NV -> UI: Xuất kho
+UI -> BC: POST /batches/{id}/dispatch
+activate BC
+BC -> BS: dispatch()
+activate BS
+BS -> DB: UPDATE status='IN_TRANSIT'
+BS -> DB: UPDATE orders status
+activate DB
+DB --> BS: Updated
+deactivate DB
+BS --> BC: Dispatched
+deactivate BS
+BC --> UI: Status: IN_TRANSIT
+deactivate BC
+UI --> NV: Đã xuất kho
+
+@enduml
+
+
+@startuml batch-state-diagram
+' ============================================
+' STATE DIAGRAM - TRẠNG THÁI LÔ HÀNG
+' ============================================
+
+skinparam state {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+
+title State Diagram - Trạng Thái Lô Hàng
+
+[*] --> OPEN : Tạo lô mới
+
+OPEN --> PROCESSING : Bắt đầu thêm đơn
+OPEN --> CANCELLED : Hủy lô
+
+PROCESSING --> SEALED : Niêm phong
+PROCESSING --> CANCELLED : Hủy lô
+
+SEALED --> IN_TRANSIT : Xuất kho
+SEALED --> CANCELLED : Hủy lô
+
+IN_TRANSIT --> ARRIVED : Đến nơi
+
+ARRIVED --> DISTRIBUTED : Phân phối đơn
+
+DISTRIBUTED --> [*]
+CANCELLED --> [*]
+
+@enduml
+
+
+@startuml uc04-activity-pickup
+' ============================================
+' UC04: LẤY HÀNG (First-Mile) - Activity Diagram
+' ============================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor green
+    EndColor red
+}
+
+title Activity Diagram - UC04: Lấy Hàng (First-Mile)
+
+start
+
+:Quản lý: Xem đơn PENDING_PICKUP;
+
+:Chọn đơn và phân công cho Shipper;
+
+:Shipper: Nhận thông báo;
+
+:Shipper: Xem chi tiết địa chỉ lấy hàng;
+
+:Shipper: Bắt đầu ca (Kích hoạt GPS);
+
+:Di chuyển đến địa chỉ khách hàng;
+
+:Lấy hàng từ khách;
+
+:Xác nhận PICKED_UP;
+
+:Mang hàng về bưu cục;
+
+:Xác nhận AT_ORIGIN_OFFICE;
+
+stop
+
+@enduml
+
+
+@startuml uc04-activity-delivery
+' ============================================
+' UC04: GIAO HÀNG (Last-Mile) - Activity Diagram
+' ============================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor green
+    EndColor red
+}
+
+title Activity Diagram - UC04: Giao Hàng (Last-Mile)
+
+start
+
+:Quản lý: Xem đơn AT_DESTINATION_OFFICE;
+
+:Chọn đơn và phân công cho Shipper;
+
+:Shipper: Nhận thông báo và xem danh sách;
+
+:Shipper: Bắt đầu giao (Kích hoạt GPS);
+
+:Status → OUT_FOR_DELIVERY;
+
+:Di chuyển đến người nhận
+theo Google Maps;
+
+if (Có thu COD?) then (Có)
+    :Thu tiền COD;
+endif
+
+if (Giao thành công?) then (Có)
+    :Xác nhận DELIVERED ✓;
+else (Không)
+    :Chọn lý do thất bại;
+    
+    :Status → DELIVERY_FAILED;
+    
+    if (Giao lại hay trả hàng?) then (Giao lại)
+        :Lên lịch giao lại;
+    else (Trả hàng)
+        :Status → RETURNING;
+    endif
+endif
+
+:Kết thúc ca (Tắt GPS);
+
+stop
+
+@enduml
+
+
+@startuml uc04-sequence-delivery
+' ============================================
+' UC04: GIAO HÀNG - Sequence Diagram
+' ============================================
+
+skinparam sequenceArrowThickness 2
+
+title Sequence Diagram - UC04: Giao Hàng
+
+actor "Quản lý Phường" as QL #LightBlue
+actor "Shipper" as SH #Lime
+actor "Khách hàng" as KH #Gold
+participant "ShipperUI" as UI #LightGray
+participant "OrderController" as OC #LightGreen
+participant "TrackingController" as TC #Pink
+participant "WebSocket" as WS #Orange
+database "Database" as DB #LightGray
+
+autonumber
+
+== Phân Công ==
+
+QL -> UI: Phân công đơn cho Shipper
+UI -> OC: POST /orders/{id}/assign-delivery
+activate OC
+OC -> DB: UPDATE order SET shipper_id
+activate DB
+DB --> OC: Updated
+deactivate DB
+OC --> UI: Assigned
+deactivate OC
+
+== Shipper Nhận Đơn ==
+
+SH -> UI: Xem đơn được giao
+UI -> OC: GET /shipper/orders
+activate OC
+OC -> DB: SELECT orders WHERE shipper_id
+activate DB
+DB --> OC: Orders list
+deactivate DB
+OC --> UI: Orders
+deactivate OC
+UI --> SH: Danh sách đơn
+
+== Bắt Đầu Giao ==
+
+SH -> UI: Bắt đầu giao hàng
+UI -> TC: POST /tracking/start-session
+activate TC
+TC -> DB: UPDATE status = OUT_FOR_DELIVERY
+activate DB
+DB --> TC: Updated
+deactivate DB
+TC --> UI: Session started
+deactivate TC
+UI --> SH: GPS đã bật
+
+== Theo Dõi GPS ==
+
+loop Mỗi 5 giây
+    SH -> UI: GPS location
+    UI -> TC: POST /tracking/update-location
+    TC -> WS: Broadcast location
+    WS --> KH: Push location {lat, lng}
+end
+
+== Xác Nhận Giao ==
+
+SH -> UI: Xác nhận DELIVERED
+UI -> OC: POST /orders/{id}/delivered
+activate OC
+OC -> DB: UPDATE status = DELIVERED
+activate DB
+DB --> OC: Updated
+deactivate DB
+OC --> UI: Delivered
+deactivate OC
+UI --> SH: Giao hàng thành công ✓
+
+@enduml
+
+
+@startuml uc05-activity-management
+' ============================================
+' UC05: QUẢN LÝ BƯU CỤC & NHÂN VIÊN - Activity Diagram
+' ============================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor green
+    EndColor red
+}
+
+title Activity Diagram - UC05: Quản Lý Bưu Cục & Nhân Viên
+
+start
+
+:Đăng nhập với vai trò quản lý;
+
+switch (Quản lý gì?)
+case (Bưu cục)
+    :Xem DS bưu cục theo phạm vi;
+    
+    switch (Thao tác?)
+    case (Thêm)
+        :Nhập thông tin bưu cục mới;
+        :Chọn vị trí địa lý (Tỉnh/Huyện/Xã);
+    case (Sửa)
+        :Cập nhật thông tin;
+    case (Xóa)
+        :Soft delete;
+    endswitch
+
+case (Nhân viên)
+    :Xem DS nhân viên theo phạm vi;
+    
+    switch (Thao tác?)
+    case (Thêm)
+        :Nhập thông tin NV + vai trò;
+        :Tạo tài khoản đăng nhập;
+    case (Sửa)
+        :Cập nhật thông tin;
+    case (Xóa)
+        :Vô hiệu hóa tài khoản;
+    endswitch
+endswitch
+
+:Lưu vào DB;
+
+:Hiển thị kết quả;
+
+stop
+
+@enduml
+
+
+@startuml uc05-sequence-create-employee
+' ============================================
+' UC05: TẠO NHÂN VIÊN - Sequence Diagram
+' ============================================
+
+skinparam sequenceArrowThickness 2
+
+title Sequence Diagram - UC05: Tạo Nhân Viên
+
+actor "Admin" as AD #LightBlue
+participant "EmployeeUI" as UI #LightGray
+participant "UserController" as UC #LightGreen
+participant "UserService" as US #Pink
+participant "AuthService" as AS #Orange
+database "Database" as DB #LightGray
+
+autonumber
+
+AD -> UI: Mở form thêm nhân viên
+
+UI -> UC: GET /offices (in scope)
+activate UC
+UC -> US: getOffices()
+activate US
+US -> DB: SELECT offices
+activate DB
+DB --> US: Offices list
+deactivate DB
+US --> UC: OfficeDTO[]
+deactivate US
+UC --> UI: Available offices
+deactivate UC
+UI --> AD: Hiển thị form
+
+AD -> UI: Nhập thông tin nhân viên
+
+UI -> UC: POST /users/employees
+activate UC
+UC -> US: createEmployee()
+activate US
+
+US -> DB: Validate role permissions
+activate DB
+DB --> US: Valid
+deactivate DB
+
+US -> AS: createAccount()
+activate AS
+AS -> AS: hashPassword()
+AS -> DB: INSERT INTO accounts
+activate DB
+DB --> AS: Account created
+deactivate DB
+AS --> US: AccountDTO
+deactivate AS
+
+US -> DB: INSERT INTO employees
+activate DB
+DB --> US: Employee created
+deactivate DB
+US --> UC: EmployeeDTO
+deactivate US
+UC --> UI: Success + login info
+deactivate UC
+UI --> AD: Thông báo tạo thành công\n+ thông tin đăng nhập
+
+@enduml
+
+
+@startuml organization-structure
+' ============================================
+' CẤU TRÚC TỔ CHỨC
+' ============================================
+
+skinparam packageStyle rectangle
+
+title Cấu Trúc Tổ Chức - Hệ Thống Bưu Chính
+
+package "TRỤ SỞ CHÍNH" #LightBlue {
+    actor "SYSTEM_ADMIN" as SA
+}
+
+package "HUB MIỀN BẮC" #LightGreen {
+    actor "HUB_ADMIN" as HA1
+}
+
+package "HUB MIỀN TRUNG" #LightGreen {
+    actor "HUB_ADMIN" as HA2
+}
+
+package "HUB MIỀN NAM" #LightGreen {
+    actor "HUB_ADMIN" as HA3
+}
+
+package "TỈNH" #LightYellow {
+    component "PROVINCE_WAREHOUSE\n(Kho tỉnh)" as PW
+    component "PROVINCE_POST\n(Bưu cục tỉnh)" as PP
+}
+
+package "PHƯỜNG/XÃ" #Orange {
+    component "WARD_WAREHOUSE\n(Kho phường)" as WW
+    component "WARD_POST\n(Bưu cục phường)" as WP
+    actor "STAFF" as ST
+    actor "SHIPPER" as SH
+}
+
+SA --> HA1
+SA --> HA2
+SA --> HA3
+
+HA1 --> PW
+HA1 --> PP
+
+PW --> WW
+PP --> WP
+
+WW --> ST
+WP --> ST
+WW --> SH
+WP --> SH
+
+@enduml
+
+
+@startuml erd-diagram
+' ============================================
+' ENTITY RELATIONSHIP DIAGRAM
+' ============================================
+
+skinparam linetype ortho
+
+title Entity Relationship Diagram - Postal Management System
+
+entity "CUSTOMER" as customer {
+    * id : Long <<PK>>
+    --
+    * name : String
+    * phone : String
+    email : String
+    subscription : SubscriptionType
+}
+
+entity "ORDER" as order {
+    * id : Long <<PK>>
+    --
+    * trackingNumber : String <<UK>>
+    * senderName : String
+    * senderPhone : String
+    * receiverName : String
+    * receiverPhone : String
+    * receiverAddress : String
+    * status : OrderStatus
+    serviceType : ServiceType
+    price : BigDecimal
+    codAmount : BigDecimal
+    customer_id : Long <<FK>>
+    batch_id : Long <<FK>>
+    office_id : Long <<FK>>
+}
+
+entity "EMPLOYEE" as employee {
+    * id : Long <<PK>>
+    --
+    * name : String
+    * phone : String
+    * role : Role
+    office_id : Long <<FK>>
+    account_id : Long <<FK>>
+}
+
+entity "OFFICE" as office {
+    * id : Long <<PK>>
+    --
+    * name : String
+    * type : OfficeType
+    * address : String
+    ward_id : Long <<FK>>
+}
+
+entity "BATCH_PACKAGE" as batch {
+    * id : Long <<PK>>
+    --
+    * status : BatchStatus
+    origin_office_id : Long <<FK>>
+    destination_office_id : Long <<FK>>
+}
+
+entity "ORDER_STATUS_HISTORY" as history {
+    * id : Long <<PK>>
+    --
+    * status : OrderStatus
+    * timestamp : DateTime
+    order_id : Long <<FK>>
+}
+
+entity "PROVINCE" as province {
+    * code : String <<PK>>
+    --
+    * name : String
+}
+
+entity "DISTRICT" as district {
+    * code : String <<PK>>
+    --
+    * name : String
+    province_code : String <<FK>>
+}
+
+entity "WARD" as ward {
+    * code : String <<PK>>
+    --
+    * name : String
+    district_code : String <<FK>>
+}
+
+customer ||--o{ order : creates
+employee ||--o{ order : handles
+office ||--o{ employee : employs
+office ||--o{ order : processes
+order ||--o{ history : has
+order }o--|| batch : belongs_to
+batch ||--|| office : origin
+batch ||--|| office : destination
+province ||--o{ district : contains
+district ||--o{ ward : contains
+ward ||--o{ office : located_in
+
+@enduml
+
+
+@startuml component-diagram
+' ============================================
+' COMPONENT DIAGRAM
+' ============================================
+
+skinparam componentStyle uml2
+
+title Component Diagram - Kiến Trúc Hệ Thống
+
+package "Frontend - React + TypeScript" #LightBlue {
+    component [UI Components] as UI
+    component [Pages] as Pages
+    component [API Services] as FServices
+    component [Auth Context] as Context
+}
+
+package "Backend - Spring Boot" #LightGreen {
+    component [Controllers] as Controllers
+    component [Services] as BServices
+    component [Repositories] as Repos
+    component [Spring Security] as Security
+}
+
+package "Database - MySQL" #LightYellow {
+    database [Tables] as Tables
+}
+
+package "External Services" #Pink {
+    component [Google Maps API] as Maps
+    component [WebSocket Server] as WS
+}
+
+UI --> Pages
+Pages --> FServices
+Pages --> Context
+FServices --> Controllers
+Context --> Security
+
+Controllers --> BServices
+BServices --> Repos
+Repos --> Tables
+
+FServices --> Maps
+FServices --> WS
+
+@enduml
+
+
+@startuml deployment-diagram
+' ============================================
+' DEPLOYMENT DIAGRAM
+' ============================================
+
+skinparam nodeStyle rectangle
+
+title Deployment Diagram - Triển Khai Docker
+
+node "Client" #LightBlue {
+    component [Web Browser] as Browser
+}
+
+node "Server" #LightGreen {
+    node "Docker Compose" #LightYellow {
+        node "Frontend Container" #Pink {
+            component [Nginx + React] as FE
+        }
+        
+        node "Backend Container" #Cyan {
+            component [Spring Boot] as BE
+        }
+        
+        node "Database Container" #Orange {
+            database [MySQL 8.0] as DB
+        }
+    }
+}
+
+Browser --> FE : HTTPS
+FE --> BE : REST API
+BE --> DB : JDBC
+
+@enduml
+
+
+@startuml sitemap-diagram
+' ============================================
+' SITEMAP DIAGRAM - CẤU TRÚC TRANG WEB
+' ============================================
+
+skinparam defaultTextAlignment center
+skinparam rectangle {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    RoundCorner 10
+}
+
+title Sitemap - Hệ Thống Quản Lý Bưu Chính
+
+rectangle "🏠 **Trang Chủ**\n/" as Home #LightBlue
+
+rectangle "🔐 **Xác Thực**" as Auth #LightGray {
+    rectangle "Đăng nhập\n/login" as Login
+    rectangle "Đăng ký\n/register" as Register
+    rectangle "Quên mật khẩu\n/forgot-password" as Forgot
+}
+
+rectangle "📦 **Theo Dõi Đơn Hàng** (Public)\n/tracking" as Tracking #LightGreen
+
+rectangle "👤 **Khách Hàng**" as Customer #Gold {
+    rectangle "Dashboard\n/customer" as CustDash
+    rectangle "Tạo đơn lấy hàng\n/customer/pickup" as CustPickup
+    rectangle "Đơn hàng của tôi\n/customer/orders" as CustOrders
+    rectangle "Hồ sơ\n/customer/profile" as CustProfile
+}
+
+rectangle "🖥️ **Nhân Viên Quầy**" as Counter #Cyan {
+    rectangle "Dashboard\n/counter" as CounterDash
+    rectangle "Tạo đơn mới\n/counter/create-order" as CreateOrder
+    rectangle "Danh sách đơn\n/counter/orders" as CounterOrders
+    rectangle "Tính giá\n/counter/pricing" as Pricing
+}
+
+rectangle "📦 **Nhân Viên Kho**" as Warehouse #Pink {
+    rectangle "Dashboard\n/warehouse" as WHDash
+    rectangle "Quản lý lô hàng\n/warehouse/batches" as Batches
+    rectangle "Tạo lô mới\n/warehouse/batches/new" as NewBatch
+    rectangle "Lô hàng đến\n/warehouse/incoming" as Incoming
+    rectangle "Phân loại\n/warehouse/sorting" as Sorting
+}
+
+rectangle "🚚 **Shipper**" as Shipper #Lime {
+    rectangle "Dashboard\n/shipper" as ShipperDash
+    rectangle "Đơn lấy hàng\n/shipper/pickups" as Pickups
+    rectangle "Đơn giao hàng\n/shipper/deliveries" as Deliveries
+    rectangle "Bản đồ\n/shipper/map" as ShipperMap
+    rectangle "Lịch sử\n/shipper/history" as ShipperHistory
+}
+
+rectangle "📍 **Quản Lý Phường**" as WardMgr #Orange {
+    rectangle "Dashboard\n/ward-manager" as WMDash
+    rectangle "Quản lý nhân viên\n/ward-manager/staff" as WMStaff
+    rectangle "Quản lý shipper\n/ward-manager/shippers" as WMShippers
+    rectangle "Phân công giao hàng\n/ward-manager/assign" as WMAssign
+    rectangle "Báo cáo\n/ward-manager/reports" as WMReports
+}
+
+rectangle "🏛️ **Quản Trị Tỉnh**" as ProvAdmin #LightYellow {
+    rectangle "Dashboard\n/province-admin" as PADash
+    rectangle "Quản lý bưu cục\n/province-admin/offices" as PAOffices
+    rectangle "Quản lý nhân viên\n/province-admin/employees" as PAEmployees
+    rectangle "Tuyến vận chuyển\n/province-admin/routes" as PARoutes
+    rectangle "Báo cáo\n/province-admin/reports" as PAReports
+}
+
+rectangle "🏢 **Quản Trị Hub**" as HubAdmin #LightGreen {
+    rectangle "Dashboard\n/hub-admin" as HADash
+    rectangle "Bưu cục tỉnh\n/hub-admin/provinces" as HAProvinces
+    rectangle "Quản lý nhân viên\n/hub-admin/employees" as HAEmployees
+    rectangle "Bản đồ mạng lưới\n/hub-admin/network" as HANetwork
+    rectangle "Thống kê\n/hub-admin/statistics" as HAStats
+}
+
+rectangle "🔧 **Quản Trị Hệ Thống**" as SysAdmin #LightBlue {
+    rectangle "Dashboard\n/system-admin" as SADash
+    rectangle "Quản lý Hub\n/system-admin/hubs" as SAHubs
+    rectangle "Quản lý tài khoản\n/system-admin/accounts" as SAAccounts
+    rectangle "Cấu hình hệ thống\n/system-admin/settings" as SASettings
+    rectangle "Nhật ký hệ thống\n/system-admin/logs" as SALogs
+}
+
+' Connections
+Home --> Auth
+Home --> Tracking
+Home --> Customer
+Home --> Counter
+Home --> Warehouse
+Home --> Shipper
+Home --> WardMgr
+Home --> ProvAdmin
+Home --> HubAdmin
+Home --> SysAdmin
+
+@enduml
+
+
+@startuml sitemap-detailed
+' ============================================
+' SITEMAP CHI TIẾT - MINDMAP STYLE
+' ============================================
+
+<style>
+mindmapDiagram {
+    node {
+        BackgroundColor #FEFECE
+        BorderColor #A80036
+        FontColor black
+    }
+    :depth(0) {
+        BackgroundColor #ADD8E6
+    }
+    :depth(1) {
+        BackgroundColor #90EE90
+    }
+    :depth(2) {
+        BackgroundColor #FFFACD
+    }
+    :depth(3) {
+        BackgroundColor #FFE4E1
+    }
+}
+</style>
+
+* 🏠 Postal Management System
+** 🔐 Auth
+*** /login - Đăng nhập
+*** /register - Đăng ký
+*** /forgot-password - Quên mật khẩu
+** 📦 /tracking - Theo dõi đơn (Public)
+*** Chi tiết đơn hàng
+*** Vị trí GPS shipper
+** 👤 Customer Portal
+*** /customer - Dashboard
+*** /customer/pickup - Tạo đơn lấy hàng
+*** /customer/orders - Đơn hàng của tôi
+**** Chi tiết đơn
+**** Theo dõi đơn
+*** /customer/profile - Hồ sơ cá nhân
+** 🖥️ Counter Staff
+*** /counter - Dashboard
+*** /counter/create-order - Tạo đơn mới
+**** Nhập thông tin
+**** Tính giá
+**** Xác nhận & In phiếu
+*** /counter/orders - Danh sách đơn
+** 📦 Warehouse Staff
+*** /warehouse - Dashboard
+*** /warehouse/batches - Quản lý lô
+**** Danh sách lô
+**** Tạo lô mới
+**** Chi tiết lô
+*** /warehouse/incoming - Lô đang đến
+*** /warehouse/sorting - Phân loại
+** 🚚 Shipper
+*** /shipper - Dashboard
+*** /shipper/pickups - Đơn lấy hàng
+*** /shipper/deliveries - Đơn giao hàng
+**** Chi tiết giao hàng
+**** Cập nhật trạng thái
+*** /shipper/map - Bản đồ điều hướng
+*** /shipper/history - Lịch sử
+** 📍 Ward Manager
+*** /ward-manager - Dashboard
+*** /ward-manager/staff - Quản lý NV
+**** Danh sách
+**** Thêm/Sửa/Xóa
+*** /ward-manager/shippers - Quản lý Shipper
+*** /ward-manager/assign - Phân công
+*** /ward-manager/reports - Báo cáo
+** 🏛️ Province Admin
+*** /province-admin - Dashboard
+*** /province-admin/offices - Bưu cục
+**** Danh sách
+**** Thêm/Sửa/Xóa
+*** /province-admin/employees - Nhân viên
+*** /province-admin/routes - Tuyến đường
+*** /province-admin/reports - Báo cáo
+** 🏢 Hub Admin
+*** /hub-admin - Dashboard
+*** /hub-admin/provinces - Bưu cục tỉnh
+*** /hub-admin/employees - Nhân viên
+*** /hub-admin/network - Mạng lưới
+*** /hub-admin/statistics - Thống kê
+** 🔧 System Admin
+*** /system-admin - Dashboard
+*** /system-admin/hubs - Quản lý Hub
+*** /system-admin/accounts - Tài khoản
+*** /system-admin/settings - Cấu hình
+*** /system-admin/logs - Nhật ký
+
+@endmindmap
+
+@enduml
+
+
+@startuml sitemap-navigation-flow
+' ============================================
+' SITEMAP - LUỒNG ĐIỀU HƯỚNG THEO VAI TRÒ
+' ============================================
+
+skinparam state {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+
+title Luồng Điều Hướng Theo Vai Trò
+
+state "🏠 Trang Chủ" as Home #LightBlue
+state "🔐 Đăng Nhập" as Login #LightGray
+
+state "Xác Thực Vai Trò" as AuthCheck <<choice>>
+
+state "👤 Customer Portal" as CustomerPortal #Gold {
+    state "Dashboard" as CD
+    state "Tạo đơn pickup" as CP
+    state "Đơn hàng của tôi" as CO
+    state "Hồ sơ" as CPr
+    
+    CD --> CP
+    CD --> CO
+    CD --> CPr
+}
+
+state "🖥️ Counter Staff Portal" as CounterPortal #Cyan {
+    state "Dashboard" as CSD
+    state "Tạo đơn mới" as CSC
+    state "Danh sách đơn" as CSO
+    
+    CSD --> CSC
+    CSD --> CSO
+}
+
+state "📦 Warehouse Portal" as WarehousePortal #Pink {
+    state "Dashboard" as WHD
+    state "Quản lý lô" as WHB
+    state "Lô đang đến" as WHI
+    state "Phân loại" as WHS
+    
+    WHD --> WHB
+    WHD --> WHI
+    WHD --> WHS
+}
+
+state "🚚 Shipper Portal" as ShipperPortal #Lime {
+    state "Dashboard" as SHD
+    state "Đơn lấy hàng" as SHP
+    state "Đơn giao hàng" as SHDe
+    state "Bản đồ" as SHM
+    
+    SHD --> SHP
+    SHD --> SHDe
+    SHD --> SHM
+}
+
+state "📍 Ward Manager Portal" as WardPortal #Orange {
+    state "Dashboard" as WMD
+    state "Quản lý NV" as WMS
+    state "Phân công" as WMA
+    state "Báo cáo" as WMR
+    
+    WMD --> WMS
+    WMD --> WMA
+    WMD --> WMR
+}
+
+state "🏛️ Province Admin Portal" as ProvincePortal #LightYellow {
+    state "Dashboard" as PAD
+    state "Bưu cục" as PAO
+    state "Nhân viên" as PAE
+    state "Tuyến đường" as PAR
+    
+    PAD --> PAO
+    PAD --> PAE
+    PAD --> PAR
+}
+
+state "🏢 Hub Admin Portal" as HubPortal #LightGreen {
+    state "Dashboard" as HAD
+    state "Bưu cục tỉnh" as HAP
+    state "Mạng lưới" as HAN
+    state "Thống kê" as HAS
+    
+    HAD --> HAP
+    HAD --> HAN
+    HAD --> HAS
+}
+
+state "🔧 System Admin Portal" as SysPortal #LightBlue {
+    state "Dashboard" as SAD
+    state "Quản lý Hub" as SAH
+    state "Tài khoản" as SAA
+    state "Cấu hình" as SAS
+    
+    SAD --> SAH
+    SAD --> SAA
+    SAD --> SAS
+}
+
+[*] --> Home
+Home --> Login
+Login --> AuthCheck
+
+AuthCheck --> CustomerPortal : CUSTOMER
+AuthCheck --> CounterPortal : COUNTER_STAFF
+AuthCheck --> WarehousePortal : WAREHOUSE_STAFF
+AuthCheck --> ShipperPortal : SHIPPER
+AuthCheck --> WardPortal : WARD_MANAGER
+AuthCheck --> ProvincePortal : PROVINCE_ADMIN
+AuthCheck --> HubPortal : HUB_ADMIN
+AuthCheck --> SysPortal : SYSTEM_ADMIN
+
+@enduml
