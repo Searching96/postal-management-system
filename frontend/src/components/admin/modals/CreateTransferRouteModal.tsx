@@ -9,6 +9,7 @@ interface Location {
     id: string;
     name: string;
     type: 'PROVINCE_WAREHOUSE' | 'HUB' | 'SYSTEM_HUB';
+    parentOfficeId?: string;
 }
 
 interface CreateTransferRouteModalProps {
@@ -41,7 +42,7 @@ export function CreateTransferRouteModal({
     const employeeUser = user as EmployeeMeResponse;
     const isHubAdmin = employeeUser?.role === 'HUB_ADMIN';
     const isSystemAdmin = employeeUser?.role === 'SYSTEM_ADMIN';
-    const isNationalManager = employeeUser?.role === 'NATIONAL_MANAGER';
+    // const isNationalManager = employeeUser?.role === 'NATIONAL_MANAGER';
     const userHubId = employeeUser?.office?.id;
 
     // Get filtered locations based on route type and user role
@@ -50,26 +51,44 @@ export function CreateTransferRouteModal({
 
         if (filterRouteType === 'PROVINCE_TO_HUB') {
             locations = availableLocations.filter(loc => loc.type === 'PROVINCE_WAREHOUSE');
+
+            // For PROVINCE_TO_HUB, HUB_ADMIN collects from provinces
+            // Restrict to provinces that report to this HUB (parentOfficeId check)
+            if (isHubAdmin && !isSystemAdmin) {
+                // Ensure we compare strings properly. userHubId should be defined if isHubAdmin is true
+                if (userHubId) {
+                    locations = locations.filter(loc => loc.parentOfficeId === userHubId);
+                }
+            }
         } else {
             // HUB_TO_HUB
             locations = availableLocations.filter(loc => loc.type === 'HUB' || loc.type === 'SYSTEM_HUB');
-        }
 
-        // HUB_ADMIN can only create routes FROM their own HUB
-        if (isHubAdmin && !isSystemAdmin) {
-            locations = locations.filter(loc => loc.id === userHubId);
+            // For HUB_TO_HUB, HUB_ADMIN can only create routes starting active FROM their hub
+            if (isHubAdmin && !isSystemAdmin) {
+                locations = locations.filter(loc => loc.id === userHubId);
+            }
         }
 
         return locations;
     };
 
     const getToLocations = (): Location[] => {
+        let locations: Location[] = [];
+
         if (filterRouteType === 'PROVINCE_TO_HUB') {
-            return availableLocations.filter(loc => loc.type === 'HUB' || loc.type === 'SYSTEM_HUB');
+            locations = availableLocations.filter(loc => loc.type === 'HUB' || loc.type === 'SYSTEM_HUB');
+
+            // For PROVINCE_TO_HUB, the destination meant to be the admin's hub
+            if (isHubAdmin && !isSystemAdmin) {
+                locations = locations.filter(loc => loc.id === userHubId);
+            }
         } else {
             // HUB_TO_HUB
-            return availableLocations.filter(loc => loc.type === 'HUB' || loc.type === 'SYSTEM_HUB');
+            locations = availableLocations.filter(loc => loc.type === 'HUB' || loc.type === 'SYSTEM_HUB');
+            // No specific restriction on TO for HUB_TO_HUB (can send to anywhere)
         }
+        return locations;
     };
 
     // Reset form when modal opens

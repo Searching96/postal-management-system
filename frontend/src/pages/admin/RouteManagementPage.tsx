@@ -81,8 +81,18 @@ export function RouteManagementPage({ filterRouteType }: RouteManagementPageProp
 
             // Combine hubs and province warehouses with type information
             const locations: Location[] = [
-                ...hubsData.map((h: any) => ({ id: h.id, name: h.name, type: h.type === 'SYSTEM_HUB' ? 'SYSTEM_HUB' as const : 'HUB' as const })),
-                ...provinceWhData.map((w: any) => ({ id: w.id, name: w.name, type: 'PROVINCE_WAREHOUSE' as const }))
+                ...hubsData.map((h: any) => ({
+                    id: h.id,
+                    name: h.name,
+                    type: h.type === 'SYSTEM_HUB' ? 'SYSTEM_HUB' as const : 'HUB' as const,
+                    parentOfficeId: h.parentOfficeId
+                })),
+                ...provinceWhData.map((w: any) => ({
+                    id: w.id,
+                    name: w.name,
+                    type: 'PROVINCE_WAREHOUSE' as const,
+                    parentOfficeId: w.parentOfficeId
+                }))
             ];
             setAvailableLocations(locations);
             setError(null);

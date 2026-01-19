@@ -50,15 +50,15 @@ export async function getWardsByProvince(provinceCode: string): Promise<WardOpti
  */
 export async function getOffices(type?: string): Promise<OfficeOption[]> {
     try {
-        const response = await api.get('/offices');
+        const params: any = { size: 1000 };
+        if (type) {
+            params.type = type;
+        }
+
+        const response = await api.get('/offices', { params });
 
         // Handle paginated response
-        let offices = response.data.content || response.data || [];
-
-        // Filter by type if specified
-        if (type) {
-            offices = offices.filter((office: any) => office.officeType === type);
-        }
+        const offices = response.data.content || response.data || [];
 
         // Map to OfficeOption format
         return offices.map((office: any) => ({
@@ -66,6 +66,7 @@ export async function getOffices(type?: string): Promise<OfficeOption[]> {
             name: office.officeName,
             code: office.officeType,
             type: office.officeType,
+            parentOfficeId: office.parentOfficeId,
         }));
     } catch (error) {
         console.error('Error fetching offices:', error);

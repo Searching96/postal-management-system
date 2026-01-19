@@ -55,11 +55,21 @@ public class ReroutingServiceImpl implements IReroutingService {
                 .orElseThrow(() -> new NotFoundException("To hub not found: " + request.getToHubId()));
 
         // Validate hubs exist and are appropriate types
-        if (fromHub.getOfficeType() != OfficeType.HUB) {
-            throw new BadRequestException("From office must be a hub");
-        }
-        if (toHub.getOfficeType() != OfficeType.HUB) {
-            throw new BadRequestException("To office must be a hub");
+        // Validate hubs exist and are appropriate types based on route type
+        if (request.getRouteType() == org.f3.postalmanagement.enums.RouteType.HUB_TO_HUB) {
+            if (fromHub.getOfficeType() != OfficeType.HUB) {
+                throw new BadRequestException("From office must be a hub for HUB_TO_HUB route");
+            }
+            if (toHub.getOfficeType() != OfficeType.HUB) {
+                throw new BadRequestException("To office must be a hub for HUB_TO_HUB route");
+            }
+        } else if (request.getRouteType() == org.f3.postalmanagement.enums.RouteType.PROVINCE_TO_HUB) {
+            if (fromHub.getOfficeType() != OfficeType.PROVINCE_WAREHOUSE) {
+                throw new BadRequestException("From office must be a province warehouse for PROVINCE_TO_HUB route");
+            }
+            if (toHub.getOfficeType() != OfficeType.HUB) {
+                throw new BadRequestException("To office must be a hub for PROVINCE_TO_HUB route");
+            }
         }
 
         // Validate user authorization to create this route
