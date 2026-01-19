@@ -481,71 +481,353 @@ def create_plotly_figure(container_dims, placements, title, static=False):
     return fig
 
 def generate_full_report(bundles, container, container_placements, filename="Full_Packing_Report.html"):
-    print(f"\n📊 Generating Optimized Report (Images for Bundles, 3D for Container)...")
-    
-    html_content = """
-    <html>
-    <head>
-        <title>3D Packing Report</title>
-        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-        <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f0f2f5; }
-            .header { background-color: #2c3e50; color: white; padding: 20px; text-align: center; }
-            .container-section { background: white; margin: 20px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-            .bundle-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 20px; padding: 20px; }
-            .bundle-card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; transition: transform 0.2s; }
-            .bundle-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-            .card-header { background-color: #ecf0f1; padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold; font-size: 0.9em; }
-            .card-img { width: 100%; display: block; }
-            h2 { border-bottom: 2px solid #3498db; padding-bottom: 10px; color: #2c3e50; }
-        </style>
-    </head>
-    <body>
-        <div class="header"><h1>📦 Smart Logistics: 3D Packing Report</h1></div>
     """
+    Generate interactive HTML report using Plotly.js only (no Kaleido).
+    Uses lazy loading to prevent WebGL context overflow.
+    """
+    print(f"\n📊 Generating Interactive Report...")
     
-    # 1. Container Section (Interactive 3D)
-    html_content += '<div class="container-section"><h2>🚛 Final Container Load (Interactive)</h2>'
-    fig_container = create_plotly_figure(container, container_placements, "Container 20ft Overview")
-    html_content += fig_container.to_html(full_html=False, include_plotlyjs=False)
-    html_content += '</div>'
-    
-    # 2. Bundles Section (Static Images to prevent crashing)
-    html_content += '<div style="margin: 20px;"><h2>📦 Bundle Details (Snapshot Gallery)</h2></div><div class="bundle-grid">'
-    
-    for i, b in enumerate(bundles):
-        if len(b.items) == 0: continue
-        
-        print(f"   📷 Snapshotting Bundle {b.id}...", end="\r")
+    # Convert all figures to JSON for embedding
+    bundle_data = []
+    for b in bundles:
+        if len(b.items) == 0: 
+            continue
         dims = b.as_box()
-        title_text = f"Bundle #{b.id} | Items: {len(b.items)} | Size: {dims.l}x{dims.w}x{dims.h}"
-        
-        # Create figure
-        fig = create_plotly_figure(Box(dims.l, dims.w, dims.h), b.packer.placements, title_text, static=True)
-        
-        # Convert to static image (base64 string)
-        # Requires 'kaleido' package
-        try:
-            img_bytes = fig.to_image(format="png", scale=2)
-            img_str = base64.b64encode(img_bytes).decode('utf-8')
-            img_tag = f'<img src="data:image/png;base64,{img_str}" class="card-img" alt="Bundle {b.id}">'
-        except Exception as e:
-            print(f"\n⚠️ Error generating image for Bundle {b.id}: {e}")
-            img_tag = "<div style='padding:50px; text-align:center;'>Image generation failed (Install kaleido)</div>"
-
-        html_content += f"""
-        <div class="bundle-card">
-            <div class="card-header">{title_text}</div>
-            {img_tag}
+        fig = create_plotly_figure(Box(dims.l, dims.w, dims.h), b.packer.placements, "", static=False)
+        bundle_data.append({
+            "id": b.id,
+            "type": b.bundle_type,
+            "items": len(b.items),
+            "size": f"{dims.l}x{dims.w}x{dims.h}",
+            "fill_rate": f"{b.fill_rate*100:.1f}%",
+            "fig_json": fig.to_json()
+        })
+    
+    # Container figure
+    fig_container = create_plotly_figure(container, container_placements, "")
+    container_json = fig_container.to_json()
+    
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Packing Report</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{ 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }}
+        .container {{ max-width: 1400px; margin: 0 auto; }}
+        .header {{ 
+            background: rgba(255,255,255,0.95); 
+            padding: 30px; 
+            border-radius: 16px; 
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }}
+        .header h1 {{ 
+            font-size: 2.5em; 
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }}
+        .header p {{ color: #666; font-size: 1.1em; }}
+        .section {{ 
+            background: rgba(255,255,255,0.95); 
+            border-radius: 16px; 
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        }}
+        .section-title {{ 
+            font-size: 1.5em; 
+            color: #333; 
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .container-viz {{ height: 500px; }}
+        .bundle-grid {{ 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+            gap: 15px; 
+        }}
+        .bundle-card {{ 
+            background: #f8f9fa; 
+            border-radius: 12px; 
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+        }}
+        .bundle-card:hover {{ 
+            transform: translateY(-3px); 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }}
+        .bundle-card.active {{
+            border: 2px solid #667eea;
+            box-shadow: 0 10px 25px rgba(102,126,234,0.3);
+        }}
+        .bundle-header {{ 
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 15px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .bundle-header .type {{ 
+            background: rgba(255,255,255,0.2);
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+        }}
+        .bundle-stats {{
+            display: flex;
+            gap: 15px;
+            padding: 12px 15px;
+            background: #fff;
+            font-size: 0.85em;
+            flex-wrap: wrap;
+        }}
+        .stat {{ 
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }}
+        .stat-value {{ font-weight: 600; color: #667eea; }}
+        .bundle-viewer {{
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 450px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        .bundle-viewer-placeholder {{
+            text-align: center;
+            color: #999;
+        }}
+        .bundle-viewer-placeholder .icon {{ font-size: 4em; margin-bottom: 10px; }}
+        #bundle-detail-viz {{ width: 100%; height: 400px; }}
+        .tabs {{
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }}
+        .tab {{
+            padding: 10px 20px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }}
+        .tab.active {{
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }}
+        .tab:hover:not(.active) {{ background: #ccc; }}
+        .summary-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }}
+        .summary-card {{
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }}
+        .summary-card .value {{ font-size: 1.8em; font-weight: 700; }}
+        .summary-card .label {{ opacity: 0.9; margin-top: 5px; font-size: 0.9em; }}
+        .bundle-detail-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }}
+        .close-btn {{
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }}
+        .close-btn:hover {{ background: #c0392b; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 3D Packing Visualization</h1>
+            <p>Interactive bin packing report - Click on a bundle to view details</p>
         </div>
-        """
         
-    html_content += '</div></body></html>'
+        <div class="section">
+            <div class="section-title">🚛 Vehicle Container</div>
+            <div id="container-viz" class="container-viz"></div>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="value">{len(bundle_data)}</div>
+                    <div class="label">Bundles</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value">{len(container_placements)}</div>
+                    <div class="label">Loaded</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value">{container.l}x{container.w}x{container.h}</div>
+                    <div class="label">Size (mm)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">📦 Bundle Details ({len(bundle_data)} bundles) - Click to view 3D</div>
+            <div class="tabs">
+                <button class="tab active" onclick="filterBundles('all')">All ({len(bundle_data)})</button>
+                <button class="tab" onclick="filterBundles('SMALL')">Small</button>
+                <button class="tab" onclick="filterBundles('MEDIUM')">Medium</button>
+                <button class="tab" onclick="filterBundles('LARGE')">Large</button>
+            </div>
+            
+            <div class="bundle-viewer" id="bundle-viewer">
+                <div class="bundle-viewer-placeholder">
+                    <div class="icon">👆</div>
+                    <p>Click on a bundle card below to view its 3D visualization</p>
+                </div>
+            </div>
+            
+            <div id="bundle-grid" class="bundle-grid" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Bundle data
+        const bundleData = {bundle_data};
+        const containerData = {container_json};
+        let currentBundleId = null;
+        
+        // Render container
+        Plotly.newPlot('container-viz', containerData.data, {{
+            ...containerData.layout,
+            title: 'Container Overview - Drag to rotate, scroll to zoom',
+            height: 500,
+            margin: {{l:0, r:0, t:40, b:0}}
+        }}, {{responsive: true}});
+        
+        // Render bundle cards (without 3D - lazy load on click)
+        function renderBundleCards(filter = 'all') {{
+            const grid = document.getElementById('bundle-grid');
+            grid.innerHTML = '';
+            
+            bundleData.forEach((bundle) => {{
+                if (filter !== 'all' && bundle.type !== filter) return;
+                
+                const card = document.createElement('div');
+                card.className = 'bundle-card' + (bundle.id === currentBundleId ? ' active' : '');
+                card.dataset.id = bundle.id;
+                card.innerHTML = `
+                    <div class="bundle-header">
+                        <span>Bundle #${{bundle.id}}</span>
+                        <span class="type">${{bundle.type}}</span>
+                    </div>
+                    <div class="bundle-stats">
+                        <div class="stat">📦 <span class="stat-value">${{bundle.items}}</span> items</div>
+                        <div class="stat">📐 <span class="stat-value">${{bundle.size}}</span></div>
+                        <div class="stat">📊 <span class="stat-value">${{bundle.fill_rate}}</span></div>
+                    </div>
+                `;
+                card.onclick = () => showBundleDetail(bundle.id);
+                grid.appendChild(card);
+            }});
+        }}
+        
+        // Show bundle 3D detail (lazy load)
+        function showBundleDetail(bundleId) {{
+            const bundle = bundleData.find(b => b.id === bundleId);
+            if (!bundle) return;
+            
+            currentBundleId = bundleId;
+            
+            // Update active state on cards
+            document.querySelectorAll('.bundle-card').forEach(c => {{
+                c.classList.toggle('active', parseInt(c.dataset.id) === bundleId);
+            }});
+            
+            const viewer = document.getElementById('bundle-viewer');
+            viewer.innerHTML = `
+                <div style="width: 100%;">
+                    <div class="bundle-detail-header">
+                        <h3>Bundle #${{bundle.id}} - ${{bundle.type}} (${{bundle.items}} items, ${{bundle.fill_rate}} fill)</h3>
+                        <button class="close-btn" onclick="closeBundleDetail()">✕ Close</button>
+                    </div>
+                    <div id="bundle-detail-viz"></div>
+                </div>
+            `;
+            
+            // Render the 3D plot
+            const figData = JSON.parse(bundle.fig_json);
+            Plotly.newPlot('bundle-detail-viz', figData.data, {{
+                ...figData.layout,
+                height: 400,
+                margin: {{l:0, r:0, t:10, b:0}}
+            }}, {{responsive: true}});
+        }}
+        
+        function closeBundleDetail() {{
+            currentBundleId = null;
+            document.querySelectorAll('.bundle-card').forEach(c => c.classList.remove('active'));
+            
+            const viewer = document.getElementById('bundle-viewer');
+            // Cleanup WebGL context
+            Plotly.purge('bundle-detail-viz');
+            
+            viewer.innerHTML = `
+                <div class="bundle-viewer-placeholder">
+                    <div class="icon">👆</div>
+                    <p>Click on a bundle card below to view its 3D visualization</p>
+                </div>
+            `;
+        }}
+        
+        function filterBundles(type) {{
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            renderBundleCards(type);
+        }}
+        
+        // Initial render
+        renderBundleCards();
+    </script>
+</body>
+</html>"""
     
     with open(filename, "w", encoding="utf-8") as f:
         f.write(html_content)
     
-    print(f"\n✅ Report saved to: {filename}")
+    print(f"✅ Report saved to: {filename}")
 
 # ==========================================================
 # 4. LOGIC
@@ -836,9 +1118,9 @@ def run_packing(items: List[Box], vehicle_type: str = "INTER_REGION", auto_bundl
     print(f"   Bundle Fill Rate: {avg_bundle_fill:6.2f}% - hiệu quả sử dụng không gian bundle")
     print("="*70)
     
-    # Tạo báo cáo HTML (commented out for faster testing)
-    # generate_full_report(bundles, container, container_packer.placements, 
-    #                     f"Packing_Report_{vehicle_type}.html")
+    # Tạo báo cáo HTML - Interactive Plotly (fast, no Kaleido)
+    generate_full_report(bundles, container, container_packer.placements, 
+                        f"Packing_Report_{vehicle_type}.html")
     
     return {
         "bundles": bundles,

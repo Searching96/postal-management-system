@@ -123,6 +123,9 @@ Scenario: Thu gom 600 bưu phẩm từ 1 ward
    Bundle Fill Rate:  77.59% - hiệu quả sử dụng không gian bundle
 ======================================================================
 
+📊 Generating Interactive Report...
+✅ Report saved to: Packing_Report_COLLECTION.html
+
 ======================================================================
 🚛 TEST 2: INTER-DISTRICT TRUCK - Xe liên tỉnh (District → Province Hub)
 ======================================================================
@@ -255,6 +258,9 @@ Scenario: Vận chuyển 1500 bưu phẩm từ district hub
    Weight:             0.00% - 0.0/2500 kg
    Bundle Fill Rate:  77.85% - hiệu quả sử dụng không gian bundle
 ======================================================================
+
+📊 Generating Interactive Report...
+✅ Report saved to: Packing_Report_INTER_DISTRICT.html
 
 ======================================================================
 🚛 TEST 3: INTER-REGION TRUCK - Xe liên miền (Province → Regional Hub)
@@ -421,6 +427,9 @@ Scenario: Vận chuyển 3000 bưu phẩm từ province hub
    Weight:             0.00% - 0.0/8000 kg
    Bundle Fill Rate:  79.40% - hiệu quả sử dụng không gian bundle
 ======================================================================
+
+📊 Generating Interactive Report...
+✅ Report saved to: Packing_Report_INTER_REGION.html
 
 ======================================================================
 📊 COMPARISON SUMMARY
