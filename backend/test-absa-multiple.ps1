@@ -77,37 +77,56 @@ $loginResponse = Invoke-RestMethod -Uri "$baseUrl/api/auth/login" `
 $token = "Bearer " + $loginResponse.token
 Write-Host "    OK: Login successful" -ForegroundColor Green
 
-# Step 3: Get test order
-Write-Host "`n[3] Fetching test order..." -ForegroundColor Yellow
-$ordersResponse = Invoke-RestMethod -Uri "$baseUrl/api/orders?tracking=VNTEST12345VN" `
-    -Method Get `
-    -Headers @{ Authorization = $token }
-
-$testOrder = $ordersResponse.content[0]
-$orderId = $testOrder.id
-Write-Host "    OK: Found test order - $($testOrder.trackingNumber)" -ForegroundColor Green
-Write-Host "    Order ID: $orderId" -ForegroundColor Gray
-
-# Step 4: Create multiple comments
-Write-Host "`n[4] Creating multiple comments..." -ForegroundColor Yellow
+# Step 3: Create test orders and comments
+Write-Host "`n[3] Creating orders and comments..." -ForegroundColor Yellow
 $commentIds = @()
 
 foreach ($i in 0..($testComments.Count - 1)) {
     $comment = $testComments[$i]
     $commentText = $comment.text
     
-    Write-Host "    [$($i+1)/$($testComments.Count)] Creating: $($comment.description)" -ForegroundColor Cyan
-    Write-Host "        Text: $commentText" -ForegroundColor Gray
+    Write-Host "    [$($i+1)/$($testComments.Count)] $($comment.description)" -ForegroundColor Cyan
     
-    # Prepare UTF-8 body
-    $commentBody = @{
-        commentText = $commentText
-        rating = 5
+    # Create new order
+    $trackingNum = "ABSA$(Get-Random -Minimum 10000 -Maximum 99999)VN"
+    $orderBody = @{
+        senderPhoneNumber = "0901234567"
+        recipientPhoneNumber = "0987654321"
+        recipientName = "Test Recipient $($i+1)"
+        recipientAddress = "123 Test St"
+        provinceId = "01"
+        districtId = "001"
+        wardId = "00001"
+        contentDescription = "Test package for ABSA $($i+1)"
+        weight = 1.5
+        length = 20
+        width = 15
+        height = 10
+        declaredValue = 100000
+        cashOnDelivery = 0
+        serviceTypeId = 1
+        trackingNumber = $trackingNum
     } | ConvertTo-Json
     
-    $commentBodyBytes = [System.Text.Encoding]::UTF8.GetBytes($commentBody)
-    
     try {
+        $orderResponse = Invoke-RestMethod `
+            -Uri "$baseUrl/api/orders" `
+            -Method Post `
+            -Headers @{ 
+                Authorization = $token
+                "Content-Type" = "application/json; charset=utf-8"
+            } `
+            -Body ([System.Text.Encoding]::UTF8.GetBytes($orderBody))
+        
+        $orderId = $orderResponse.id
+        Write-Host "        Order created: $trackingNum ($orderId)" -ForegroundColor Gray
+        
+        # Create comment for this order
+        $commentBody = @{
+            commentText = $commentText
+            rating = 5
+        } | ConvertTo-Json
+        
         $commentResponse = Invoke-RestMethod `
             -Uri "$baseUrl/api/orders/$orderId/comment" `
             -Method Post `
@@ -115,26 +134,28 @@ foreach ($i in 0..($testComments.Count - 1)) {
                 Authorization = $token
                 "Content-Type" = "application/json; charset=utf-8"
             } `
-            -Body $commentBodyBytes
+            -Body ([System.Text.Encoding]::UTF8.GetBytes($commentBody))
         
         $commentIds += @{
             id = $commentResponse.id
+            orderId = $orderId
+            trackingNumber = $trackingNum
             text = $commentText
             description = $comment.description
         }
         
-        Write-Host "        OK: Comment created - ID: $($commentResponse.id)" -ForegroundColor Green
+        Write-Host "        Comment created: $($commentResponse.id)" -ForegroundColor Green
     } catch {
-        Write-Host "        ERROR: Failed to create comment - $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "        ERROR: $($_.Exception.Message)" -ForegroundColor Red
     }
     
-    Start-Sleep -Milliseconds 200
+    Start-Sleep -Milliseconds 300
 }
 
-Write-Host "    Total created: $($commentIds.Count) comments" -ForegroundColor Green
+Write-Host "    Total created: $($commentIds.Count) orders with comments" -ForegroundColor Green
 
-# Step 5: Trigger batch analysis
-Write-Host "`n[5] Triggering batch analysis..." -ForegroundColor Yellow
+# Step 4: Trigger batch analysis
+Write-Host "`n[4] Triggering batch analysis..." -ForegroundColor Yellow
 $triggerResponse = Invoke-RestMethod `
     -Uri "$baseUrl/api/absa/trigger-batch" `
     -Method Post `
@@ -143,25 +164,26 @@ $triggerResponse = Invoke-RestMethod `
 Write-Host "    OK: Batch triggered" -ForegroundColor Green
 Write-Host "    Filled: $($triggerResponse.filled_count) comments" -ForegroundColor Gray
 
-# Step 6: Wait for analysis
-Write-Host "`n[6] Waiting for PhoBERT analysis (15 seconds)..." -ForegroundColor Yellow
+# Step 5: Wait for analysis
+Write-Host "`n[5] Waiting for PhoBERT analysis (15 seconds)..." -ForegroundColor Yellow
 for ($i = 15; $i -gt 0; $i--) {
     Write-Host "    $i..." -NoNewline
     Start-Sleep -Seconds 1
 }
 Write-Host ""
 
-# Step 7: Fetch results
-Write-Host "`n[7] Fetching analysis results..." -ForegroundColor Yellow
+# Step 6: Fetch results
+Write-Host "`n[6] Fetching analysis results..." -ForegroundColor Yellow
 Write-Host ("=" * 80) -ForegroundColor Cyan
 
 foreach ($i in 0..($commentIds.Count - 1)) {
     $commentInfo = $commentIds[$i]
     $commentId = $commentInfo.id
+    $orderId = $commentInfo.orderId
     
     Write-Host "`n[$($i+1)/$($commentIds.Count)] $($commentInfo.description)" -ForegroundColor Yellow
+    Write-Host "Tracking: $($commentInfo.trackingNumber)" -ForegroundColor Gray
     Write-Host "Text: $($commentInfo.text)" -ForegroundColor Gray
-    Write-Host "ID: $commentId" -ForegroundColor Gray
     
     try {
         $orderDetail = Invoke-RestMethod `
