@@ -38,12 +38,8 @@ public class CustomerCreateOrderRequest {
     private String pickupAddressLine1;
 
     @NotBlank(message = "Pickup ward code is required")
-    @Schema(description = "Pickup ward code")
+    @Schema(description = "Pickup ward code (Province is derivable from ward)")
     private String pickupWardCode;
-
-    @NotBlank(message = "Pickup province code is required")
-    @Schema(description = "Pickup province code")
-    private String pickupProvinceCode;
 
     @Schema(description = "Additional pickup instructions for shipper")
     private String pickupInstructions;
@@ -64,12 +60,8 @@ public class CustomerCreateOrderRequest {
     private String receiverAddressLine1;
 
     @NotBlank(message = "Receiver ward code (destination) is required")
-    @Schema(description = "Receiver ward code")
+    @Schema(description = "Receiver ward code (Province is derivable from ward)")
     private String receiverWardCode;
-
-    @NotBlank(message = "Receiver province code is required")
-    @Schema(description = "Receiver province code")
-    private String receiverProvinceCode;
 
     // ==================== PACKAGE INFORMATION ====================
 

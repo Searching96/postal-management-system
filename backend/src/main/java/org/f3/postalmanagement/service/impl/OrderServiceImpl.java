@@ -213,17 +213,14 @@ public class OrderServiceImpl implements IOrderService {
             throw new IllegalArgumentException("Orders can only be created at post offices, not warehouses");
         }
         
-        // Get receiver ward/province (destination)
+        // Get receiver ward (destination) - province is derivable from ward
         Ward receiverWard = wardRepository.findById(request.getReceiverWardCode())
                 .orElseThrow(() -> new IllegalArgumentException("Receiver ward not found: " + request.getReceiverWardCode()));
-        Province receiverProvince = provinceRepository.findById(request.getReceiverProvinceCode())
-                .orElseThrow(() -> new IllegalArgumentException("Receiver province not found: " + request.getReceiverProvinceCode()));
 
-        // Get sender ward/province
+        // Get sender ward - province is derivable from ward
         Ward senderWard = wardRepository.findById(request.getSenderWardCode())
                 .orElseThrow(() -> new IllegalArgumentException("Sender ward not found: " + request.getSenderWardCode()));
-        Province senderProvince = provinceRepository.findById(request.getSenderProvinceCode())
-                .orElseThrow(() -> new IllegalArgumentException("Sender province not found: " + request.getSenderProvinceCode()));
+        Province senderProvince = senderWard.getProvince();
         
         // Get or create sender customer
         Customer senderCustomer;
@@ -284,14 +281,12 @@ public class OrderServiceImpl implements IOrderService {
         order.setSenderPhone(request.getSenderPhone());
         order.setSenderAddressLine1(request.getSenderAddressLine1());
         order.setSenderWard(senderWard);
-        order.setSenderProvince(senderProvince);
-        
+
         // Receiver info
         order.setReceiverName(request.getReceiverName());
         order.setReceiverPhone(request.getReceiverPhone());
         order.setReceiverAddressLine1(request.getReceiverAddressLine1());
         order.setReceiverWard(receiverWard);
-        order.setReceiverProvince(receiverProvince);
         
         // Package info
         order.setPackageType(request.getPackageType());
@@ -319,7 +314,11 @@ public class OrderServiceImpl implements IOrderService {
         order.setOriginOffice(originOffice);
         order.setCurrentOffice(originOffice);
         order.setCreatedByEmployee(currentEmployee);
-        
+
+        // Find and set destination office based on receiver ward
+        Office destinationOffice = findDestinationOffice(receiverWard);
+        order.setDestinationOffice(destinationOffice);
+
         // Notes
         order.setDeliveryInstructions(request.getDeliveryInstructions());
         order.setInternalNotes(request.getInternalNotes());
@@ -544,7 +543,7 @@ public class OrderServiceImpl implements IOrderService {
             int randomNumber = 100000000 + random.nextInt(900000000);
             number = "VN" + randomNumber + "VN";
         } while (orderRepository.existsByTrackingNumber(number));
-        
+
         return number;
     }
 
@@ -562,12 +561,14 @@ public class OrderServiceImpl implements IOrderService {
                 .senderPhone(order.getSenderPhone())
                 .senderAddressLine1(order.getSenderAddressLine1())
                 .senderWardCode(order.getSenderWard() != null ? order.getSenderWard().getCode() : null)
-                .senderProvinceCode(order.getSenderProvince() != null ? order.getSenderProvince().getCode() : null)
+                .senderWardName(order.getSenderWard() != null ? order.getSenderWard().getName() : null)
+                .senderProvinceName(order.getSenderWard() != null && order.getSenderWard().getProvince() != null ? order.getSenderWard().getProvince().getName() : null)
                 .receiverName(order.getReceiverName())
                 .receiverPhone(order.getReceiverPhone())
                 .receiverAddressLine1(order.getReceiverAddressLine1())
                 .receiverWardCode(order.getReceiverWard() != null ? order.getReceiverWard().getCode() : null)
-                .receiverProvinceCode(order.getReceiverProvince() != null ? order.getReceiverProvince().getCode() : null)
+                .receiverWardName(order.getReceiverWard() != null ? order.getReceiverWard().getName() : null)
+                .receiverProvinceName(order.getReceiverWard() != null && order.getReceiverWard().getProvince() != null ? order.getReceiverWard().getProvince().getName() : null)
                 .packageType(order.getPackageType())
                 .packageDescription(order.getPackageDescription())
                 .weightKg(order.getWeightKg())
@@ -667,17 +668,13 @@ public class OrderServiceImpl implements IOrderService {
             throw new IllegalArgumentException("Selected office must be a post office, not a warehouse");
         }
         
-        // Get receiver ward/province
+        // Get receiver ward (destination) - province is derivable from ward
         Ward receiverWard = wardRepository.findById(request.getReceiverWardCode())
                 .orElseThrow(() -> new IllegalArgumentException("Receiver ward not found: " + request.getReceiverWardCode()));
-        Province receiverProvince = provinceRepository.findById(request.getReceiverProvinceCode())
-                .orElseThrow(() -> new IllegalArgumentException("Receiver province not found: " + request.getReceiverProvinceCode()));
 
-        // Get pickup ward/province
+        // Get pickup ward - province is derivable from ward
         Ward pickupWard = wardRepository.findById(request.getPickupWardCode())
                 .orElseThrow(() -> new IllegalArgumentException("Pickup ward not found: " + request.getPickupWardCode()));
-        Province pickupProvince = provinceRepository.findById(request.getPickupProvinceCode())
-                .orElseThrow(() -> new IllegalArgumentException("Pickup province not found: " + request.getPickupProvinceCode()));
         
         // Calculate weights
         BigDecimal volumetricWeight = calculateVolumetricWeight(request.getLengthCm(), request.getWidthCm(), request.getHeightCm());
@@ -721,14 +718,12 @@ public class OrderServiceImpl implements IOrderService {
         order.setSenderPhone(customer.getPhoneNumber());
         order.setSenderAddressLine1(request.getPickupAddressLine1());
         order.setSenderWard(pickupWard);
-        order.setSenderProvince(pickupProvince);
-        
+
         // Receiver info
         order.setReceiverName(request.getReceiverName());
         order.setReceiverPhone(request.getReceiverPhone());
         order.setReceiverAddressLine1(request.getReceiverAddressLine1());
         order.setReceiverWard(receiverWard);
-        order.setReceiverProvince(receiverProvince);
         
         // Package info
         order.setPackageType(request.getPackageType());
@@ -755,6 +750,10 @@ public class OrderServiceImpl implements IOrderService {
         order.setStatus(OrderStatus.PENDING_PICKUP);
         order.setOriginOffice(originOffice);
         order.setCurrentOffice(originOffice);
+        
+        // Find and set destination office based on receiver ward
+        order.setDestinationOffice(findDestinationOffice(receiverWard));
+        
         // No createdByEmployee for customer-created orders
         
         // Notes
@@ -1014,6 +1013,11 @@ public class OrderServiceImpl implements IOrderService {
         OrderStatus previousStatus = order.getStatus();
         order.setStatus(OrderStatus.AT_ORIGIN_OFFICE);
         order.setCurrentOffice(currentEmployee.getOffice());
+
+        // Ensure destination office is set if missing (e.g. legacy orders)
+        if (order.getDestinationOffice() == null) {
+            order.setDestinationOffice(findDestinationOffice(order.getReceiverWard()));
+        }
         
         Order savedOrder = orderRepository.save(order);
 
@@ -1211,5 +1215,31 @@ public class OrderServiceImpl implements IOrderService {
                 .message("Successfully received " + successfulOrders.size() + " orders at " + currentOffice.getOfficeName())
                 .orders(successfulOrders)
                 .build();
+    }
+
+    /**
+     * Find a suitable destination office for a ward.
+     * Prefers PO_WARD_POST, then PO_PROVINCE_POST in the same province.
+     */
+    private Office findDestinationOffice(Ward ward) {
+        if (ward == null) return null;
+
+        // Try to find a ward-level post office in the receiver's province
+        List<Office> offices = officeRepository.findAllByProvinceCodeAndOfficeType(
+                ward.getProvince().getCode(), 
+                OfficeType.WARD_POST
+        );
+
+        if (!offices.isEmpty()) {
+            return offices.get(0);
+        }
+
+        // Fallback to province-level post office
+        offices = officeRepository.findAllByProvinceCodeAndOfficeType(
+                ward.getProvince().getCode(), 
+                OfficeType.PROVINCE_POST
+        );
+
+        return offices.isEmpty() ? null : offices.get(0);
     }
 }

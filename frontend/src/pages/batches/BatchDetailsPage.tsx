@@ -34,9 +34,7 @@ export function BatchDetailsPage() {
         setIsLoading(true);
         try {
             const res = await batchService.getBatchById(id, true);
-            if (res.success) {
-                setBatch(res.data);
-            }
+            setBatch(res);
         } catch (error) {
             console.error(error);
             toast.error("Không thể tải thông tin kiện hàng");
@@ -52,11 +50,9 @@ export function BatchDetailsPage() {
     const handleAction = async (action: () => Promise<any>, successMsg: string) => {
         setIsActionLoading(true);
         try {
-            const res = await action();
-            if (res.success) {
-                toast.success(successMsg);
-                fetchBatchDetails();
-            }
+            await action();
+            toast.success(successMsg);
+            fetchBatchDetails();
         } catch (error) {
             console.error(error);
             toast.error("Thao tác thất bại");

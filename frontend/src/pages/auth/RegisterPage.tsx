@@ -124,10 +124,12 @@ export function RegisterPage() {
           <AddressSelector
             label="Địa chỉ thường trú"
             required
-            onAddressLine1Change={(val) => setFormData((prev) => ({ ...prev, addressLine1: val }))}
-            onAddressChange={() => { }} // legacy
-            onWardChange={(code) => setFormData((prev) => ({ ...prev, wardCode: code }))}
-            onProvinceChange={(code) => setFormData((prev) => ({ ...prev, provinceCode: code }))}
+            onChange={(addr) => setFormData((prev) => ({
+              ...prev,
+              addressLine1: addr.addressLine1,
+              wardCode: addr.wardCode,
+              provinceCode: addr.provinceCode
+            }))}
           />
 
           <Button

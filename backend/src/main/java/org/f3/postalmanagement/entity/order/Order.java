@@ -71,10 +71,6 @@ public class Order extends BaseEntity {
     @JoinColumn(name = "sender_ward_code")
     private Ward senderWard;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sender_province_code")
-    private Province senderProvince;
-
     // ==================== RECEIVER INFORMATION ====================
 
     /**
@@ -96,15 +92,11 @@ public class Order extends BaseEntity {
     private String receiverAddressLine1;
 
     /**
-     * Destination/Receiver ward for routing
+     * Destination/Receiver ward for routing (Province is derivable from ward)
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receiver_ward_code", referencedColumnName = "code")
     private Ward receiverWard;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "receiver_province_code")
-    private Province receiverProvince;
 
     // ==================== PACKAGE INFORMATION ====================
 

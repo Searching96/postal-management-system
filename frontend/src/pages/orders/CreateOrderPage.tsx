@@ -47,14 +47,12 @@ const createOrderSchema = z.object({
         .regex(phoneRegex, "Số điện thoại không hợp lệ (VD: 0912345678)"),
     senderAddressLine1: z.string().min(1, "Địa chỉ người gửi là bắt buộc"),
     senderWardCode: z.string().min(1, "Phường/Xã người gửi là bắt buộc"),
-    senderProvinceCode: z.string().min(1, "Tỉnh/Thành người gửi là bắt buộc"),
     receiverName: z.string().min(1, "Họ tên người nhận là bắt buộc"),
     receiverPhone: z.string()
         .min(10, "Số điện thoại phải có ít nhất 10 số")
         .regex(phoneRegex, "Số điện thoại không hợp lệ (VD: 0912345678)"),
     receiverAddressLine1: z.string().min(1, "Địa chỉ người nhận là bắt buộc"),
     receiverWardCode: z.string().min(1, "Phường/Xã người nhận là bắt buộc"),
-    receiverProvinceCode: z.string().min(1, "Tỉnh/Thành người nhận là bắt buộc"),
     packageType: z.string(),
     packageDescription: z.string().optional(),
     weightKg: z.coerce.number().min(0.01, "Trọng lượng phải lớn hơn 0"),
@@ -83,12 +81,10 @@ export function CreateOrderPage() {
             senderPhone: "",
             senderAddressLine1: "",
             senderWardCode: "",
-            senderProvinceCode: "",
             receiverName: "",
             receiverPhone: "",
             receiverAddressLine1: "",
             receiverWardCode: "",
-            receiverProvinceCode: "",
             packageType: "BOX",
             packageDescription: "",
             weightKg: 0.5,
@@ -137,7 +133,6 @@ export function CreateOrderPage() {
                 setValue("senderName", lastOrder.senderName);
                 setValue("senderAddressLine1", lastOrder.senderAddressLine1);
                 setValue("senderWardCode", lastOrder.senderWardCode);
-                setValue("senderProvinceCode", lastOrder.senderProvinceCode);
                 toast.success("Đã tìm thấy thông tin khách hàng!", { duration: 2000 });
             }
         } catch {
@@ -301,10 +296,10 @@ export function CreateOrderPage() {
                                                     <AddressSelector
                                                         label="Địa chỉ gửi"
                                                         initialValue={field.value}
-                                                        onAddressLine1Change={field.onChange}
-                                                        onAddressChange={() => { }} // legacy
-                                                        onWardChange={(code) => setValue("senderWardCode", code)}
-                                                        onProvinceChange={(code) => setValue("senderProvinceCode", code)}
+                                                        onChange={(addr) => {
+                                                            field.onChange(addr.addressLine1);
+                                                            setValue("senderWardCode", addr.wardCode);
+                                                        }}
                                                     />
                                                 )}
                                             />
@@ -348,10 +343,10 @@ export function CreateOrderPage() {
                                                         label="Địa chỉ nhận"
                                                         required
                                                         initialValue={field.value}
-                                                        onAddressLine1Change={field.onChange}
-                                                        onAddressChange={() => { }} // legacy
-                                                        onWardChange={(code) => setValue("receiverWardCode", code)}
-                                                        onProvinceChange={(code) => setValue("receiverProvinceCode", code)}
+                                                        onChange={(addr) => {
+                                                            field.onChange(addr.addressLine1);
+                                                            setValue("receiverWardCode", addr.wardCode);
+                                                        }}
                                                     />
                                                 )}
                                             />
@@ -593,12 +588,10 @@ export function CreateOrderPage() {
                                     senderPhone: getValues("senderPhone"),
                                     senderAddressLine1: getValues("senderAddressLine1"),
                                     senderWardCode: getValues("senderWardCode"),
-                                    senderProvinceCode: getValues("senderProvinceCode"),
                                     receiverName: "",
                                     receiverPhone: "",
                                     receiverAddressLine1: "",
                                     receiverWardCode: "",
-                                    receiverProvinceCode: "",
                                     packageType: "BOX",
                                     packageDescription: "",
                                     weightKg: 0.5,

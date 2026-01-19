@@ -10,7 +10,6 @@ import {
   X,
   User,
   Package,
-  Plus,
   Truck,
   Send,
   Route,

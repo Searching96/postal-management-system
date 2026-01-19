@@ -247,20 +247,32 @@ public class OperationalDataSeeder implements CommandLineRunner {
             order.setOriginOffice(originOffice);
             order.setDestinationOffice(destOffice);
             order.setCreatedByEmployee(defaultCreator);
-            
+
+            // Assign a Sender Ward within the origin province
+            List<Ward> senderWards = wardRepository.findByProvince_Code(originOffice.getProvince().getCode());
+            if (!senderWards.isEmpty()) {
+                Ward senderWard = senderWards.get(random.nextInt(senderWards.size()));
+                order.setSenderWard(senderWard);
+            }
+
             // Assign a Destination Ward within the destination province
             List<Ward> provinceWards = wardRepository.findByProvince_Code(destOffice.getProvince().getCode());
             if (!provinceWards.isEmpty()) {
                 Ward randomWard = provinceWards.get(random.nextInt(provinceWards.size()));
                 order.setReceiverWard(randomWard);
-                // Update receiver address to include Ward and Province for realism
-                String streetAddr = receiver.getAddressLine1().split(",")[0]; 
+                // Keep only street address - ward and province are derivable from wardCode
+                String streetAddr = receiver.getAddressLine1().split(",")[0];
                 if (streetAddr.contains("Phường") || streetAddr.contains("Xã")) {
                     streetAddr = generateAddress(created);
                 }
-                order.setReceiverAddressLine1(streetAddr + ", " + randomWard.getName() + ", " + destOffice.getProvince().getName());
+                order.setReceiverAddressLine1(streetAddr);
             } else {
-                 order.setReceiverAddressLine1(receiver.getAddressLine1() + ", " + destOffice.getProvince().getName());
+                // Fallback: use only the street portion without province name
+                String streetAddr = receiver.getAddressLine1().split(",")[0];
+                if (streetAddr.isBlank()) {
+                    streetAddr = generateAddress(created);
+                }
+                order.setReceiverAddressLine1(streetAddr);
             }
             
             // Set current location based on status

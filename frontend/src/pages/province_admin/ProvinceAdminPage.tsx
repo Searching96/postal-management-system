@@ -993,8 +993,7 @@ export function ProvinceAdminPage() {
                   provinceCode={officeFormData.provinceCode}
                   hideProvince
                   hideWard
-                  onAddressLine1Change={val => setOfficeFormData(prev => ({ ...prev, warehouseAddressLine1: val }))}
-                  onAddressChange={() => { }} // legacy
+                  onChange={(addr) => setOfficeFormData(prev => ({ ...prev, warehouseAddressLine1: addr.addressLine1 }))}
                 />
                 {officeErrors.warehouseAddressLine1 && (
                   <p className="text-xs font-medium text-red-500 mt-1 ml-1">{officeErrors.warehouseAddressLine1}</p>
@@ -1058,8 +1057,7 @@ export function ProvinceAdminPage() {
                   provinceCode={officeFormData.provinceCode}
                   hideProvince
                   hideWard
-                  onAddressLine1Change={val => setOfficeFormData(prev => ({ ...prev, postOfficeAddressLine1: val }))}
-                  onAddressChange={() => { }} // legacy
+                  onChange={(addr) => setOfficeFormData(prev => ({ ...prev, postOfficeAddressLine1: addr.addressLine1 }))}
                 />
                 {officeErrors.postOfficeAddressLine1 && (
                   <p className="text-xs font-medium text-red-500 mt-1 ml-1">{officeErrors.postOfficeAddressLine1}</p>

@@ -22,19 +22,17 @@ export function AutoBatchDialog({ open, onOpenChange, onSuccess, destinations = 
         setIsSubmitting(true);
         try {
             const res = await batchService.autoBatchOrders({
-                maxWeightKg: maxWeight,
+                maxWeightPerBatch: maxWeight,
                 destinationOfficeId: selectedDestination || undefined
             });
 
-            if (res.success) {
-                const { batchesCreated, ordersProcessed } = res.data;
-                if (batchesCreated > 0) {
-                    toast.success(`Đã tự động tạo ${batchesCreated} kiện hàng với ${ordersProcessed} đơn hàng!`);
-                    onSuccess();
-                    onOpenChange(false);
-                } else {
-                    toast.info("Không có đủ đơn hàng để tạo kiện mới theo tiêu chí này.");
-                }
+            const { batchesCreated, ordersProcessed } = res;
+            if (batchesCreated > 0) {
+                toast.success(`Đã tự động tạo ${batchesCreated} kiện hàng với ${ordersProcessed} đơn hàng!`);
+                onSuccess();
+                onOpenChange(false);
+            } else {
+                toast.info("Không có đủ đơn hàng để tạo kiện mới theo tiêu chí này.");
             }
         } catch (error) {
             console.error(error);

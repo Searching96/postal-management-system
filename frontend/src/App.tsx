@@ -18,7 +18,6 @@ import {
   BatchListPage,
   BatchDetailsPage,
   ShipperManagementPage,
-  ShipperDashboardPage,
   PendingPickupsPage,
   CustomerPickupPage,
   RouteManagementPage,

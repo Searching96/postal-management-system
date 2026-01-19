@@ -243,10 +243,11 @@ export function CustomerPickupPage() {
                                                 <AddressSelector
                                                     label="Địa chỉ gửi"
                                                     required
-                                                    onAddressChange={() => { }} // Legacy
-                                                    onAddressLine1Change={(val) => handleInputChange("senderAddressLine1", val)}
-                                                    onWardChange={(code) => handleInputChange("senderWardCode", code)}
-                                                    onProvinceChange={(code) => handleInputChange("senderProvinceCode", code)}
+                                                    onChange={(addr) => {
+                                                        handleInputChange("senderAddressLine1", addr.addressLine1);
+                                                        handleInputChange("senderWardCode", addr.wardCode);
+                                                        handleInputChange("senderProvinceCode", addr.provinceCode);
+                                                    }}
                                                     initialValue={formData.senderAddressLine1}
                                                 />
                                             </div>
@@ -278,10 +279,11 @@ export function CustomerPickupPage() {
                                                 <AddressSelector
                                                     label="Địa chỉ nhận"
                                                     required
-                                                    onAddressChange={() => { }} // Legacy
-                                                    onAddressLine1Change={(val) => handleInputChange("receiverAddressLine1", val)}
-                                                    onWardChange={(code) => handleInputChange("receiverWardCode", code)}
-                                                    onProvinceChange={(code) => handleInputChange("receiverProvinceCode", code)}
+                                                    onChange={(addr) => {
+                                                        handleInputChange("receiverAddressLine1", addr.addressLine1);
+                                                        handleInputChange("receiverWardCode", addr.wardCode);
+                                                        handleInputChange("receiverProvinceCode", addr.provinceCode);
+                                                    }}
                                                     initialValue={formData.receiverAddressLine1}
                                                 />
                                             </div>

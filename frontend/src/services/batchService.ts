@@ -1,5 +1,5 @@
 import api from "../lib/axios";
-import type { ApiResponse, PageResponse } from "../models";
+import type { PageResponse } from "../models";
 
 // Simplified order item for batch display
 export interface BatchOrderItem {
@@ -35,21 +35,25 @@ export interface AutoBatchResultResponse {
 }
 
 export interface BatchableDestinationsResponse {
+    originOfficeId: string;
     destinations: {
         officeId: string;
         officeName: string;
-        orderCount: number;
+        province: string;
+        unbatchedOrderCount: number;
         totalWeight: number;
+        openBatchCount: number;
     }[];
 }
 
 export interface CreateBatchRequest {
     destinationOfficeId: string;
+    maxWeightKg: number;
     orderIds?: string[];
 }
 
 export interface AutoBatchRequest {
-    maxWeightKg?: number;
+    maxWeightPerBatch?: number;
     destinationOfficeId?: string;
 }
 
@@ -60,62 +64,62 @@ export interface AddOrdersToBatchRequest {
 
 export const batchService = {
     // Batch Creation
-    createBatch: async (data: CreateBatchRequest): Promise<ApiResponse<BatchPackageResponse>> => {
-        const response = await api.post<ApiResponse<BatchPackageResponse>>("/batches", data);
+    createBatch: async (data: CreateBatchRequest): Promise<BatchPackageResponse> => {
+        const response = await api.post<BatchPackageResponse>("/batches", data);
         return response.data;
     },
 
-    autoBatchOrders: async (data: AutoBatchRequest): Promise<ApiResponse<AutoBatchResultResponse>> => {
-        const response = await api.post<ApiResponse<AutoBatchResultResponse>>("/batches/auto-batch", data);
+    autoBatchOrders: async (data: AutoBatchRequest): Promise<AutoBatchResultResponse> => {
+        const response = await api.post<AutoBatchResultResponse>("/batches/auto-batch", data);
         return response.data;
     },
 
     // Batch Operations
-    addOrdersToBatch: async (data: AddOrdersToBatchRequest): Promise<ApiResponse<BatchPackageResponse>> => {
-        const response = await api.post<ApiResponse<BatchPackageResponse>>("/batches/add-orders", data);
+    addOrdersToBatch: async (data: AddOrdersToBatchRequest): Promise<BatchPackageResponse> => {
+        const response = await api.post<BatchPackageResponse>("/batches/add-orders", data);
         return response.data;
     },
 
-    removeOrderFromBatch: async (batchId: string, orderId: string): Promise<ApiResponse<BatchPackageResponse>> => {
-        const response = await api.delete<ApiResponse<BatchPackageResponse>>(`/batches/${batchId}/orders/${orderId}`);
+    removeOrderFromBatch: async (batchId: string, orderId: string): Promise<BatchPackageResponse> => {
+        const response = await api.delete<BatchPackageResponse>(`/batches/${batchId}/orders/${orderId}`);
         return response.data;
     },
 
-    sealBatch: async (batchId: string): Promise<ApiResponse<BatchPackageResponse>> => {
-        const response = await api.post<ApiResponse<BatchPackageResponse>>(`/batches/${batchId}/seal`);
+    sealBatch: async (batchId: string): Promise<BatchPackageResponse> => {
+        const response = await api.post<BatchPackageResponse>(`/batches/${batchId}/seal`);
         return response.data;
     },
 
-    dispatchBatch: async (batchId: string): Promise<ApiResponse<BatchPackageResponse>> => {
-        const response = await api.post<ApiResponse<BatchPackageResponse>>(`/batches/${batchId}/dispatch`);
+    dispatchBatch: async (batchId: string): Promise<BatchPackageResponse> => {
+        const response = await api.post<BatchPackageResponse>(`/batches/${batchId}/dispatch`);
         return response.data;
     },
 
-    markBatchArrived: async (batchId: string): Promise<ApiResponse<BatchPackageResponse>> => {
-        const response = await api.post<ApiResponse<BatchPackageResponse>>(`/batches/${batchId}/arrive`);
+    markBatchArrived: async (batchId: string): Promise<BatchPackageResponse> => {
+        const response = await api.post<BatchPackageResponse>(`/batches/${batchId}/arrive`);
         return response.data;
     },
 
-    distributeBatch: async (batchId: string): Promise<ApiResponse<BatchPackageResponse>> => {
-        const response = await api.post<ApiResponse<BatchPackageResponse>>(`/batches/${batchId}/distribute`);
+    distributeBatch: async (batchId: string): Promise<BatchPackageResponse> => {
+        const response = await api.post<BatchPackageResponse>(`/batches/${batchId}/distribute`);
         return response.data;
     },
 
-    cancelBatch: async (batchId: string): Promise<ApiResponse<BatchPackageResponse>> => {
-        const response = await api.post<ApiResponse<BatchPackageResponse>>(`/batches/${batchId}/cancel`);
+    cancelBatch: async (batchId: string): Promise<BatchPackageResponse> => {
+        const response = await api.post<BatchPackageResponse>(`/batches/${batchId}/cancel`);
         return response.data;
     },
 
     // Batch Queries
-    getBatchById: async (batchId: string, includeOrders = false): Promise<ApiResponse<BatchPackageResponse>> => {
-        const response = await api.get<ApiResponse<BatchPackageResponse>>(`/batches/${batchId}`, {
+    getBatchById: async (batchId: string, includeOrders = false): Promise<BatchPackageResponse> => {
+        const response = await api.get<BatchPackageResponse>(`/batches/${batchId}`, {
             params: { includeOrders }
         });
         return response.data;
     },
 
-    getBatchByCode: async (batchCode: string, includeOrders = false): Promise<ApiResponse<BatchPackageResponse>> => {
-        const response = await api.get<ApiResponse<BatchPackageResponse>>(`/batches/code/${batchCode}`, {
+    getBatchByCode: async (batchCode: string, includeOrders = false): Promise<BatchPackageResponse> => {
+        const response = await api.get<BatchPackageResponse>(`/batches/code/${batchCode}`, {
             params: { includeOrders }
         });
         return response.data;
@@ -125,8 +129,8 @@ export const batchService = {
         status?: string;
         page?: number;
         size?: number
-    }): Promise<ApiResponse<PageResponse<BatchPackageResponse>>> => {
-        const response = await api.get<ApiResponse<PageResponse<BatchPackageResponse>>>("/batches", { params });
+    }): Promise<PageResponse<BatchPackageResponse>> => {
+        const response = await api.get<PageResponse<BatchPackageResponse>>("/batches", { params });
         return response.data;
     },
 
@@ -134,21 +138,21 @@ export const batchService = {
         status?: string;
         page?: number;
         size?: number
-    }): Promise<ApiResponse<PageResponse<BatchPackageResponse>>> => {
-        const response = await api.get<ApiResponse<PageResponse<BatchPackageResponse>>>("/batches/incoming", { params });
+    }): Promise<PageResponse<BatchPackageResponse>> => {
+        const response = await api.get<PageResponse<BatchPackageResponse>>("/batches/incoming", { params });
         return response.data;
     },
 
     getOpenBatches: async (params?: {
         page?: number;
         size?: number
-    }): Promise<ApiResponse<PageResponse<BatchPackageResponse>>> => {
-        const response = await api.get<ApiResponse<PageResponse<BatchPackageResponse>>>("/batches/open", { params });
+    }): Promise<PageResponse<BatchPackageResponse>> => {
+        const response = await api.get<PageResponse<BatchPackageResponse>>("/batches/open", { params });
         return response.data;
     },
 
-    getDestinationsWithUnbatchedOrders: async (): Promise<ApiResponse<BatchableDestinationsResponse>> => {
-        const response = await api.get<ApiResponse<BatchableDestinationsResponse>>("/batches/destinations");
+    getDestinationsWithUnbatchedOrders: async (): Promise<BatchableDestinationsResponse> => {
+        const response = await api.get<BatchableDestinationsResponse>("/batches/destinations");
         return response.data;
     }
 };

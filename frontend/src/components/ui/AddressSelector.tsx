@@ -4,12 +4,16 @@ import type { ProvinceResponse, WardResponse } from "../../models";
 import { FormInput, FormSelect } from "./index";
 import { MapPin, Building2, Map as MapIcon } from "lucide-react";
 
+export interface AddressData {
+    addressLine1: string;
+    wardCode: string;
+    provinceCode: string;
+    fullAddress: string;
+}
+
 interface AddressSelectorProps {
     label: string;
-    onAddressChange: (fullAddress: string) => void;
-    onAddressLine1Change?: (addressLine1: string) => void;
-    onProvinceChange?: (provinceCode: string) => void;
-    onWardChange?: (wardCode: string) => void;
+    onChange: (data: AddressData) => void;
     initialValue?: string;
     required?: boolean;
     provinceCode?: string; // External province code
@@ -19,10 +23,7 @@ interface AddressSelectorProps {
 
 export function AddressSelector({
     label,
-    onAddressChange,
-    onAddressLine1Change,
-    onProvinceChange,
-    onWardChange,
+    onChange,
     initialValue = "",
     required = false,
     provinceCode: externalProvinceCode,
@@ -107,16 +108,11 @@ export function AddressSelector({
                 }
             };
             fetchWards();
-            if (onProvinceChange) onProvinceChange(selectedProvince);
         } else {
             setWards([]);
             setSelectedWard("");
         }
     }, [selectedProvince]);
-
-    // Track last emitted values to prevent loops
-    const lastEmittedAddress = useRef("");
-    const lastEmittedWard = useRef("");
 
     // Bubbling up changes
     useEffect(() => {
@@ -131,21 +127,14 @@ export function AddressSelector({
 
         const fullAddress = parts.join(", ");
 
-        // Only emit if changed
-        if (fullAddress !== lastEmittedAddress.current) {
-            lastEmittedAddress.current = fullAddress;
-            onAddressChange(fullAddress);
-        }
+        onChange({
+            addressLine1: street.trim(),
+            wardCode: selectedWard,
+            provinceCode: selectedProvince,
+            fullAddress: fullAddress
+        });
 
-        if (onWardChange && selectedWard !== lastEmittedWard.current) {
-            lastEmittedWard.current = selectedWard;
-            onWardChange(selectedWard);
-        }
-
-        if (onAddressLine1Change) {
-            onAddressLine1Change(street.trim());
-        }
-    }, [selectedProvince, selectedWard, street, provinces, wards, onAddressChange, onWardChange, onAddressLine1Change]);
+    }, [selectedProvince, selectedWard, street, provinces, wards, onChange]);
 
     return (
         <div className="space-y-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow">

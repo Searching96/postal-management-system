@@ -557,6 +557,19 @@ public class BatchServiceImpl implements IBatchService {
         return mapToPageResponse(page);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderSummaryResponse> getUnbatchedOrders(UUID destinationOfficeId, Account currentAccount) {
+        Employee employee = getEmployeeFromAccount(currentAccount);
+        UUID originOfficeId = employee.getOffice().getId();
+
+        List<Order> unbatched = getUnbatchedOrders(originOfficeId, destinationOfficeId);
+        
+        return unbatched.stream()
+                .map(this::mapToOrderSummary)
+                .collect(Collectors.toList());
+    }
+
     // ==================== HELPER METHODS ====================
 
     private Employee getEmployeeFromAccount(Account account) {

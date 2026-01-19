@@ -4,7 +4,7 @@ import {
     Package, MapPin, Navigation, Phone, CheckCircle, XCircle, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { ShipperDeliveryMapPanel } from '../../components/map/ShipperDeliveryMapPanel';
+import { ShipperMapPanel } from '../../components/map/ShipperMapPanel';
 
 
 const ShipperDeliveryPage = () => {
@@ -200,7 +200,7 @@ const ShipperDeliveryPage = () => {
                                         <div className="flex items-start mt-1 text-gray-600 text-sm">
                                             <MapPin className="h-4 w-4 mt-0.5 mr-1 flex-shrink-0" />
                                             {/* Refactored: Display receiver address using names for UI (codes available for API) */}
-                                            <p>{order.receiverAddressLine1}, {order.receiverWardName}, {order.receiverProvinceName}</p>
+                                            <p>{order.receiverAddressLine1}, {order.receiverWardName || ''}, {order.receiverProvinceName || ''}</p>
                                         </div>
                                         <div className="flex items-center mt-1 text-gray-600 text-sm">
                                             <Phone className="h-4 w-4 mr-1" />
@@ -221,7 +221,7 @@ const ShipperDeliveryPage = () => {
                                     {/* Actions Row */}
                                     <div className="grid grid-cols-4 gap-2 mt-2">
                                         <button
-                                            onClick={() => handleNavigate(`${order.receiverAddressLine1}, ${order.receiverWardName}, ${order.receiverProvinceName}`)}
+                                            onClick={() => handleNavigate(`${order.receiverAddressLine1}, ${order.receiverWardName || ''}, ${order.receiverProvinceName || ''}`)}
                                             className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
                                         >
                                             <Navigation className="h-5 w-5 mb-1" />
@@ -300,7 +300,7 @@ const ShipperDeliveryPage = () => {
                 {/* Map panel - left side */}
                 <div className="overflow-y-auto">
                     {!isLoading && orders.length > 0 ? (
-                        <ShipperDeliveryMapPanel orders={orders} />
+                        <ShipperMapPanel orders={orders} mode="delivery" />
                     ) : (
                         <div className="h-[400px] rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center">
                             <div className="text-center text-gray-500">
@@ -358,7 +358,7 @@ const ShipperDeliveryPage = () => {
                                                 <div className="flex items-center gap-0.5 truncate">
                                                     <MapPin className="h-3 w-3 flex-shrink-0" />
                                                     {/* Refactored: Display receiver address using names for UI */}
-                                                    <p className="truncate">{order.receiverAddressLine1}, {order.receiverWardName}, {order.receiverProvinceName}</p>
+                                                    <p className="truncate">{order.receiverAddressLine1}, {order.receiverWardName || ''}, {order.receiverProvinceName || ''}</p>
                                                 </div>
                                                 <span className="text-gray-400">•</span>
                                                 <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -376,7 +376,7 @@ const ShipperDeliveryPage = () => {
                                         {/* Right Section - Actions */}
                                         <div className="flex items-center gap-1 px-2 py-2 bg-gray-50 border-l border-gray-200 flex-shrink-0">
                                             <button
-                                                onClick={() => handleNavigate(`${order.receiverAddressLine1}, ${order.receiverWardName}, ${order.receiverProvinceName}`)}
+                                                onClick={() => handleNavigate(`${order.receiverAddressLine1}, ${order.receiverWardName || ''}, ${order.receiverProvinceName || ''}`)}
                                                 className="p-1.5 rounded text-blue-700 hover:bg-blue-100 transition"
                                                 title="Chỉ đường"
                                             >

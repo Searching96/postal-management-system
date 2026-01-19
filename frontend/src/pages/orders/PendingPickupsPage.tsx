@@ -204,7 +204,7 @@ export function PendingPickupsPage() {
                             <p className="font-medium text-gray-700">Thông tin đơn hàng:</p>
                             <p><span className="text-gray-500">Mã vận đơn:</span> {selectedOrder?.trackingNumber}</p>
                             {/* Refactored: Display sender address using names for UI */}
-                            <p><span className="text-gray-500">Địa chỉ:</span> {`${selectedOrder?.senderAddressLine1}, ${selectedOrder?.senderWardName}, ${selectedOrder?.senderProvinceName}`}</p>
+                            <p><span className="text-gray-500">Địa chỉ:</span> {`${selectedOrder?.senderAddressLine1}, ${selectedOrder?.senderWardName || ''}, ${selectedOrder?.senderProvinceName || ''}`}</p>
                         </div>
 
                         <div className="space-y-2">

@@ -37,12 +37,8 @@ public class CreateOrderRequest {
     private String senderAddressLine1;
 
     @NotBlank(message = "Sender ward code is required")
-    @Schema(description = "Sender's ward code", example = "00001")
+    @Schema(description = "Sender's ward code (Province is derivable from ward)", example = "00001")
     private String senderWardCode;
-
-    @NotBlank(message = "Sender province code is required")
-    @Schema(description = "Sender's province code", example = "79")
-    private String senderProvinceCode;
 
     // ==================== RECEIVER INFORMATION ====================
 
@@ -61,12 +57,8 @@ public class CreateOrderRequest {
     private String receiverAddressLine1;
 
     @NotBlank(message = "Receiver ward code is required")
-    @Schema(description = "Receiver's ward code", example = "00001")
+    @Schema(description = "Receiver's ward code (Province is derivable from ward)", example = "00001")
     private String receiverWardCode;
-
-    @NotBlank(message = "Receiver province code is required")
-    @Schema(description = "Receiver's province code", example = "01")
-    private String receiverProvinceCode;
 
     // ==================== PACKAGE INFORMATION ====================
 

@@ -167,4 +167,13 @@ public interface IBatchService {
      * @return list of open batches
      */
     PageResponse<BatchPackageResponse> getOpenBatches(Pageable pageable, Account currentAccount);
+
+    /**
+     * Get unbatched orders at the current office for a specific destination.
+     *
+     * @param destinationOfficeId the destination office ID (optional)
+     * @param currentAccount the staff's account
+     * @return list of unbatched orders
+     */
+    java.util.List<org.f3.postalmanagement.dto.response.order.OrderSummaryResponse> getUnbatchedOrders(UUID destinationOfficeId, Account currentAccount);
 }

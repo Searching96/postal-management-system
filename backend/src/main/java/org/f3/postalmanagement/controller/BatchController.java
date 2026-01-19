@@ -346,4 +346,21 @@ public class BatchController {
         BatchableDestinationsResponse response = batchService.getDestinationsWithUnbatchedOrders(currentAccount);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/unbatched-orders")
+    @PreAuthorize("hasAnyRole('PO_STAFF', 'PO_WARD_MANAGER', 'PO_PROVINCE_ADMIN', 'HUB_ADMIN', 'WH_STAFF', 'WH_WARD_MANAGER', 'WH_PROVINCE_ADMIN')")
+    @Operation(
+            summary = "Get unbatched orders",
+            description = "Get list of unbatched orders at the current office, optionally filtered by destination.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Unbatched orders list retrieved")
+    })
+    public ResponseEntity<java.util.List<org.f3.postalmanagement.dto.response.order.OrderSummaryResponse>> getUnbatchedOrders(
+            @Parameter(description = "Filter by destination office ID")
+            @RequestParam(required = false) UUID destinationOfficeId,
+            @AuthenticationPrincipal(expression = "account") Account currentAccount) {
+        return ResponseEntity.ok(batchService.getUnbatchedOrders(destinationOfficeId, currentAccount));
+    }
 }

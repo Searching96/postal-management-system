@@ -229,8 +229,8 @@ export function TrackOrderPage() {
                                 </div>
                                 <p className="font-medium text-gray-900">{order.senderName}</p>
                                 <p className="text-sm text-gray-600">{order.senderPhone}</p>
-                                {/* Refactored: Display sender address using names for UI */}
-                                <p className="text-sm text-gray-600">{`${order.senderAddressLine1}, ${order.senderWardName}, ${order.senderProvinceName}`}</p>
+                                {/* Refactored: Display sender address using names */}
+                                <p className="text-sm text-gray-600">{`${order.senderAddressLine1}, ${order.senderWardName || ''}, ${order.senderProvinceName || ''}`}</p>
                             </div>
 
                             {/* Receiver */}
@@ -241,8 +241,8 @@ export function TrackOrderPage() {
                                 </div>
                                 <p className="font-medium text-gray-900">{order.receiverName}</p>
                                 <p className="text-sm text-gray-600">{order.receiverPhone}</p>
-                                {/* Refactored: Display receiver address using names for UI */}
-                                <p className="text-sm text-gray-600">{`${order.receiverAddressLine1}, ${order.receiverWardName}, ${order.receiverProvinceName}`}</p>
+                                {/* Refactored: Display receiver address using names */}
+                                <p className="text-sm text-gray-600">{`${order.receiverAddressLine1}, ${order.receiverWardName || ''}, ${order.receiverProvinceName || ''}`}</p>
                             </div>
                         </div>
 

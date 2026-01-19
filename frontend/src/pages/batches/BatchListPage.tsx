@@ -35,12 +35,10 @@ export function BatchListPage() {
         const loadDestinations = async () => {
             try {
                 const res = await batchService.getDestinationsWithUnbatchedOrders();
-                if (res.success && res.data && res.data.destinations) {
-                    setDestinations(res.data.destinations.map(d => ({
-                        value: d.officeId,
-                        label: d.officeName
-                    })));
-                }
+                setDestinations(res.destinations.map(d => ({
+                    value: d.officeId,
+                    label: `${d.officeName} (${d.province})`
+                })));
             } catch (error) {
                 console.error("Failed to load destinations", error);
             }
@@ -55,10 +53,8 @@ export function BatchListPage() {
                 ? await batchService.getBatches({ page, size: 10 })
                 : await batchService.getIncomingBatches({ page, size: 10 });
 
-            if (res.success) {
-                setBatches(res.data.content);
-                setTotalPages(res.data.totalPages);
-            }
+            setBatches(res.content);
+            setTotalPages(res.totalPages);
         } catch (error) {
             console.error(error);
             toast.error("Không thể tải danh sách kiện hàng");

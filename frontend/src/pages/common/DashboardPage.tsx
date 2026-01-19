@@ -96,7 +96,7 @@ export function DashboardPage() {
               : Promise.resolve(null)
           ]);
           newData["unitOrders"] = orders.totalElements.toString();
-          newData["unitBatches"] = batches && "data" in batches ? batches.data.totalElements.toString() : "0";
+          newData["unitBatches"] = batches ? batches.totalElements.toString() : "0";
         }
 
         if (isShipper) {

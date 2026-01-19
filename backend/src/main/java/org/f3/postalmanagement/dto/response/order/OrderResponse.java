@@ -43,11 +43,14 @@ public class OrderResponse {
     @Schema(description = "Sender address line 1 (full text for display)")
     private String senderAddressLine1;
 
-    @Schema(description = "Sender ward code (for backend operations)")
+    @Schema(description = "Sender ward code (Province is derivable from ward)")
     private String senderWardCode;
 
-    @Schema(description = "Sender province code (for backend operations)")
-    private String senderProvinceCode;
+    @Schema(description = "Sender ward name")
+    private String senderWardName;
+
+    @Schema(description = "Sender province name")
+    private String senderProvinceName;
 
     // ==================== RECEIVER INFO ====================
 
@@ -60,11 +63,26 @@ public class OrderResponse {
     @Schema(description = "Receiver address line 1 (full text for display)")
     private String receiverAddressLine1;
 
-    @Schema(description = "Receiver ward code (for backend operations)")
+    @Schema(description = "Receiver ward code (Province is derivable from ward)")
     private String receiverWardCode;
 
-    @Schema(description = "Receiver province code (for backend operations)")
-    private String receiverProvinceCode;
+    @Schema(description = "Receiver ward name")
+    private String receiverWardName;
+
+    @Schema(description = "Receiver province name")
+    private String receiverProvinceName;
+
+    @Schema(description = "Receiver latitude (for map display)")
+    private Double receiverLatitude;
+
+    @Schema(description = "Receiver longitude (for map display)")
+    private Double receiverLongitude;
+
+    @Schema(description = "Sender latitude (for map display)")
+    private Double senderLatitude;
+
+    @Schema(description = "Sender longitude (for map display)")
+    private Double senderLongitude;
 
     // ==================== PACKAGE INFO ====================
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Button, FormSelect, LoadingSpinner } from "../ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Button, FormSelect, LoadingSpinner, FormInput } from "../ui";
 import { batchService } from "../../services/batchService";
 import { toast } from "sonner";
 import { Box } from "lucide-react";
@@ -13,13 +13,22 @@ interface CreateBatchDialogProps {
 export function CreateBatchDialog({ open, onOpenChange, onSuccess }: CreateBatchDialogProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [destinations, setDestinations] = useState<{ officeId: string; officeName: string; orderCount: number; totalWeight: number }[]>([]);
+    const [destinations, setDestinations] = useState<{
+        officeId: string;
+        officeName: string;
+        province: string;
+        unbatchedOrderCount: number;
+        totalWeight: number;
+        openBatchCount: number;
+    }[]>([]);
     const [selectedDestination, setSelectedDestination] = useState("");
+    const [maxWeight, setMaxWeight] = useState<number>(50); // Default 50kg per batch
 
     useEffect(() => {
         if (open) {
             fetchDestinations();
             setSelectedDestination("");
+            setMaxWeight(50);
         }
     }, [open]);
 
@@ -27,9 +36,7 @@ export function CreateBatchDialog({ open, onOpenChange, onSuccess }: CreateBatch
         setIsLoading(true);
         try {
             const res = await batchService.getDestinationsWithUnbatchedOrders();
-            if (res.success && res.data) {
-                setDestinations(res.data.destinations || []);
-            }
+            setDestinations(res.destinations || []);
         } catch (error) {
             console.error(error);
             toast.error("Không thể tải danh sách điểm đến");
@@ -44,17 +51,21 @@ export function CreateBatchDialog({ open, onOpenChange, onSuccess }: CreateBatch
             return;
         }
 
+        if (maxWeight <= 0) {
+            toast.error("Trọng lượng tối đa phải lớn hơn 0");
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const res = await batchService.createBatch({
-                destinationOfficeId: selectedDestination
+                destinationOfficeId: selectedDestination,
+                maxWeightKg: maxWeight
             });
 
-            if (res.success) {
-                toast.success(`Đã tạo kiện hàng mới: ${res.data.batchCode}`);
-                onSuccess();
-                onOpenChange(false);
-            }
+            toast.success(`Đã tạo kiện hàng mới: ${res.batchCode}`);
+            onSuccess();
+            onOpenChange(false);
         } catch (error) {
             console.error(error);
             toast.error("Tạo kiện hàng thất bại");
@@ -75,7 +86,7 @@ export function CreateBatchDialog({ open, onOpenChange, onSuccess }: CreateBatch
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="py-4 space-y-4">
+                <div className="py-4 space-y-6">
                     {isLoading ? (
                         <div className="flex justify-center py-8">
                             <LoadingSpinner />
@@ -85,7 +96,7 @@ export function CreateBatchDialog({ open, onOpenChange, onSuccess }: CreateBatch
                             Hiện không có đơn hàng nào cần đóng gói.
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-6 px-1">
                             <FormSelect
                                 label="Chọn điểm đến"
                                 value={selectedDestination}
@@ -93,19 +104,32 @@ export function CreateBatchDialog({ open, onOpenChange, onSuccess }: CreateBatch
                                 placeholder="-- Chọn văn phòng nhận --"
                                 options={destinations.map(d => ({
                                     value: d.officeId,
-                                    label: d.officeName
+                                    label: `${d.officeName} (${d.province})`
                                 }))}
                             />
 
+                            <FormInput
+                                label="Trọng lượng tối đa kiện hàng (kg)"
+                                type="number"
+                                min={1}
+                                value={maxWeight}
+                                onChange={(e) => setMaxWeight(Number(e.target.value))}
+                                placeholder="Nhập trọng lượng tối đa (ví dụ: 50)"
+                            />
+
                             {selectedDestInfo && (
-                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 space-y-2 text-sm text-blue-900">
-                                    <div className="flex justify-between">
-                                        <span>Số lượng đơn chờ:</span>
-                                        <span className="font-bold">{selectedDestInfo.orderCount} đơn</span>
+                                <div className="bg-blue-50 px-6 py-5 rounded-xl border border-blue-100 space-y-3 text-sm text-blue-900 shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-top-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-blue-700">Số lượng đơn chờ:</span>
+                                        <span className="font-bold text-lg">{selectedDestInfo.unbatchedOrderCount} <span className="text-xs font-normal">đơn</span></span>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span>Tổng khối lượng:</span>
-                                        <span className="font-bold">{selectedDestInfo.totalWeight} kg</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-blue-700">Tổng khối lượng:</span>
+                                        <span className="font-bold text-lg">{selectedDestInfo.totalWeight.toFixed(2)} <span className="text-xs font-normal">kg</span></span>
+                                    </div>
+                                    <div className="flex justify-between items-center border-t border-blue-200 pt-2 mt-2">
+                                        <span className="text-blue-700 font-medium">Kiện đang mở:</span>
+                                        <span className="font-bold">{selectedDestInfo.openBatchCount} <span className="text-xs font-normal">kiện</span></span>
                                     </div>
                                 </div>
                             )}
@@ -113,14 +137,21 @@ export function CreateBatchDialog({ open, onOpenChange, onSuccess }: CreateBatch
                     )}
                 </div>
 
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
+                <DialogFooter className="bg-gray-50 -mx-6 -mb-6 p-6 rounded-b-lg border-t mt-4">
+                    <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+                        Huỷ
+                    </Button>
                     <Button
                         onClick={handleSubmit}
-                        disabled={!selectedDestination || isSubmitting || destinations.length === 0}
+                        disabled={!selectedDestination || isSubmitting || destinations.length === 0 || maxWeight <= 0}
+                        className="min-w-[120px]"
                     >
-                        {isSubmitting ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-                        Tạo Kiện
+                        {isSubmitting ? (
+                            <>
+                                <LoadingSpinner size="sm" className="mr-2" />
+                                Đang tạo...
+                            </>
+                        ) : "Tạo Kiện"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

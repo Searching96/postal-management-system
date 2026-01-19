@@ -9,18 +9,12 @@ export interface Order {
     senderPhone: string;
     senderAddressLine1: string;
     senderWardCode: string;
-    senderWardName: string;
-    senderProvinceCode: string;
-    senderProvinceName: string;
     senderLatitude?: number;
     senderLongitude?: number;
     receiverName: string;
     receiverPhone: string;
     receiverAddressLine1: string;
     receiverWardCode: string;
-    receiverWardName: string;
-    receiverProvinceCode: string;
-    receiverProvinceName: string;
     receiverLatitude?: number;
     receiverLongitude?: number;
     status: "CREATED" | "ACCEPTED" | "PENDING_PICKUP" | "PICKED_UP" | "AT_ORIGIN_OFFICE" | "SORTED_AT_ORIGIN" | "IN_TRANSIT_TO_HUB" | "AT_HUB" | "IN_TRANSIT_FROM_HUB" | "IN_TRANSIT_TO_DESTINATION" | "AT_DESTINATION_HUB" | "IN_TRANSIT_TO_OFFICE" | "AT_DESTINATION_OFFICE" | "OUT_FOR_DELIVERY" | "DELIVERED" | "DELIVERY_FAILED" | "CANCELLED" | "RETURNED" | "RETURNING" | "ON_HOLD" | "LOST" | "DAMAGED";
@@ -49,6 +43,11 @@ export interface Order {
     packageDescription?: string;
     createdAt: string;
     updatedAt: string;
+    // Expanded fields for UI display
+    senderWardName?: string;
+    senderProvinceName?: string;
+    receiverWardName?: string;
+    receiverProvinceName?: string;
 }
 
 
@@ -92,12 +91,10 @@ export interface CreateOrderRequest {
     senderPhone: string;
     senderAddressLine1: string;
     senderWardCode: string;
-    senderProvinceCode: string;
     receiverName: string;
     receiverPhone: string;
     receiverAddressLine1: string;
     receiverWardCode: string;
-    receiverProvinceCode: string;
     weightKg: number;
     lengthCm?: number;
     widthCm?: number;
