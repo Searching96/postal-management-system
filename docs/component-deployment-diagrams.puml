@@ -1,0 +1,668 @@
+' ================================================================================
+' COMPONENT DIAGRAM VÀ DEPLOYMENT DIAGRAM
+' Hệ Thống Quản Lý Bưu Chính (Postal Management System)
+' ================================================================================
+'
+' MỤC LỤC:
+' ========
+' 1. Component Diagram - Tổng quan hệ thống
+' 2. Component Diagram - Backend (Spring Boot)
+' 3. Component Diagram - Frontend (React)
+' 4. Deployment Diagram - Development Environment
+' 5. Deployment Diagram - Production Environment
+'
+' ================================================================================
+
+
+' ================================================================================
+' 1. COMPONENT DIAGRAM - TỔNG QUAN HỆ THỐNG
+' ================================================================================
+
+@startuml Component-Overview
+
+skinparam component {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+skinparam package {
+    BackgroundColor #F5F5F5
+    BorderColor #2C3E50
+}
+skinparam interface {
+    BackgroundColor #B4A7E5
+}
+
+title Component Diagram - Tổng Quan Hệ Thống Quản Lý Bưu Chính
+
+' ===== FRONTEND PACKAGE =====
+package "Frontend Layer" #LightBlue {
+    component [Customer Portal\n(React SPA)] as CustomerPortal
+    component [Admin Dashboard\n(React SPA)] as AdminDashboard
+    component [Shipper App\n(React PWA)] as ShipperApp
+}
+
+' ===== BACKEND PACKAGE =====
+package "Backend Layer" #LightGreen {
+    component [API Gateway\n(Spring Cloud Gateway)] as Gateway
+    component [Auth Service\n(Spring Security + JWT)] as AuthService
+    component [Order Service] as OrderService
+    component [Batch Service] as BatchService
+    component [Tracking Service] as TrackingService
+    component [Office Service] as OfficeService
+    component [User Service] as UserService
+    component [Notification Service] as NotificationService
+}
+
+' ===== AI/ML PACKAGE =====
+package "AI/ML Layer" #Orange {
+    component [ABSA Service\n(FastAPI + PhoBERT)] as ABSAService
+}
+
+' ===== DATA PACKAGE =====
+package "Data Layer" #LightGray {
+    database "MySQL\nDatabase" as MySQL
+    database "Redis\nCache" as Redis
+}
+
+' ===== EXTERNAL SERVICES =====
+package "External Services" #Pink {
+    component [Google Maps API] as GoogleMaps
+    component [SMS Gateway] as SMSGateway
+    component [Email Service\n(SMTP)] as EmailService
+}
+
+' ===== INTERFACES =====
+interface "REST API" as RestAPI
+interface "WebSocket" as WS
+interface "HTTP" as HTTP
+
+' ===== RELATIONSHIPS =====
+CustomerPortal --> RestAPI
+AdminDashboard --> RestAPI
+ShipperApp --> RestAPI
+ShipperApp --> WS
+
+RestAPI -- Gateway
+WS -- TrackingService
+
+Gateway --> AuthService
+Gateway --> OrderService
+Gateway --> BatchService
+Gateway --> TrackingService
+Gateway --> OfficeService
+Gateway --> UserService
+Gateway --> NotificationService
+
+OrderService --> MySQL
+BatchService --> MySQL
+TrackingService --> MySQL
+TrackingService --> Redis
+OfficeService --> MySQL
+UserService --> MySQL
+
+NotificationService --> SMSGateway
+NotificationService --> EmailService
+TrackingService --> GoogleMaps
+
+OrderService --> ABSAService : feedback analysis
+ABSAService --> HTTP
+
+@enduml
+
+
+' ================================================================================
+' 2. COMPONENT DIAGRAM - BACKEND (SPRING BOOT)
+' ================================================================================
+
+@startuml Component-Backend
+
+skinparam component {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+skinparam package {
+    BackgroundColor #E8F6F3
+    BorderColor #1ABC9C
+}
+
+title Component Diagram - Backend Architecture (Spring Boot)
+
+package "Presentation Layer" #LightBlue {
+    component [OrderController] as OC
+    component [BatchController] as BC
+    component [TrackingController] as TC
+    component [UserController] as UC
+    component [OfficeController] as OFC
+    component [AuthController] as AC
+    component [DashboardController] as DC
+}
+
+package "Service Layer" #LightGreen {
+    component [OrderService] as OS
+    component [BatchService] as BS
+    component [TrackingService] as TS
+    component [UserService] as US
+    component [OfficeService] as OFS
+    component [AuthService] as AS
+    component [NotificationService] as NS
+    component [PricingService] as PS
+    component [DashboardService] as DS
+}
+
+package "Security Layer" #Yellow {
+    component [JwtTokenProvider] as JWT
+    component [JwtAuthenticationFilter] as JWTFilter
+    component [UserDetailsService] as UDS
+}
+
+package "Repository Layer" #LightGray {
+    component [OrderRepository] as OR
+    component [BatchRepository] as BR
+    component [UserRepository] as UR
+    component [OfficeRepository] as OFR
+    component [OrderStatusHistoryRepository] as OSHR
+}
+
+package "External Integration" #Pink {
+    component [ABSAClient\n(Feign/RestTemplate)] as ABSAClient
+    component [SMSClient] as SMSClient
+    component [EmailClient] as EmailClient
+    component [MapsClient] as MapsClient
+}
+
+database "MySQL" as DB
+
+' ===== CONTROLLER -> SERVICE =====
+OC --> OS
+BC --> BS
+TC --> TS
+UC --> US
+OFC --> OFS
+AC --> AS
+DC --> DS
+
+' ===== SERVICE -> REPOSITORY =====
+OS --> OR
+OS --> OSHR
+BS --> BR
+US --> UR
+OFS --> OFR
+TS --> OR
+DS --> OR
+DS --> BR
+
+' ===== SERVICE -> SERVICE =====
+OS --> PS : calculate price
+OS --> NS : send notification
+BS --> NS
+TS --> NS
+
+' ===== SERVICE -> EXTERNAL =====
+OS --> ABSAClient : analyze feedback
+NS --> SMSClient
+NS --> EmailClient
+TS --> MapsClient
+
+' ===== SECURITY =====
+AC --> JWT
+JWTFilter --> JWT
+JWTFilter --> UDS
+UDS --> UR
+
+' ===== REPOSITORY -> DATABASE =====
+OR --> DB
+BR --> DB
+UR --> DB
+OFR --> DB
+OSHR --> DB
+
+@enduml
+
+
+' ================================================================================
+' 3. COMPONENT DIAGRAM - FRONTEND (REACT)
+' ================================================================================
+
+@startuml Component-Frontend
+
+skinparam component {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+skinparam package {
+    BackgroundColor #EBF5FB
+    BorderColor #3498DB
+}
+
+title Component Diagram - Frontend Architecture (React + TypeScript)
+
+package "Pages" #LightBlue {
+    component [LoginPage] as LP
+    component [OrdersPage] as OP
+    component [BatchesPage] as BP
+    component [TrackingPage] as TP
+    component [OfficesPage] as OFP
+    component [DashboardPage] as DP
+    component [ShipperPage] as SP
+}
+
+package "Components" #LightGreen {
+    package "Common" {
+        component [Layout] as Layout
+        component [ProtectedRoute] as PR
+        component [RoleRoute] as RR
+        component [VietnamMap] as VM
+    }
+    package "Order Components" {
+        component [OrderForm] as OF
+        component [OrderList] as OL
+        component [OrderDetail] as OD
+    }
+    package "Batch Components" {
+        component [BatchList] as BL
+        component [BatchStatusBadge] as BSB
+    }
+    package "Map Components" {
+        component [RouteNetworkMap] as RNM
+        component [ShipperTracking] as ST
+    }
+}
+
+package "Services (API)" #Yellow {
+    component [authService] as authSvc
+    component [orderService] as orderSvc
+    component [batchService] as batchSvc
+    component [trackingService] as trackingSvc
+    component [officeService] as officeSvc
+    component [userService] as userSvc
+}
+
+package "State Management" #Orange {
+    component [AuthContext] as AC
+    component [useLocationTracking] as ULT
+}
+
+package "Utilities" #LightGray {
+    component [axios instance] as Axios
+    component [printHelper] as PH
+    component [utils] as Utils
+}
+
+cloud "Backend API" as API
+
+' ===== PAGES -> COMPONENTS =====
+LP --> Layout
+OP --> Layout
+OP --> OF
+OP --> OL
+BP --> Layout
+BP --> BL
+TP --> Layout
+TP --> VM
+TP --> ST
+OFP --> Layout
+OFP --> RNM
+DP --> Layout
+SP --> Layout
+SP --> ST
+
+' ===== COMPONENTS -> SERVICES =====
+OF --> orderSvc
+OL --> orderSvc
+BL --> batchSvc
+ST --> trackingSvc
+RNM --> officeSvc
+
+' ===== PAGES -> STATE =====
+LP --> AC
+PR --> AC
+RR --> AC
+SP --> ULT
+
+' ===== SERVICES -> AXIOS =====
+authSvc --> Axios
+orderSvc --> Axios
+batchSvc --> Axios
+trackingSvc --> Axios
+officeSvc --> Axios
+userSvc --> Axios
+
+' ===== AXIOS -> API =====
+Axios --> API
+
+@enduml
+
+
+' ================================================================================
+' 4. DEPLOYMENT DIAGRAM - DEVELOPMENT ENVIRONMENT
+' ================================================================================
+
+@startuml Deployment-Development
+
+skinparam node {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+skinparam component {
+    BackgroundColor #E8F8F5
+    BorderColor #1ABC9C
+}
+
+title Deployment Diagram - Development Environment
+
+node "Developer Machine" as DevMachine {
+    node "Docker Desktop" as Docker {
+        
+        node "Frontend Container" as FrontendContainer #LightBlue {
+            component [Vite Dev Server\n:5173] as Vite
+            component [React App] as ReactApp
+            Vite --> ReactApp
+        }
+        
+        node "Backend Container" as BackendContainer #LightGreen {
+            component [Spring Boot\n:8080] as SpringBoot
+            component [Embedded Tomcat] as Tomcat
+            SpringBoot --> Tomcat
+        }
+        
+        node "Database Container" as DBContainer #LightGray {
+            database "MySQL 8.0\n:3306" as MySQL
+        }
+        
+        node "ABSA Container" as ABSAContainer #Orange {
+            component [FastAPI\n:8000] as FastAPI
+            component [PhoBERT Model] as PhoBERT
+            FastAPI --> PhoBERT
+        }
+    }
+    
+    node "VS Code / IntelliJ" as IDE {
+        component [Source Code] as Code
+    }
+}
+
+node "External Services" as External {
+    component [Google Maps API] as Maps
+    component [Mailtrap\n(Test Email)] as Mailtrap
+}
+
+' ===== RELATIONSHIPS =====
+ReactApp --> SpringBoot : "REST API\n(http://localhost:8080)"
+SpringBoot --> MySQL : "JDBC\n:3306"
+SpringBoot --> FastAPI : "HTTP\n:8000"
+SpringBoot --> Maps : "HTTPS"
+SpringBoot --> Mailtrap : "SMTP"
+
+Code ..> Docker : "docker-compose up"
+
+note right of Docker
+  **docker-compose.yml**
+  - frontend: node:18
+  - backend: openjdk:17
+  - db: mysql:8.0
+  - absa: python:3.10
+end note
+
+@enduml
+
+
+' ================================================================================
+' 5. DEPLOYMENT DIAGRAM - PRODUCTION ENVIRONMENT
+' ================================================================================
+
+@startuml Deployment-Production
+
+skinparam node {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+skinparam cloud {
+    BackgroundColor #E8F8F5
+}
+
+title Deployment Diagram - Production Environment
+
+actor "Khách hàng" as Customer
+actor "Nhân viên" as Staff
+actor "Shipper" as Shipper
+
+cloud "Internet" as Internet
+
+node "CDN (CloudFlare)" as CDN #LightBlue {
+    component [Static Assets\n(JS, CSS, Images)] as Assets
+}
+
+node "Load Balancer" as LB #Yellow {
+    component [Nginx / AWS ALB] as Nginx
+}
+
+node "Web Server Cluster" as WebCluster {
+    node "Web Server 1" as Web1 #LightBlue {
+        component [React SPA\n(Nginx)] as React1
+    }
+    node "Web Server 2" as Web2 #LightBlue {
+        component [React SPA\n(Nginx)] as React2
+    }
+}
+
+node "Application Server Cluster" as AppCluster {
+    node "App Server 1" as App1 #LightGreen {
+        component [Spring Boot\n:8080] as SB1
+    }
+    node "App Server 2" as App2 #LightGreen {
+        component [Spring Boot\n:8080] as SB2
+    }
+}
+
+node "AI/ML Server" as MLServer #Orange {
+    component [FastAPI\n:8000] as FastAPI
+    component [PhoBERT Model] as PhoBERT
+    FastAPI --> PhoBERT
+}
+
+node "Database Cluster" as DBCluster #LightGray {
+    node "Primary DB" as PrimaryDB {
+        database "MySQL Master" as MySQLMaster
+    }
+    node "Replica DB" as ReplicaDB {
+        database "MySQL Slave" as MySQLSlave
+    }
+    MySQLMaster --> MySQLSlave : "Replication"
+}
+
+node "Cache Server" as CacheServer #Pink {
+    database "Redis Cluster" as Redis
+}
+
+node "Message Queue" as MQ #Cyan {
+    component [RabbitMQ] as Rabbit
+}
+
+cloud "External Services" as External {
+    component [Google Maps API] as Maps
+    component [Twilio SMS] as SMS
+    component [SendGrid Email] as Email
+    component [Firebase\n(Push Notification)] as Firebase
+}
+
+' ===== USER CONNECTIONS =====
+Customer --> Internet
+Staff --> Internet
+Shipper --> Internet
+
+Internet --> CDN
+Internet --> LB
+
+' ===== CDN -> WEB =====
+CDN --> LB
+
+' ===== LOAD BALANCER =====
+LB --> Web1
+LB --> Web2
+LB --> App1
+LB --> App2
+
+' ===== WEB -> APP =====
+React1 --> LB : "API calls"
+React2 --> LB : "API calls"
+
+' ===== APP -> DATA =====
+SB1 --> MySQLMaster : "Write"
+SB1 --> MySQLSlave : "Read"
+SB2 --> MySQLMaster : "Write"
+SB2 --> MySQLSlave : "Read"
+
+SB1 --> Redis
+SB2 --> Redis
+
+SB1 --> Rabbit
+SB2 --> Rabbit
+
+' ===== APP -> ML =====
+SB1 --> FastAPI
+SB2 --> FastAPI
+
+' ===== APP -> EXTERNAL =====
+SB1 --> Maps
+SB1 --> SMS
+SB1 --> Email
+SB1 --> Firebase
+
+' ===== NOTES =====
+note right of WebCluster
+  **Frontend Deployment:**
+  - Build: npm run build
+  - Serve: Nginx static files
+  - SSL: Let's Encrypt / AWS ACM
+end note
+
+note right of AppCluster
+  **Backend Deployment:**
+  - JAR file trên JVM
+  - Health check endpoint
+  - Auto-scaling based on CPU
+end note
+
+note bottom of DBCluster
+  **Database:**
+  - Master-Slave Replication
+  - Automated Backup
+  - Point-in-time Recovery
+end note
+
+@enduml
+
+
+' ================================================================================
+' 6. COMPONENT DIAGRAM - ABSA SERVICE
+' ================================================================================
+
+@startuml Component-ABSA
+
+skinparam component {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+skinparam package {
+    BackgroundColor #FEF9E7
+    BorderColor #F39C12
+}
+
+title Component Diagram - ABSA Service (Aspect-Based Sentiment Analysis)
+
+package "API Layer" #LightBlue {
+    component [FastAPI Router] as Router
+    component [/analyze endpoint] as AnalyzeEP
+    component [/health endpoint] as HealthEP
+    Router --> AnalyzeEP
+    Router --> HealthEP
+}
+
+package "Service Layer" #LightGreen {
+    component [ABSAService] as ABSASvc
+    component [PreprocessingService] as PreProc
+    component [AspectExtractor] as AspectExt
+    component [SentimentClassifier] as SentClass
+}
+
+package "Model Layer" #Orange {
+    component [PhoBERT\nTokenizer] as Tokenizer
+    component [PhoBERT\nModel] as Model
+    component [Aspect\nClassification Head] as AspectHead
+    component [Sentiment\nClassification Head] as SentHead
+}
+
+package "Utilities" #LightGray {
+    component [VnCoreNLP\n(Word Segmentation)] as VnCore
+    component [Text Normalizer] as Normalizer
+}
+
+database "Pretrained\nWeights" as Weights
+
+' ===== RELATIONSHIPS =====
+AnalyzeEP --> ABSASvc
+ABSASvc --> PreProc
+ABSASvc --> AspectExt
+ABSASvc --> SentClass
+
+PreProc --> VnCore
+PreProc --> Normalizer
+
+AspectExt --> Tokenizer
+AspectExt --> Model
+AspectExt --> AspectHead
+
+SentClass --> Tokenizer
+SentClass --> Model
+SentClass --> SentHead
+
+Model --> Weights
+
+note right of ABSASvc
+  **Input:**
+  "Giao hàng nhanh nhưng 
+  shipper thái độ không tốt"
+  
+  **Output:**
+  [
+    {aspect: "giao hàng", 
+     sentiment: "positive"},
+    {aspect: "thái độ shipper", 
+     sentiment: "negative"}
+  ]
+end note
+
+note bottom of Model
+  **PhoBERT-base:**
+  - 12 layers
+  - 768 hidden size
+  - 12 attention heads
+  - Pretrained on 20GB 
+    Vietnamese text
+end note
+
+@enduml
+
+
+' ================================================================================
+' KẾT THÚC TÀI LIỆU
+' ================================================================================
+'
+' TỔNG KẾT:
+' =========
+' File này chứa 6 diagram:
+'
+' 1. Component-Overview: Tổng quan các thành phần hệ thống
+' 2. Component-Backend: Chi tiết kiến trúc Spring Boot (Controller-Service-Repository)
+' 3. Component-Frontend: Chi tiết kiến trúc React (Pages-Components-Services)
+' 4. Deployment-Development: Môi trường phát triển với Docker Compose
+' 5. Deployment-Production: Môi trường production với clustering
+' 6. Component-ABSA: Chi tiết service phân tích ABSA
+'
+' CÁCH SỬ DỤNG:
+' =============
+' 1. Copy từng block @startuml ... @enduml vào PlantUML editor
+' 2. Hoặc sử dụng PlantUML plugin trong VS Code/IntelliJ
+' 3. Export ra PNG/SVG để đưa vào tài liệu
+'
+' ================================================================================

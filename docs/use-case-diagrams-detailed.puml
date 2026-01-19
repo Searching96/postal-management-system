@@ -1,0 +1,801 @@
+' ================================================================================
+' USE CASE DIAGRAMS CHI TIẾT CHO TỪNG USE CASE LỚN
+' Hệ Thống Quản Lý Bưu Chính (Postal Management System)
+' ================================================================================
+'
+' MỤC LỤC:
+' ========
+' 1. UC01: TẠO ĐƠN HÀNG - Use Case Diagram
+' 2. UC02: THEO DÕI ĐƠN HÀNG - Use Case Diagram
+' 3. UC03: QUẢN LÝ LÔ HÀNG - Use Case Diagram
+' 4. UC04: GIAO HÀNG - Use Case Diagram
+' 5. UC05: QUẢN LÝ BƯU CỤC VÀ NHÂN VIÊN - Use Case Diagram
+'
+' ================================================================================
+
+
+' ================================================================================
+' UC01: TẠO ĐƠN HÀNG - USE CASE DIAGRAM
+' ================================================================================
+'
+' MÔ TẢ:
+' ------
+' Use case này bao gồm tất cả các chức năng liên quan đến việc tạo mới đơn hàng
+' trong hệ thống. Có 2 kịch bản chính:
+' - Nhân viên quầy tạo đơn trực tiếp khi khách đến gửi hàng tại bưu cục
+' - Khách hàng online tạo đơn yêu cầu shipper đến lấy hàng
+'
+' ACTORS:
+' -------
+' - Nhân viên Quầy (Counter Staff): Tạo đơn tại bưu cục
+' - Khách hàng (Customer): Tạo đơn online, yêu cầu lấy hàng
+' - Hệ thống (System): Xử lý tự động (tính giá, gửi thông báo)
+'
+' ================================================================================
+
+@startuml UC01-UseCase-CreateOrder
+
+skinparam usecase {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    ArrowColor #A80036
+}
+skinparam actor {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+skinparam rectangle {
+    BackgroundColor #F5F5F5
+    BorderColor #2C3E50
+}
+
+title Use Case Diagram - UC01: Tạo Đơn Hàng
+
+left to right direction
+
+' ===== ACTORS =====
+actor "Nhân viên Quầy" as CounterStaff #LightBlue
+actor "Khách hàng" as Customer #Gold
+actor "Hệ thống" as System #LightGreen
+
+' ===== SYSTEM BOUNDARY =====
+rectangle "Hệ Thống Quản Lý Bưu Chính" {
+    
+    ' ----- USE CASES CHÍNH -----
+    usecase "UC01.1\nTạo đơn hàng\ntại quầy" as UC01_1 #PaleGreen
+    usecase "UC01.2\nTạo đơn lấy hàng\nonline" as UC01_2 #PaleGreen
+    
+    ' ----- USE CASES PHỤ (INCLUDE) -----
+    usecase "Nhập thông tin\nngười gửi" as UC_SenderInfo
+    usecase "Nhập thông tin\nngười nhận" as UC_ReceiverInfo
+    usecase "Nhập thông tin\nbưu kiện" as UC_PackageInfo
+    usecase "Tính giá\nvận chuyển" as UC_CalcPrice
+    usecase "Chọn dịch vụ\nvận chuyển" as UC_SelectService
+    usecase "Tạo mã tracking" as UC_GenTracking
+    usecase "Lưu đơn hàng" as UC_SaveOrder
+    
+    ' ----- USE CASES MỞ RỘNG (EXTEND) -----
+    usecase "Tìm kiếm\nkhách hàng" as UC_SearchCustomer
+    usecase "Thêm bảo hiểm" as UC_AddInsurance
+    usecase "Thêm thu hộ\n(COD)" as UC_AddCOD
+    usecase "Áp dụng\ngiảm giá" as UC_ApplyDiscount
+    usecase "In phiếu gửi" as UC_PrintReceipt
+    usecase "Chọn khung giờ\nlấy hàng" as UC_SelectTimeSlot
+    usecase "Gửi thông báo\nđến bưu cục" as UC_NotifyOffice
+    usecase "Gửi email/SMS\nxác nhận" as UC_SendConfirmation
+}
+
+' ===== RELATIONSHIPS - UC01.1 =====
+CounterStaff --> UC01_1
+UC01_1 ..> UC_SenderInfo : <<include>>
+UC01_1 ..> UC_ReceiverInfo : <<include>>
+UC01_1 ..> UC_PackageInfo : <<include>>
+UC01_1 ..> UC_CalcPrice : <<include>>
+UC01_1 ..> UC_SelectService : <<include>>
+UC01_1 ..> UC_GenTracking : <<include>>
+UC01_1 ..> UC_SaveOrder : <<include>>
+
+UC_SearchCustomer ..> UC_SenderInfo : <<extend>>
+UC_AddInsurance ..> UC01_1 : <<extend>>
+UC_AddCOD ..> UC01_1 : <<extend>>
+UC_ApplyDiscount ..> UC_CalcPrice : <<extend>>
+UC_PrintReceipt ..> UC01_1 : <<extend>>
+
+' ===== RELATIONSHIPS - UC01.2 =====
+Customer --> UC01_2
+UC01_2 ..> UC_SenderInfo : <<include>>
+UC01_2 ..> UC_ReceiverInfo : <<include>>
+UC01_2 ..> UC_PackageInfo : <<include>>
+UC01_2 ..> UC_CalcPrice : <<include>>
+UC01_2 ..> UC_SelectService : <<include>>
+UC01_2 ..> UC_GenTracking : <<include>>
+UC01_2 ..> UC_SaveOrder : <<include>>
+
+UC_SelectTimeSlot ..> UC01_2 : <<extend>>
+UC_AddInsurance ..> UC01_2 : <<extend>>
+UC_AddCOD ..> UC01_2 : <<extend>>
+UC_ApplyDiscount ..> UC_CalcPrice : <<extend>>
+
+' ===== SYSTEM ACTOR =====
+System --> UC_GenTracking
+System --> UC_CalcPrice
+System --> UC_NotifyOffice
+System --> UC_SendConfirmation
+
+UC_NotifyOffice ..> UC01_2 : <<extend>>
+UC_SendConfirmation ..> UC01_2 : <<extend>>
+
+' ===== NOTES =====
+note right of UC01_1
+  **Điều kiện tiên quyết:**
+  - Nhân viên đã đăng nhập
+  - Khách hàng có mặt tại quầy
+  
+  **Kết quả:**
+  - Đơn hàng status: AT_ORIGIN_OFFICE
+  - In phiếu gửi cho khách
+end note
+
+note right of UC01_2
+  **Điều kiện tiên quyết:**
+  - Khách hàng đã đăng nhập
+  - Có địa chỉ lấy hàng hợp lệ
+  
+  **Kết quả:**
+  - Đơn hàng status: PENDING_PICKUP
+  - Thông báo đến bưu cục
+end note
+
+note bottom of UC_CalcPrice
+  Tính giá dựa trên:
+  - Cân nặng thực/quy đổi
+  - Khoảng cách vận chuyển
+  - Loại dịch vụ (EXPRESS/STANDARD/ECONOMY)
+  - Phụ phí (bảo hiểm, COD, ...)
+end note
+
+@enduml
+
+
+' ================================================================================
+' UC02: THEO DÕI ĐƠN HÀNG - USE CASE DIAGRAM
+' ================================================================================
+'
+' MÔ TẢ:
+' ------
+' Use case này cho phép người dùng tra cứu thông tin và theo dõi trạng thái
+' đơn hàng trong suốt quá trình vận chuyển. Hỗ trợ theo dõi vị trí shipper
+' real-time khi đơn đang được giao.
+'
+' ACTORS:
+' -------
+' - Khách hàng / Khách vãng lai: Tra cứu đơn hàng
+' - Hệ thống: Cập nhật trạng thái, broadcast vị trí
+'
+' ================================================================================
+
+@startuml UC02-UseCase-TrackOrder
+
+skinparam usecase {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    ArrowColor #A80036
+}
+skinparam actor {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+
+title Use Case Diagram - UC02: Theo Dõi Đơn Hàng
+
+left to right direction
+
+' ===== ACTORS =====
+actor "Khách hàng" as Customer #Gold
+actor "Khách vãng lai" as Guest #LightYellow
+actor "Hệ thống" as System #LightGreen
+
+' ===== SYSTEM BOUNDARY =====
+rectangle "Hệ Thống Quản Lý Bưu Chính" {
+    
+    ' ----- USE CASES CHÍNH -----
+    usecase "UC02.1\nTra cứu đơn hàng\ntheo mã tracking" as UC02_1 #PaleGreen
+    
+    ' ----- USE CASES PHỤ (INCLUDE) -----
+    usecase "Nhập mã tracking" as UC_InputTracking
+    usecase "Validate\nmã tracking" as UC_ValidateTracking
+    usecase "Truy vấn\nthông tin đơn" as UC_QueryOrder
+    usecase "Hiển thị\nthông tin cơ bản" as UC_ShowBasicInfo
+    usecase "Hiển thị\ntimeline trạng thái" as UC_ShowTimeline
+    
+    ' ----- USE CASES MỞ RỘNG (EXTEND) -----
+    usecase "Xem vị trí\nshipper real-time" as UC_ViewShipperLocation
+    usecase "Kết nối WebSocket" as UC_ConnectWS
+    usecase "Nhận cập nhật\nvị trí GPS" as UC_ReceiveGPS
+    usecase "Hiển thị\nbản đồ" as UC_ShowMap
+    usecase "Xem chi tiết\nđơn hàng" as UC_ViewOrderDetail
+    usecase "Liên hệ\nshipper" as UC_ContactShipper
+    usecase "Đánh giá\ndịch vụ" as UC_RateService
+}
+
+' ===== RELATIONSHIPS =====
+Customer --> UC02_1
+Guest --> UC02_1
+
+UC02_1 ..> UC_InputTracking : <<include>>
+UC02_1 ..> UC_ValidateTracking : <<include>>
+UC02_1 ..> UC_QueryOrder : <<include>>
+UC02_1 ..> UC_ShowBasicInfo : <<include>>
+UC02_1 ..> UC_ShowTimeline : <<include>>
+
+UC_ViewShipperLocation ..> UC02_1 : <<extend>>
+note on link : Khi status = \nOUT_FOR_DELIVERY
+
+UC_ViewShipperLocation ..> UC_ConnectWS : <<include>>
+UC_ViewShipperLocation ..> UC_ReceiveGPS : <<include>>
+UC_ViewShipperLocation ..> UC_ShowMap : <<include>>
+
+UC_ViewOrderDetail ..> UC02_1 : <<extend>>
+note on link : Chỉ khi\nđã đăng nhập
+
+UC_ContactShipper ..> UC02_1 : <<extend>>
+note on link : Khi đang giao
+
+UC_RateService ..> UC02_1 : <<extend>>
+note on link : Khi đã giao\nthành công
+
+' ===== SYSTEM ACTOR =====
+System --> UC_ValidateTracking
+System --> UC_QueryOrder
+System --> UC_ReceiveGPS
+
+' ===== NOTES =====
+note right of UC02_1
+  **Không yêu cầu đăng nhập**
+  - Chỉ cần mã tracking hợp lệ
+  - Thông tin nhạy cảm được ẩn bớt
+  
+  **Định dạng mã tracking:**
+  VN + 9 chữ số + VN
+  (VD: VN123456789VN)
+end note
+
+note bottom of UC_ViewShipperLocation
+  **Điều kiện kích hoạt:**
+  - Đơn hàng đang được giao
+  - Status = OUT_FOR_DELIVERY
+  
+  **Công nghệ:**
+  - WebSocket cho real-time
+  - Cập nhật mỗi 5 giây
+end note
+
+note right of UC_ShowTimeline
+  Hiển thị các trạng thái:
+  ✓ Đã tạo đơn
+  ✓ Đã lấy hàng
+  ✓ Đang vận chuyển
+  ○ Đang giao
+  ○ Đã giao
+end note
+
+@enduml
+
+
+' ================================================================================
+' UC03: QUẢN LÝ LÔ HÀNG - USE CASE DIAGRAM
+' ================================================================================
+'
+' MÔ TẢ:
+' ------
+' Use case này quản lý việc gom đơn hàng thành lô, niêm phong, xuất kho
+' và tiếp nhận lô hàng đến. Áp dụng thuật toán tối ưu để gom lô hiệu quả.
+'
+' ACTORS:
+' -------
+' - Nhân viên Kho (Warehouse Staff): Tạo lô, thêm đơn, xuất/nhập kho
+' - Hệ thống: Tự động gom lô, cập nhật trạng thái
+'
+' ================================================================================
+
+@startuml UC03-UseCase-BatchManagement
+
+skinparam usecase {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    ArrowColor #A80036
+}
+skinparam actor {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+
+title Use Case Diagram - UC03: Quản Lý Lô Hàng
+
+left to right direction
+
+' ===== ACTORS =====
+actor "Nhân viên Kho" as WarehouseStaff #Pink
+actor "Hệ thống" as System #LightGreen
+
+' ===== SYSTEM BOUNDARY =====
+rectangle "Hệ Thống Quản Lý Bưu Chính" {
+    
+    ' ----- USE CASES CHÍNH -----
+    usecase "UC03.1\nTạo và đóng gói\nlô hàng" as UC03_1 #PaleGreen
+    usecase "UC03.2\nTiếp nhận và phân phối\nlô hàng đến" as UC03_2 #PaleGreen
+    
+    ' ----- USE CASES PHỤ CHO UC03.1 -----
+    usecase "Tạo lô mới" as UC_CreateBatch
+    usecase "Chọn bưu cục đích" as UC_SelectDestination
+    usecase "Lấy danh sách\nđơn phù hợp" as UC_GetAvailableOrders
+    usecase "Thêm đơn vào lô\n(thủ công)" as UC_AddOrderManual
+    usecase "Tự động gom lô\n(FFD algorithm)" as UC_AutoBatch
+    usecase "Quét mã vạch\nđơn hàng" as UC_ScanBarcode
+    usecase "Niêm phong lô" as UC_SealBatch
+    usecase "Xuất kho" as UC_DispatchBatch
+    usecase "In phiếu lô hàng" as UC_PrintManifest
+    
+    ' ----- USE CASES PHỤ CHO UC03.2 -----
+    usecase "Quét mã lô hàng" as UC_ScanBatchCode
+    usecase "Xác thực lô hàng" as UC_ValidateBatch
+    usecase "Kiểm tra số lượng" as UC_CheckQuantity
+    usecase "Xác nhận nhận hàng" as UC_ConfirmReceive
+    usecase "Phân loại đơn" as UC_SortOrders
+    usecase "Phân phối lô" as UC_DistributeBatch
+    
+    ' ----- USE CASES MỞ RỘNG -----
+    usecase "Báo cáo bất thường" as UC_ReportIssue
+    usecase "Chụp ảnh\nbằng chứng" as UC_TakePhoto
+    usecase "Gửi thông báo\nbất thường" as UC_NotifyIssue
+}
+
+' ===== RELATIONSHIPS - UC03.1 =====
+WarehouseStaff --> UC03_1
+UC03_1 ..> UC_CreateBatch : <<include>>
+UC03_1 ..> UC_SelectDestination : <<include>>
+UC03_1 ..> UC_GetAvailableOrders : <<include>>
+UC03_1 ..> UC_SealBatch : <<include>>
+UC03_1 ..> UC_DispatchBatch : <<include>>
+
+UC_AddOrderManual ..> UC03_1 : <<extend>>
+UC_AutoBatch ..> UC03_1 : <<extend>>
+UC_ScanBarcode ..> UC_AddOrderManual : <<include>>
+UC_PrintManifest ..> UC03_1 : <<extend>>
+
+' ===== RELATIONSHIPS - UC03.2 =====
+WarehouseStaff --> UC03_2
+UC03_2 ..> UC_ScanBatchCode : <<include>>
+UC03_2 ..> UC_ValidateBatch : <<include>>
+UC03_2 ..> UC_CheckQuantity : <<include>>
+UC03_2 ..> UC_ConfirmReceive : <<include>>
+UC03_2 ..> UC_SortOrders : <<include>>
+UC03_2 ..> UC_DistributeBatch : <<include>>
+
+UC_ReportIssue ..> UC03_2 : <<extend>>
+note on link : Khi số lượng\nkhông khớp
+
+UC_ReportIssue ..> UC_TakePhoto : <<include>>
+UC_NotifyIssue ..> UC_ReportIssue : <<extend>>
+
+' ===== SYSTEM ACTOR =====
+System --> UC_AutoBatch
+System --> UC_ValidateBatch
+System --> UC_NotifyIssue
+
+' ===== NOTES =====
+note right of UC03_1
+  **Luồng trạng thái lô:**
+  OPEN → SEALED → IN_TRANSIT
+  
+  **Điều kiện:**
+  - Đơn hàng phải cùng đích đến
+  - Status đơn: SORTED_AT_ORIGIN
+end note
+
+note right of UC_AutoBatch
+  **Thuật toán FFD:**
+  First Fit Decreasing
+  1. Sắp xếp đơn theo trọng lượng ↓
+  2. Lần lượt thêm vào lô phù hợp
+  3. Tối ưu dung lượng xe/container
+end note
+
+note right of UC03_2
+  **Luồng trạng thái:**
+  IN_TRANSIT → ARRIVED → DISTRIBUTED
+  
+  **Sau khi phân phối:**
+  - Đích cuối: AT_DESTINATION_OFFICE
+  - Trung chuyển: Chờ gom lô tiếp
+end note
+
+note bottom of UC_ReportIssue
+  Các loại bất thường:
+  - Thiếu kiện
+  - Thừa kiện
+  - Hư hỏng
+  - Sai đích đến
+end note
+
+@enduml
+
+
+' ================================================================================
+' UC04: GIAO HÀNG - USE CASE DIAGRAM
+' ================================================================================
+'
+' MÔ TẢ:
+' ------
+' Use case này bao gồm 2 quy trình giao hàng chính:
+' - First-Mile: Shipper lấy hàng từ khách hàng
+' - Last-Mile: Shipper giao hàng cho người nhận
+'
+' ACTORS:
+' -------
+' - Quản lý Phường (Ward Manager): Phân công đơn
+' - Shipper: Thực hiện lấy/giao hàng
+' - Khách hàng / Người nhận: Giao/nhận bưu kiện
+' - Hệ thống: GPS tracking, thông báo
+'
+' ================================================================================
+
+@startuml UC04-UseCase-Delivery
+
+skinparam usecase {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    ArrowColor #A80036
+}
+skinparam actor {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+
+title Use Case Diagram - UC04: Giao Hàng
+
+left to right direction
+
+' ===== ACTORS =====
+actor "Quản lý Phường" as WardManager #Orange
+actor "Shipper" as Shipper #Lime
+actor "Khách hàng\n(Người gửi)" as Sender #Gold
+actor "Người nhận" as Receiver #Gold
+actor "Hệ thống" as System #LightGreen
+
+' ===== SYSTEM BOUNDARY =====
+rectangle "Hệ Thống Quản Lý Bưu Chính" {
+    
+    ' ----- USE CASES CHÍNH -----
+    usecase "UC04.1\nLấy hàng từ khách\n(First-Mile)" as UC04_1 #PaleGreen
+    usecase "UC04.2\nGiao hàng cho người nhận\n(Last-Mile)" as UC04_2 #PaleGreen
+    
+    ' ----- USE CASES CHUNG -----
+    usecase "Phân công đơn\ncho Shipper" as UC_AssignOrder
+    usecase "Bắt đầu ca\nlàm việc" as UC_StartShift
+    usecase "Kích hoạt\nGPS Tracking" as UC_EnableGPS
+    usecase "Điều hướng\n(Google Maps)" as UC_Navigate
+    usecase "Đánh dấu\n'Đã đến'" as UC_MarkArrived
+    usecase "Liên hệ\nkhách hàng" as UC_ContactCustomer
+    usecase "Kết thúc ca\nlàm việc" as UC_EndShift
+    
+    ' ----- USE CASES CHO UC04.1 -----
+    usecase "Nhận bưu kiện\ntừ khách" as UC_ReceivePackage
+    usecase "Cân lại\nbưu kiện" as UC_WeighPackage
+    usecase "Chụp ảnh\nbưu kiện" as UC_PhotoPackage
+    usecase "Xác nhận\nđã lấy hàng" as UC_ConfirmPickup
+    usecase "Bàn giao\ntại bưu cục" as UC_HandoverOffice
+    
+    ' ----- USE CASES CHO UC04.2 -----
+    usecase "Nhận bưu kiện\ntừ kho" as UC_GetFromWarehouse
+    usecase "Bàn giao\nbưu kiện" as UC_DeliverPackage
+    usecase "Thu tiền COD" as UC_CollectCOD
+    usecase "Xin chữ ký\nxác nhận" as UC_GetSignature
+    usecase "Chụp ảnh\nbằng chứng giao" as UC_PhotoDelivery
+    usecase "Xác nhận\ngiao thành công" as UC_ConfirmDelivery
+    usecase "Nộp tiền\nCOD đã thu" as UC_SubmitCOD
+    
+    ' ----- USE CASES MỞ RỘNG -----
+    usecase "Báo cáo\nkhông lấy được" as UC_ReportPickupFail
+    usecase "Báo cáo\ngiao thất bại" as UC_ReportDeliveryFail
+    usecase "Hẹn lại\nthời gian" as UC_Reschedule
+    usecase "Hủy đơn" as UC_CancelOrder
+    usecase "Broadcast\nvị trí real-time" as UC_BroadcastLocation
+    usecase "Gửi thông báo\nđến khách" as UC_NotifyCustomer
+}
+
+' ===== RELATIONSHIPS - CHUNG =====
+WardManager --> UC_AssignOrder
+UC_AssignOrder --> UC04_1 : phân công lấy
+UC_AssignOrder --> UC04_2 : phân công giao
+
+' ===== RELATIONSHIPS - UC04.1 =====
+Shipper --> UC04_1
+Sender --> UC04_1 : giao bưu kiện
+
+UC04_1 ..> UC_StartShift : <<include>>
+UC04_1 ..> UC_EnableGPS : <<include>>
+UC04_1 ..> UC_Navigate : <<include>>
+UC04_1 ..> UC_MarkArrived : <<include>>
+UC04_1 ..> UC_ContactCustomer : <<include>>
+UC04_1 ..> UC_ReceivePackage : <<include>>
+UC04_1 ..> UC_ConfirmPickup : <<include>>
+UC04_1 ..> UC_HandoverOffice : <<include>>
+UC04_1 ..> UC_EndShift : <<include>>
+
+UC_WeighPackage ..> UC04_1 : <<extend>>
+UC_PhotoPackage ..> UC04_1 : <<extend>>
+UC_ReportPickupFail ..> UC04_1 : <<extend>>
+UC_Reschedule ..> UC_ReportPickupFail : <<extend>>
+UC_CancelOrder ..> UC_ReportPickupFail : <<extend>>
+
+' ===== RELATIONSHIPS - UC04.2 =====
+Shipper --> UC04_2
+Receiver --> UC04_2 : nhận bưu kiện
+
+UC04_2 ..> UC_GetFromWarehouse : <<include>>
+UC04_2 ..> UC_StartShift : <<include>>
+UC04_2 ..> UC_EnableGPS : <<include>>
+UC04_2 ..> UC_Navigate : <<include>>
+UC04_2 ..> UC_MarkArrived : <<include>>
+UC04_2 ..> UC_ContactCustomer : <<include>>
+UC04_2 ..> UC_DeliverPackage : <<include>>
+UC04_2 ..> UC_GetSignature : <<include>>
+UC04_2 ..> UC_ConfirmDelivery : <<include>>
+UC04_2 ..> UC_EndShift : <<include>>
+
+UC_CollectCOD ..> UC04_2 : <<extend>>
+note on link : Nếu có COD
+
+UC_PhotoDelivery ..> UC04_2 : <<extend>>
+UC_SubmitCOD ..> UC04_2 : <<extend>>
+UC_ReportDeliveryFail ..> UC04_2 : <<extend>>
+UC_Reschedule ..> UC_ReportDeliveryFail : <<extend>>
+
+' ===== SYSTEM ACTOR =====
+System --> UC_EnableGPS
+System --> UC_BroadcastLocation
+System --> UC_NotifyCustomer
+
+UC_BroadcastLocation ..> UC04_2 : <<extend>>
+UC_NotifyCustomer ..> UC04_1 : <<extend>>
+UC_NotifyCustomer ..> UC04_2 : <<extend>>
+
+' ===== NOTES =====
+note right of UC04_1
+  **Luồng trạng thái:**
+  PENDING_PICKUP → PICKED_UP
+  → AT_ORIGIN_OFFICE
+  
+  **Điều kiện:**
+  - Shipper đã được phân công
+  - Đơn có status PENDING_PICKUP
+end note
+
+note right of UC04_2
+  **Luồng trạng thái:**
+  AT_DESTINATION_OFFICE
+  → OUT_FOR_DELIVERY
+  → DELIVERED / DELIVERY_FAILED
+  
+  **GPS Tracking:**
+  Cập nhật mỗi 5 giây
+end note
+
+note bottom of UC_CollectCOD
+  **Thu hộ (COD):**
+  - Kiểm tra số tiền
+  - Xác nhận đã thu
+  - Nộp lại cuối ca
+end note
+
+@enduml
+
+
+' ================================================================================
+' UC05: QUẢN LÝ BƯU CỤC VÀ NHÂN VIÊN - USE CASE DIAGRAM
+' ================================================================================
+'
+' MÔ TẢ:
+' ------
+' Use case này quản lý việc tạo, cập nhật thông tin bưu cục và nhân viên.
+' Phân quyền theo cấp bậc quản lý (System Admin → Hub Admin → Province Admin
+' → Ward Manager).
+'
+' ACTORS:
+' -------
+' - System Admin: Quản lý Hub, Hub Admin
+' - Hub Admin: Quản lý Province Admin
+' - Province Admin: Quản lý bưu cục, Ward Manager, Staff, Shipper
+' - Ward Manager: Quản lý Staff, Shipper trong phường
+'
+' ================================================================================
+
+@startuml UC05-UseCase-OfficeStaffManagement
+
+skinparam usecase {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    ArrowColor #A80036
+}
+skinparam actor {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+
+title Use Case Diagram - UC05: Quản Lý Bưu Cục và Nhân Viên
+
+left to right direction
+
+' ===== ACTORS =====
+actor "System Admin" as SysAdmin #Red
+actor "Hub Admin" as HubAdmin #DarkOrange
+actor "Province Admin" as ProvAdmin #Orange
+actor "Ward Manager" as WardMgr #Yellow
+actor "Hệ thống" as System #LightGreen
+
+' ===== ACTOR HIERARCHY =====
+SysAdmin --|> HubAdmin
+HubAdmin --|> ProvAdmin
+ProvAdmin --|> WardMgr
+
+' ===== SYSTEM BOUNDARY =====
+rectangle "Hệ Thống Quản Lý Bưu Chính" {
+    
+    ' ----- USE CASES QUẢN LÝ BƯU CỤC -----
+    usecase "Tạo bưu cục mới" as UC_CreateOffice
+    usecase "Cập nhật\nthông tin bưu cục" as UC_UpdateOffice
+    usecase "Xem danh sách\nbưu cục" as UC_ListOffices
+    usecase "Phân vùng\nquản lý" as UC_AssignArea
+    
+    ' ----- USE CASES CHÍNH -----
+    usecase "UC05.1\nTạo nhân viên mới" as UC05_1 #PaleGreen
+    
+    ' ----- USE CASES PHỤ (INCLUDE) -----
+    usecase "Nhập thông tin\ncá nhân" as UC_InputPersonalInfo
+    usecase "Chọn vai trò" as UC_SelectRole
+    usecase "Chọn bưu cục\nlàm việc" as UC_SelectOffice
+    usecase "Tạo tài khoản\nđăng nhập" as UC_CreateAccount
+    usecase "Gửi thông tin\nđăng nhập" as UC_SendCredentials
+    
+    ' ----- USE CASES MỞ RỘNG -----
+    usecase "Nhập thông tin\nphương tiện" as UC_InputVehicleInfo
+    usecase "Upload\ngiấy tờ" as UC_UploadDocuments
+    usecase "Xác minh\nthông tin" as UC_VerifyInfo
+    
+    ' ----- USE CASES QUẢN LÝ NHÂN VIÊN KHÁC -----
+    usecase "Cập nhật\nthông tin nhân viên" as UC_UpdateEmployee
+    usecase "Vô hiệu hóa\ntài khoản" as UC_DisableAccount
+    usecase "Đặt lại\nmật khẩu" as UC_ResetPassword
+    usecase "Xem danh sách\nnhân viên" as UC_ListEmployees
+    usecase "Phân công\nbưu cục" as UC_AssignOffice
+    usecase "Xem lịch sử\nhoạt động" as UC_ViewActivityLog
+}
+
+' ===== RELATIONSHIPS - QUẢN LÝ BƯU CỤC =====
+ProvAdmin --> UC_CreateOffice
+ProvAdmin --> UC_UpdateOffice
+ProvAdmin --> UC_ListOffices
+ProvAdmin --> UC_AssignArea
+
+' ===== RELATIONSHIPS - UC05.1 =====
+ProvAdmin --> UC05_1
+WardMgr --> UC05_1
+
+UC05_1 ..> UC_InputPersonalInfo : <<include>>
+UC05_1 ..> UC_SelectRole : <<include>>
+UC05_1 ..> UC_SelectOffice : <<include>>
+UC05_1 ..> UC_CreateAccount : <<include>>
+UC05_1 ..> UC_SendCredentials : <<include>>
+
+UC_InputVehicleInfo ..> UC05_1 : <<extend>>
+note on link : Nếu vai trò\n= SHIPPER
+
+UC_UploadDocuments ..> UC05_1 : <<extend>>
+UC_VerifyInfo ..> UC05_1 : <<extend>>
+
+' ===== RELATIONSHIPS - QUẢN LÝ NHÂN VIÊN KHÁC =====
+ProvAdmin --> UC_UpdateEmployee
+ProvAdmin --> UC_DisableAccount
+ProvAdmin --> UC_ResetPassword
+ProvAdmin --> UC_ListEmployees
+ProvAdmin --> UC_AssignOffice
+ProvAdmin --> UC_ViewActivityLog
+
+WardMgr --> UC_UpdateEmployee
+WardMgr --> UC_ListEmployees
+WardMgr --> UC_ViewActivityLog
+
+' ===== SYSTEM ACTOR =====
+System --> UC_CreateAccount
+System --> UC_SendCredentials
+System --> UC_VerifyInfo
+
+' ===== NOTES =====
+note right of UC05_1
+  **Phân quyền tạo nhân viên:**
+  
+  • System Admin:
+    → Hub Admin
+  
+  • Hub Admin:
+    → Province Admin
+  
+  • Province Admin:
+    → Ward Manager
+    → Warehouse Staff
+    → Counter Staff
+    → Shipper
+  
+  • Ward Manager:
+    → Warehouse Staff
+    → Counter Staff
+    → Shipper
+end note
+
+note bottom of UC_CreateAccount
+  **Quy trình tạo tài khoản:**
+  1. Tạo username từ email/SĐT
+  2. Generate mật khẩu ngẫu nhiên
+  3. Hash bằng BCrypt
+  4. Gửi qua email + SMS
+end note
+
+note right of UC_SelectRole
+  **Các vai trò:**
+  - SYSTEM_ADMIN
+  - HUB_ADMIN
+  - PROVINCE_ADMIN
+  - WARD_MANAGER
+  - WAREHOUSE_STAFF
+  - COUNTER_STAFF
+  - SHIPPER
+end note
+
+note left of UC_InputVehicleInfo
+  **Thông tin Shipper:**
+  - Biển số xe
+  - Loại xe
+  - Số bằng lái
+  - Ngày hết hạn
+end note
+
+@enduml
+
+
+' ================================================================================
+' KẾT THÚC TÀI LIỆU
+' ================================================================================
+'
+' TỔNG KẾT:
+' =========
+' File này chứa 5 Use Case Diagram chi tiết cho 5 Use Case lớn:
+'
+' 1. UC01: Tạo Đơn Hàng
+'    - UC01.1: Tạo đơn tại quầy
+'    - UC01.2: Tạo đơn lấy hàng online
+'    - Các use case phụ: Nhập thông tin, tính giá, tạo tracking, ...
+'
+' 2. UC02: Theo Dõi Đơn Hàng
+'    - UC02.1: Tra cứu theo mã tracking
+'    - Mở rộng: Xem vị trí shipper real-time
+'
+' 3. UC03: Quản Lý Lô Hàng
+'    - UC03.1: Tạo và đóng gói lô hàng
+'    - UC03.2: Tiếp nhận và phân phối lô hàng đến
+'
+' 4. UC04: Giao Hàng
+'    - UC04.1: Lấy hàng First-Mile
+'    - UC04.2: Giao hàng Last-Mile
+'
+' 5. UC05: Quản Lý Bưu Cục và Nhân Viên
+'    - UC05.1: Tạo nhân viên mới
+'    - Các use case phụ: Quản lý bưu cục, phân quyền, ...
+'
+' CÁCH SỬ DỤNG:
+' =============
+' 1. Copy từng block @startuml ... @enduml vào PlantUML editor
+' 2. Hoặc sử dụng PlantUML plugin trong VS Code/IntelliJ
+' 3. Export ra PNG/SVG để đưa vào tài liệu
+'
+' ================================================================================

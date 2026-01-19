@@ -1,0 +1,2295 @@
+' ================================================================================
+' TÀI LIỆU ĐẶC TẢ VÀ SƠ ĐỒ CHI TIẾT CHO 5 USE CASE LỚN
+' Hệ Thống Quản Lý Bưu Chính (Postal Management System)
+' ================================================================================
+'
+' MỤC LỤC:
+' ========
+' 1. UC01: TẠO ĐƠN HÀNG
+'    - UC01.1: Tạo đơn hàng tại quầy
+'    - UC01.2: Khách hàng tạo đơn lấy hàng online
+'
+' 2. UC02: THEO DÕI ĐƠN HÀNG
+'    - UC02.1: Tra cứu đơn hàng theo mã tracking
+'
+' 3. UC03: QUẢN LÝ LÔ HÀNG
+'    - UC03.1: Tạo và đóng gói lô hàng
+'    - UC03.2: Tiếp nhận và phân phối lô hàng đến
+'
+' 4. UC04: GIAO HÀNG
+'    - UC04.1: Shipper lấy hàng từ khách (First-Mile)
+'    - UC04.2: Shipper giao hàng cho người nhận (Last-Mile)
+'
+' 5. UC05: QUẢN LÝ BƯU CỤC VÀ NHÂN VIÊN
+'    - UC05.1: Tạo nhân viên mới
+'
+' ================================================================================
+
+
+' ================================================================================
+' UC01: TẠO ĐƠN HÀNG
+' ================================================================================
+
+' ================================================================================
+' UC01.1: TẠO ĐƠN HÀNG TẠI QUẦY
+' ================================================================================
+'
+' ĐẶC TẢ USE CASE:
+' ----------------
+' Tên Use Case    : Tạo đơn hàng tại quầy
+' Mã Use Case     : UC01.1
+' Actor chính     : Nhân viên Quầy (Counter Staff)
+' Actor phụ       : Khách hàng (đến gửi hàng trực tiếp)
+' Mô tả           : Nhân viên quầy tiếp nhận bưu kiện từ khách hàng đến gửi 
+'                   trực tiếp tại bưu cục, nhập thông tin và tạo đơn hàng mới.
+'
+' Tiền điều kiện  :
+'   - Nhân viên đã đăng nhập vào hệ thống với vai trò COUNTER_STAFF
+'   - Khách hàng đã mang bưu kiện đến bưu cục
+'
+' Hậu điều kiện   :
+'   - Đơn hàng được tạo với mã tracking duy nhất (VN + 9 số + VN)
+'   - Trạng thái đơn: AT_ORIGIN_OFFICE
+'   - Phiếu gửi và mã vạch được in cho khách hàng
+'   - Hóa đơn/biên lai được tạo
+'
+' Luồng sự kiện chính:
+'   1. Nhân viên chọn "Tạo đơn hàng mới"
+'   2. Nhân viên nhập số điện thoại người gửi
+'   3. Hệ thống kiểm tra và tự động điền thông tin nếu khách đã có trong DB
+'   4. Nhân viên nhập/xác nhận thông tin người gửi
+'   5. Nhân viên nhập thông tin người nhận (tên, SĐT, địa chỉ)
+'   6. Nhân viên nhập thông tin bưu kiện (loại, cân nặng, kích thước)
+'   7. Hệ thống tính toán giá cho các dịch vụ (EXPRESS/STANDARD/ECONOMY)
+'   8. Nhân viên chọn dịch vụ vận chuyển
+'   9. Nhân viên thêm các tùy chọn (bảo hiểm, COD, giá trị khai báo)
+'   10. Nhân viên xác nhận tạo đơn
+'   11. Hệ thống tạo mã tracking và lưu đơn hàng
+'   12. Hệ thống hiển thị thông tin đơn và cho phép in phiếu
+'
+' Luồng thay thế:
+'   3a. Khách hàng chưa có trong hệ thống:
+'       - Nhân viên nhập đầy đủ thông tin người gửi mới
+'   9a. Khách hàng là thành viên có gói subscription:
+'       - Hệ thống áp dụng giảm giá (MONTHLY: 10%, ANNUALLY: 20%)
+'
+' Ngoại lệ:
+'   E1. Địa chỉ người nhận không hợp lệ: Hiển thị thông báo lỗi
+'   E2. Cân nặng/kích thước vượt quá giới hạn: Từ chối tạo đơn
+'
+' ================================================================================
+
+@startuml UC01-1-Activity-CreateOrderAtCounter
+' ================================================================================
+' ACTIVITY DIAGRAM - UC01.1: Tạo đơn hàng tại quầy
+' ================================================================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor #27AE60
+    EndColor #E74C3C
+    DiamondBackgroundColor #FFFACD
+    DiamondBorderColor #F39C12
+}
+skinparam swimlane {
+    BorderColor #2C3E50
+    TitleFontSize 14
+}
+
+title Activity Diagram - UC01.1: Tạo Đơn Hàng Tại Quầy
+
+|#LightBlue|Nhân viên Quầy|
+|#LightGreen|Hệ thống|
+|#LightGray|Database|
+
+|Hệ thống|
+start
+:Hiển thị màn hình\ntạo đơn hàng mới;
+
+|Nhân viên Quầy|
+:Chọn **"Tạo đơn hàng mới"**;
+
+:Nhập số điện thoại người gửi;
+
+|Hệ thống|
+:Gửi yêu cầu tìm kiếm\nkhách hàng;
+
+|Database|
+:SELECT * FROM customers\nWHERE phone = ?;
+
+:Trả về kết quả;
+
+|Hệ thống|
+if (Khách hàng đã tồn tại?) then (Có)
+    :Tự động điền thông tin\n(Tên, địa chỉ, email);
+else (Không)
+    |Nhân viên Quầy|
+    :Nhập thông tin người gửi mới\n(Tên, địa chỉ);
+endif
+
+|Nhân viên Quầy|
+:Nhập thông tin **người nhận**\n- Họ tên\n- Số điện thoại\n- Địa chỉ (Tỉnh/Huyện/Xã);
+
+|Hệ thống|
+|Database|
+:SELECT * FROM wards\nWHERE code = ?;
+
+|Hệ thống|
+if (Địa chỉ hợp lệ?) then (Có)
+    |Nhân viên Quầy|
+    :Nhập thông tin **bưu kiện**\n- Loại hàng\n- Cân nặng (kg)\n- Kích thước (cm);
+    
+    |Hệ thống|
+    :Tính cân nặng quy đổi\n(Volumetric Weight);
+    
+    :Tính giá cho các dịch vụ\n**EXPRESS** | **STANDARD** | **ECONOMY**;
+    
+    :Hiển thị bảng giá và\nthời gian giao dự kiến;
+    
+    |Nhân viên Quầy|
+    :Chọn **dịch vụ vận chuyển**;
+    
+    :Thêm tùy chọn bổ sung\n☐ Bảo hiểm\n☐ Thu hộ (COD)\n☐ Giá trị khai báo;
+    
+    |Hệ thống|
+    |Database|
+    :SELECT subscription FROM customers\nWHERE id = ?;
+    
+    |Hệ thống|
+    if (Khách có gói Subscription?) then (Có)
+        :Áp dụng giảm giá\nMONTHLY: -10%\nANNUALLY: -20%;
+    endif
+    
+    :Tính tổng tiền cuối cùng;
+    
+    |Nhân viên Quầy|
+    :Xác nhận và **thu tiền**;
+    
+    |Hệ thống|
+    :Tạo mã tracking\n**VN** + 9 số + **VN**;
+    
+    |Database|
+    :INSERT INTO orders\n(tracking_number, status, ...);
+    
+    :INSERT INTO order_status_history\n(order_id, status, timestamp);
+    
+    |Hệ thống|
+    :Xác nhận đơn đã tạo thành công;
+    
+    |Nhân viên Quầy|
+    :In **phiếu gửi** cho khách;
+    :In **mã vạch** dán lên bưu kiện;
+    
+    |Hệ thống|
+    :Hoàn tất quy trình\ntạo đơn hàng;
+    
+else (Không)
+    |Hệ thống|
+    :Hiển thị lỗi\n"Địa chỉ không hợp lệ";
+    
+    |Nhân viên Quầy|
+    :Yêu cầu khách cung cấp\nđịa chỉ chính xác;
+    
+    |Hệ thống|
+    :Chờ nhập lại thông tin;
+endif
+
+stop
+
+@enduml
+
+
+@startuml UC01-1-Sequence-CreateOrderAtCounter
+' ================================================================================
+' SEQUENCE DIAGRAM - UC01.1: Tạo đơn hàng tại quầy
+' ================================================================================
+
+skinparam sequenceArrowThickness 2
+skinparam participantPadding 10
+skinparam boxPadding 10
+skinparam sequence {
+    LifeLineBorderColor #2C3E50
+    LifeLineBackgroundColor #ECF0F1
+    ParticipantBorderColor #2C3E50
+}
+
+title Sequence Diagram - UC01.1: Tạo Đơn Hàng Tại Quầy
+
+actor "Nhân viên Quầy" as Staff #Gold
+participant "<<boundary>>\nOrderUI" as UI #LightBlue
+participant "<<controller>>\nOrderController" as OC #LightGreen
+participant "<<service>>\nCustomerService" as CS #Pink
+participant "<<service>>\nOrderService" as OS #Pink
+participant "<<service>>\nPricingService" as PS #Orange
+participant "<<utility>>\nTrackingGenerator" as TG #Cyan
+database "<<entity>>\nDatabase" as DB #LightGray
+
+autonumber
+
+== Tìm kiếm khách hàng ==
+
+Staff -> UI: Mở form tạo đơn hàng
+activate UI
+
+Staff -> UI: Nhập SĐT người gửi
+UI -> OC: GET /api/customers?phone={phone}
+activate OC
+
+OC -> CS: findByPhone(phone)
+activate CS
+CS -> DB: SELECT * FROM customers\nWHERE phone = ?
+activate DB
+DB --> CS: Customer | null
+deactivate DB
+CS --> OC: CustomerDTO | null
+deactivate CS
+
+OC --> UI: CustomerResponse
+deactivate OC
+UI --> Staff: Hiển thị thông tin (nếu có)
+
+== Tính giá vận chuyển ==
+
+Staff -> UI: Nhập thông tin đơn hàng\n(người nhận, bưu kiện)
+
+UI -> OC: POST /api/orders/preview\n{senderWardCode, receiverWardCode,\nweight, dimensions, serviceType}
+activate OC
+
+OC -> OS: calculateShippingOptions(request)
+activate OS
+
+OS -> PS: calculatePrice(weight, distance, services[])
+activate PS
+
+note right of PS
+  Tính giá cho 3 dịch vụ:
+  - EXPRESS: x2.0 (1-2 ngày)
+  - STANDARD: x1.0 (3-5 ngày)
+  - ECONOMY: x0.7 (5-7 ngày)
+end note
+
+PS --> OS: List<PriceOption>
+deactivate PS
+
+OS --> OC: PreviewDTO
+deactivate OS
+
+OC --> UI: Bảng giá các dịch vụ
+deactivate OC
+
+UI --> Staff: Hiển thị bảng giá
+
+== Tạo đơn hàng ==
+
+Staff -> UI: Chọn dịch vụ & xác nhận
+
+UI -> OC: POST /api/orders\n{orderData}
+activate OC
+
+OC -> OS: createOrder(orderDTO)
+activate OS
+
+OS -> TG: generateTrackingNumber()
+activate TG
+TG --> OS: "VN123456789VN"
+deactivate TG
+
+OS -> DB: INSERT INTO orders\n(tracking_number, status='AT_ORIGIN_OFFICE', ...)
+activate DB
+DB --> OS: orderId
+deactivate DB
+
+OS -> DB: INSERT INTO order_status_history\n(order_id, status, timestamp)
+activate DB
+DB --> OS: OK
+deactivate DB
+
+OS --> OC: OrderDTO
+deactivate OS
+
+OC --> UI: OrderResponse\n{trackingNumber, price, status}
+deactivate OC
+
+UI --> Staff: Hiển thị đơn đã tạo\n+ Nút in phiếu
+
+== In phiếu ==
+
+Staff -> UI: Nhấn "In phiếu gửi"
+UI -> UI: Render phiếu gửi + mã vạch
+UI --> Staff: Mở hộp thoại in
+
+@enduml
+
+
+' ================================================================================
+' UC01.2: KHÁCH HÀNG TẠO ĐƠN LẤY HÀNG ONLINE
+' ================================================================================
+'
+' ĐẶC TẢ USE CASE:
+' ----------------
+' Tên Use Case    : Khách hàng tạo đơn lấy hàng online
+' Mã Use Case     : UC01.2
+' Actor chính     : Khách hàng (Customer)
+' Mô tả           : Khách hàng đã đăng ký tài khoản tạo đơn gửi hàng trực tuyến
+'                   và yêu cầu shipper đến lấy hàng tại địa chỉ của mình.
+'
+' Tiền điều kiện  :
+'   - Khách hàng đã đăng ký tài khoản và đăng nhập
+'   - Khách hàng có địa chỉ hợp lệ trong hệ thống
+'
+' Hậu điều kiện   :
+'   - Đơn hàng được tạo với trạng thái PENDING_PICKUP
+'   - Thông báo được gửi đến bưu cục gần nhất
+'   - Khách hàng nhận được mã tracking qua email/SMS
+'
+' Luồng sự kiện chính:
+'   1. Khách hàng đăng nhập và chọn "Tạo đơn lấy hàng"
+'   2. Hệ thống tự động điền thông tin người gửi từ tài khoản
+'   3. Khách hàng nhập thông tin người nhận
+'   4. Khách hàng nhập thông tin bưu kiện
+'   5. Hệ thống hiển thị giá và thời gian giao dự kiến
+'   6. Khách hàng chọn dịch vụ và thêm tùy chọn
+'   7. Khách hàng chọn thời gian mong muốn shipper đến lấy
+'   8. Khách hàng xác nhận và thanh toán (nếu có)
+'   9. Hệ thống tạo đơn với trạng thái PENDING_PICKUP
+'   10. Hệ thống thông báo đến bưu cục quản lý khu vực
+'   11. Khách hàng nhận mã tracking
+'
+' ================================================================================
+
+@startuml UC01-2-Activity-CreatePickupOrder
+' ================================================================================
+' ACTIVITY DIAGRAM - UC01.2: Khách hàng tạo đơn lấy hàng online
+' ================================================================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor #27AE60
+    EndColor #E74C3C
+}
+
+title Activity Diagram - UC01.2: Khách Hàng Tạo Đơn Lấy Hàng Online
+
+|#Gold|Khách hàng|
+|#LightGreen|Hệ thống|
+|#LightGray|Database|
+
+|Hệ thống|
+start
+:Hiển thị trang\nđăng nhập/tạo đơn;
+
+|Khách hàng|
+:Đăng nhập vào hệ thống;
+
+|Hệ thống|
+|Database|
+:SELECT * FROM customers\nWHERE account_id = ?;
+
+|Hệ thống|
+:Tự động điền thông tin người gửi\ntừ tài khoản khách hàng;
+
+|Khách hàng|
+:Chọn **"Tạo đơn lấy hàng"**;
+
+:Xác nhận/Chỉnh sửa\nđịa chỉ lấy hàng;
+
+:Nhập thông tin **người nhận**\n- Họ tên\n- Số điện thoại\n- Địa chỉ đầy đủ;
+
+:Nhập thông tin **bưu kiện**\n- Loại hàng hóa\n- Cân nặng ước tính\n- Kích thước ước tính;
+
+|Hệ thống|
+:Tính giá ước tính\ncho các dịch vụ;
+
+:Hiển thị bảng giá + SLA;
+
+|Khách hàng|
+:Chọn **dịch vụ vận chuyển**;
+
+:Thêm tùy chọn\n☐ Bảo hiểm\n☐ Thu hộ (COD);
+
+:Chọn **thời gian lấy hàng**\nmong muốn;
+
+note right
+  Khung giờ:
+  - Sáng: 8:00 - 12:00
+  - Chiều: 13:00 - 17:00
+  - Tối: 17:00 - 20:00
+end note
+
+|Hệ thống|
+|Database|
+:SELECT subscription FROM customers\nWHERE id = ?;
+
+|Hệ thống|
+if (Khách có gói Subscription?) then (Có)
+    :Áp dụng giảm giá\nvà thanh toán sau;
+else (Không)
+    |Khách hàng|
+    :Chọn phương thức thanh toán\n☐ Thanh toán khi lấy hàng\n☐ Thanh toán online;
+endif
+
+|Khách hàng|
+:Xác nhận tạo đơn;
+
+|Hệ thống|
+:Tạo mã tracking\n**VN** + 9 số + **VN**;
+
+|Database|
+:INSERT INTO orders\n(status='PENDING_PICKUP', ...);
+
+:SELECT office FROM offices\nWHERE ward_code = ?;
+
+:INSERT INTO notifications\n(office_id, type='NEW_PICKUP');
+
+|Hệ thống|
+:Gửi **email/SMS** xác nhận\nđến khách hàng;
+
+|Khách hàng|
+:Nhận mã tracking\nvà thông tin đơn hàng;
+
+|Hệ thống|
+:Hoàn tất quy trình\ntạo đơn lấy hàng;
+
+stop
+
+@enduml
+
+
+@startuml UC01-2-Sequence-CreatePickupOrder
+' ================================================================================
+' SEQUENCE DIAGRAM - UC01.2: Khách hàng tạo đơn lấy hàng online
+' ================================================================================
+
+skinparam sequenceArrowThickness 2
+
+title Sequence Diagram - UC01.2: Khách Hàng Tạo Đơn Lấy Hàng Online
+
+actor "Khách hàng" as Customer #Gold
+participant "<<boundary>>\nCustomerPortal" as Portal #LightBlue
+participant "<<controller>>\nOrderController" as OC #LightGreen
+participant "<<service>>\nOrderService" as OS #Pink
+participant "<<service>>\nOfficeService" as OFS #Orange
+participant "<<service>>\nNotificationService" as NS #Cyan
+database "<<entity>>\nDatabase" as DB #LightGray
+
+autonumber
+
+Customer -> Portal: Đăng nhập thành công
+activate Portal
+
+Customer -> Portal: Chọn "Tạo đơn lấy hàng"
+Portal -> Portal: Load thông tin người gửi\ntừ session/context
+Portal --> Customer: Form với thông tin\nngười gửi đã điền sẵn
+
+Customer -> Portal: Nhập thông tin đơn hàng\n(người nhận, bưu kiện, dịch vụ)
+
+== Preview giá ==
+
+Portal -> OC: POST /api/orders/preview
+activate OC
+OC -> OS: calculatePrice(...)
+activate OS
+OS --> OC: PricePreview
+deactivate OS
+OC --> Portal: Giá và SLA
+deactivate OC
+Portal --> Customer: Hiển thị giá ước tính
+
+== Tạo đơn ==
+
+Customer -> Portal: Chọn khung giờ lấy hàng\n& Xác nhận tạo đơn
+
+Portal -> OC: POST /api/orders/pickup\n{pickupRequest}
+activate OC
+
+OC -> OS: createPickupOrder(request)
+activate OS
+
+OS -> DB: INSERT INTO orders\n(status='PENDING_PICKUP',\npickup_time_slot, ...)
+activate DB
+DB --> OS: orderId
+deactivate DB
+
+OS -> OFS: findNearestOffice(senderWardCode)
+activate OFS
+OFS -> DB: SELECT office\nWHERE ward_code = ?
+activate DB
+DB --> OFS: Office
+deactivate DB
+OFS --> OS: OfficeDTO
+deactivate OFS
+
+OS -> DB: UPDATE orders\nSET origin_office_id = ?
+activate DB
+DB --> OS: OK
+deactivate DB
+
+OS --> OC: OrderDTO
+deactivate OS
+
+== Thông báo ==
+
+OC -> NS: notifyNewPickupOrder(order, office)
+activate NS
+
+NS -> DB: INSERT INTO notifications\n(office_id, type='NEW_PICKUP', ...)
+activate DB
+DB --> NS: OK
+deactivate DB
+
+NS -> NS: Push notification\nđến bưu cục
+
+NS -> NS: Send email/SMS\nđến khách hàng
+
+NS --> OC: OK
+deactivate NS
+
+OC --> Portal: OrderResponse\n{trackingNumber, status, estimatedPickup}
+deactivate OC
+
+Portal --> Customer: Hiển thị mã tracking\nvà thông tin đơn hàng
+
+@enduml
+
+
+' ================================================================================
+' UC02: THEO DÕI ĐƠN HÀNG
+' ================================================================================
+
+' ================================================================================
+' UC02.1: TRA CỨU ĐƠN HÀNG THEO MÃ TRACKING
+' ================================================================================
+'
+' ĐẶC TẢ USE CASE:
+' ----------------
+' Tên Use Case    : Tra cứu đơn hàng theo mã tracking
+' Mã Use Case     : UC02.1
+' Actor chính     : Khách hàng / Khách vãng lai
+' Mô tả           : Người dùng tra cứu thông tin và trạng thái đơn hàng 
+'                   bằng mã tracking, có thể xem vị trí shipper thời gian thực
+'                   khi đơn đang được giao.
+'
+' Tiền điều kiện  :
+'   - Người dùng có mã tracking hợp lệ
+'   - Không yêu cầu đăng nhập (public API)
+'
+' Hậu điều kiện   :
+'   - Hiển thị thông tin đơn hàng và lịch sử trạng thái
+'   - Nếu đang giao: có thể xem vị trí shipper real-time
+'
+' Luồng sự kiện chính:
+'   1. Người dùng truy cập trang tracking
+'   2. Người dùng nhập mã tracking
+'   3. Hệ thống validate và tìm kiếm đơn hàng
+'   4. Hệ thống hiển thị thông tin cơ bản (người gửi/nhận, trạng thái)
+'   5. Hệ thống hiển thị timeline lịch sử trạng thái
+'   6. Nếu trạng thái là OUT_FOR_DELIVERY:
+'      - Hiển thị nút "Xem vị trí shipper"
+'      - Khi nhấn: kết nối WebSocket và hiển thị bản đồ với vị trí GPS
+'
+' Ngoại lệ:
+'   E1. Mã tracking không tồn tại: Hiển thị "Không tìm thấy đơn hàng"
+'   E2. Mất kết nối GPS: Hiển thị vị trí cuối cùng được ghi nhận
+'
+' ================================================================================
+
+@startuml UC02-1-Activity-TrackOrder
+' ================================================================================
+' ACTIVITY DIAGRAM - UC02.1: Tra cứu đơn hàng theo mã tracking
+' ================================================================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor #27AE60
+    EndColor #E74C3C
+}
+
+title Activity Diagram - UC02.1: Tra Cứu Đơn Hàng Theo Mã Tracking
+
+|#Gold|Người dùng|
+|#LightGreen|Hệ thống|
+|#LightGray|Database|
+
+|Hệ thống|
+start
+:Hiển thị trang **Tracking**\nvới ô nhập mã;
+
+|Người dùng|
+:Nhập mã tracking\n(VD: VN123456789VN);
+
+:Nhấn **"Tra cứu"**;
+
+|Hệ thống|
+:Validate định dạng\nmã tracking;
+
+if (Định dạng hợp lệ?) then (Có)
+    |Database|
+    :SELECT * FROM orders\nWHERE tracking_number = ?;
+    
+    |Hệ thống|
+    if (Tìm thấy đơn hàng?) then (Có)
+        |Database|
+        :SELECT * FROM order_status_history\nWHERE order_id = ?\nORDER BY timestamp;
+        
+        :SELECT name FROM offices\nWHERE id = current_office_id;
+        
+        |Hệ thống|
+        :Hiển thị thông tin cơ bản\n- Mã tracking\n- Trạng thái hiện tại\n- Người gửi (ẩn bớt)\n- Người nhận (ẩn bớt);
+        
+        :Hiển thị **Timeline**\nlịch sử trạng thái\nvới thời gian;
+        
+        |Người dùng|
+        :Xem thông tin đơn hàng;
+        
+        |Hệ thống|
+        if (Trạng thái = OUT_FOR_DELIVERY?) then (Có)
+            :Hiển thị nút\n**"Xem vị trí Shipper"**;
+            
+            |Người dùng|
+            if (Nhấn xem vị trí?) then (Có)
+                |Hệ thống|
+                :Kết nối WebSocket\n/ws/tracking/{orderId};
+                
+                :Subscribe kênh\nvị trí shipper;
+                
+                :Hiển thị **bản đồ**\nvới marker shipper;
+                
+                |Database|
+                :SELECT lat, lng FROM shipper_locations\nWHERE shipper_id = ?\nORDER BY timestamp DESC;
+                
+                |Hệ thống|
+                repeat
+                    :Nhận vị trí mới\n{lat, lng, timestamp};
+                    
+                    :Cập nhật marker\ntrên bản đồ;
+                    
+                repeat while (Còn theo dõi?) is (Có)
+                ->Không;
+                
+                :Đóng kết nối WebSocket;
+                
+            else (Không)
+            endif
+        else (Không)
+            :Hiển thị vị trí hiện tại\ncủa đơn hàng\n(tên bưu cục);
+        endif
+        
+    else (Không)
+        :Hiển thị thông báo\n**"Không tìm thấy đơn hàng"**;
+    endif
+else (Không)
+    :Hiển thị lỗi\n**"Mã tracking không hợp lệ"**;
+endif
+
+|Hệ thống|
+:Hoàn tất tra cứu;
+
+stop
+
+@enduml
+
+
+@startuml UC02-1-Sequence-TrackOrder
+' ================================================================================
+' SEQUENCE DIAGRAM - UC02.1: Tra cứu đơn hàng theo mã tracking
+' ================================================================================
+
+skinparam sequenceArrowThickness 2
+
+title Sequence Diagram - UC02.1: Tra Cứu Đơn Hàng Theo Mã Tracking
+
+actor "Người dùng" as User #Gold
+participant "<<boundary>>\nTrackingPage" as Page #LightBlue
+participant "<<controller>>\nTrackingController" as TC #LightGreen
+participant "<<service>>\nTrackingService" as TS #Pink
+participant "<<websocket>>\nLocationWebSocket" as WS #Orange
+database "<<entity>>\nDatabase" as DB #LightGray
+
+autonumber
+
+User -> Page: Truy cập /tracking
+activate Page
+
+User -> Page: Nhập mã tracking\n"VN123456789VN"
+
+Page -> TC: GET /api/tracking/{trackingNumber}
+activate TC
+
+TC -> TS: getOrderTracking(trackingNumber)
+activate TS
+
+TS -> DB: SELECT * FROM orders\nWHERE tracking_number = ?
+activate DB
+DB --> TS: Order | null
+deactivate DB
+
+alt Tìm thấy đơn hàng
+    TS -> DB: SELECT * FROM order_status_history\nWHERE order_id = ?\nORDER BY timestamp DESC
+    activate DB
+    DB --> TS: List<StatusHistory>
+    deactivate DB
+    
+    TS -> DB: SELECT name FROM offices\nWHERE id = order.current_office_id
+    activate DB
+    DB --> TS: Office name
+    deactivate DB
+    
+    TS --> TC: TrackingDTO\n{order, history, currentLocation}
+    deactivate TS
+    
+    TC --> Page: TrackingResponse
+    deactivate TC
+    
+    Page --> User: Hiển thị thông tin + Timeline
+
+    alt Trạng thái = OUT_FOR_DELIVERY
+        Page --> User: Hiển thị nút "Xem vị trí Shipper"
+        
+        User -> Page: Nhấn "Xem vị trí Shipper"
+        
+        Page -> WS: Connect /ws/tracking/{orderId}
+        activate WS
+        WS --> Page: Connected
+        
+        Page -> WS: Subscribe(orderId)
+        
+        loop Shipper đang giao
+            WS --> Page: LocationUpdate\n{lat: 10.xxx, lng: 106.xxx}
+            Page --> User: Cập nhật marker trên bản đồ
+        end
+        
+        User -> Page: Đóng trang / Ngừng theo dõi
+        Page -> WS: Disconnect
+        deactivate WS
+    end
+    
+else Không tìm thấy
+    TS --> TC: null
+    deactivate TS
+    TC --> Page: 404 Not Found
+    deactivate TC
+    Page --> User: "Không tìm thấy đơn hàng"
+end
+
+deactivate Page
+
+@enduml
+
+
+' ================================================================================
+' UC03: QUẢN LÝ LÔ HÀNG
+' ================================================================================
+
+' ================================================================================
+' UC03.1: TẠO VÀ ĐÓNG GÓI LÔ HÀNG
+' ================================================================================
+'
+' ĐẶC TẢ USE CASE:
+' ----------------
+' Tên Use Case    : Tạo và đóng gói lô hàng
+' Mã Use Case     : UC03.1
+' Actor chính     : Nhân viên Kho (Warehouse Staff)
+' Mô tả           : Nhân viên kho gom các đơn hàng cùng đích đến thành một lô,
+'                   niêm phong và xuất kho để vận chuyển đến bưu cục đích.
+'
+' Tiền điều kiện  :
+'   - Nhân viên đã đăng nhập với vai trò WAREHOUSE_STAFF
+'   - Có đơn hàng đã phân loại chờ gom lô (SORTED_AT_ORIGIN)
+'
+' Hậu điều kiện   :
+'   - Lô hàng được tạo và xuất kho
+'   - Trạng thái lô: IN_TRANSIT
+'   - Các đơn trong lô được cập nhật trạng thái tương ứng
+'
+' Luồng sự kiện chính:
+'   1. Nhân viên chọn "Tạo lô hàng mới"
+'   2. Nhân viên chọn bưu cục đích
+'   3. Hệ thống hiển thị danh sách đơn hàng phù hợp
+'   4. Nhân viên chọn các đơn hàng cần gom
+'   5. Hệ thống thêm đơn vào lô
+'   6. Nhân viên niêm phong lô (SEAL)
+'   7. Nhân viên xác nhận xuất kho (DISPATCH)
+'   8. Hệ thống cập nhật trạng thái lô và các đơn hàng
+'
+' Luồng thay thế:
+'   4a. Sử dụng tính năng "Tự động gom lô":
+'       - Hệ thống áp dụng thuật toán First Fit Decreasing
+'       - Tự động phân bổ đơn vào các lô tối ưu
+'
+' ================================================================================
+
+@startuml UC03-1-Activity-CreateBatch
+' ================================================================================
+' ACTIVITY DIAGRAM - UC03.1: Tạo và đóng gói lô hàng
+' ================================================================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor #27AE60
+    EndColor #E74C3C
+}
+
+title Activity Diagram - UC03.1: Tạo Và Đóng Gói Lô Hàng
+
+|#Pink|Nhân viên Kho|
+|#LightGreen|Hệ thống|
+|#LightGray|Database|
+
+|Hệ thống|
+start
+:Hiển thị màn hình\n**Quản lý Lô hàng**;
+
+|Nhân viên Kho|
+:Chọn **"Tạo lô mới"**;
+
+|Hệ thống|
+|Database|
+:SELECT DISTINCT destination_office\nFROM orders\nWHERE status='SORTED_AT_ORIGIN';
+
+|Hệ thống|
+:Hiển thị danh sách\n**Bưu cục đích** khả dụng;
+
+|Nhân viên Kho|
+:Chọn **Bưu cục đích**;
+
+|Hệ thống|
+|Database|
+:INSERT INTO batch_packages\n(status='OPEN', destination_id);
+
+:SELECT * FROM orders\nWHERE destination_office_id = ?\nAND status = 'SORTED_AT_ORIGIN';
+
+|Hệ thống|
+:Hiển thị danh sách đơn hàng\ncó thể thêm vào lô;
+
+|Nhân viên Kho|
+if (Gom thủ công hay tự động?) then (Thủ công)
+    repeat
+        :Chọn đơn hàng từ danh sách;
+        
+        :Quét mã vạch đơn hàng\n(xác nhận);
+        
+        |Hệ thống|
+        |Database|
+        :UPDATE orders\nSET batch_id = ?\nWHERE id = ?;
+        
+        |Hệ thống|
+        :Cập nhật tổng số đơn\nvà tổng trọng lượng;
+        
+        |Nhân viên Kho|
+    repeat while (Thêm đơn nữa?) is (Có)
+    ->Không;
+    
+else (Tự động)
+    |Hệ thống|
+    :Áp dụng thuật toán\n**First Fit Decreasing**;
+    
+    note right
+      Thuật toán FFD:
+      1. Sắp xếp đơn theo trọng lượng giảm dần
+      2. Lần lượt thêm vào lô phù hợp
+      3. Tối ưu số lượng lô và dung lượng
+    end note
+    
+    |Database|
+    :UPDATE orders\nSET batch_id = ?\nWHERE id IN (...);
+    
+    |Nhân viên Kho|
+    :Xem và xác nhận\nkết quả phân lô;
+endif
+
+|Nhân viên Kho|
+:Kiểm tra danh sách đơn\ntrong lô;
+
+:Nhấn **"Niêm phong"**;
+
+|Hệ thống|
+|Database|
+:UPDATE batch_packages\nSET status = 'SEALED',\nsealed_at = NOW();
+
+|Hệ thống|
+:Khóa lô - không thể\nthêm/bớt đơn;
+
+|Nhân viên Kho|
+:In **phiếu lô hàng**\n(Batch manifest);
+
+:Dán phiếu lên thùng/container;
+
+:Nhấn **"Xuất kho"**;
+
+|Hệ thống|
+|Database|
+:UPDATE batch_packages\nSET status = 'IN_TRANSIT',\ndispatched_at = NOW();
+
+:UPDATE orders\nSET status = 'IN_TRANSIT_TO_xxx'\nWHERE batch_id = ?;
+
+:INSERT INTO order_status_history\n(multiple records);
+
+|Hệ thống|
+:Xác nhận xuất kho thành công;
+
+|Nhân viên Kho|
+:Bàn giao lô cho\nđơn vị vận chuyển;
+
+|Hệ thống|
+:Hoàn tất quy trình\ntạo và xuất lô hàng;
+
+stop
+
+@enduml
+
+
+@startuml UC03-1-Sequence-CreateBatch
+' ================================================================================
+' SEQUENCE DIAGRAM - UC03.1: Tạo và đóng gói lô hàng
+' ================================================================================
+
+skinparam sequenceArrowThickness 2
+
+title Sequence Diagram - UC03.1: Tạo Và Đóng Gói Lô Hàng
+
+actor "Nhân viên Kho" as Staff #Pink
+participant "<<boundary>>\nBatchUI" as UI #LightBlue
+participant "<<controller>>\nBatchController" as BC #LightGreen
+participant "<<service>>\nBatchService" as BS #Pink
+participant "<<service>>\nOrderService" as OS #Orange
+database "<<entity>>\nDatabase" as DB #LightGray
+
+autonumber
+
+== Tạo lô mới ==
+
+Staff -> UI: Chọn "Tạo lô mới"
+activate UI
+
+UI -> BC: GET /api/batches/destinations
+activate BC
+BC -> BS: getAvailableDestinations(currentOfficeId)
+activate BS
+BS -> DB: SELECT DISTINCT destination\nFROM orders WHERE status='SORTED'
+activate DB
+DB --> BS: List<Office>
+deactivate DB
+BS --> BC: List<OfficeDTO>
+deactivate BS
+BC --> UI: Destinations
+deactivate BC
+
+UI --> Staff: Hiển thị danh sách bưu cục đích
+
+Staff -> UI: Chọn bưu cục đích
+UI -> BC: POST /api/batches\n{originOfficeId, destinationOfficeId}
+activate BC
+BC -> BS: createBatch(request)
+activate BS
+BS -> DB: INSERT INTO batch_packages\n(status='OPEN', ...)
+activate DB
+DB --> BS: batchId
+deactivate DB
+BS --> BC: BatchDTO
+deactivate BS
+BC --> UI: Batch created
+deactivate BC
+
+== Lấy danh sách đơn phù hợp ==
+
+UI -> BC: GET /api/batches/{batchId}/available-orders
+activate BC
+BC -> BS: getAvailableOrders(batchId)
+activate BS
+BS -> DB: SELECT * FROM orders\nWHERE destination_office_id = ?\nAND status = 'SORTED_AT_ORIGIN'\nAND batch_id IS NULL
+activate DB
+DB --> BS: List<Order>
+deactivate DB
+BS --> BC: List<OrderDTO>
+deactivate BS
+BC --> UI: Available orders
+deactivate BC
+
+UI --> Staff: Hiển thị danh sách đơn
+
+== Thêm đơn vào lô ==
+
+loop Mỗi đơn được chọn
+    Staff -> UI: Quét mã vạch / Chọn đơn
+    
+    UI -> BC: POST /api/batches/{batchId}/add-orders\n{orderIds: [...]}
+    activate BC
+    BC -> BS: addOrdersToBatch(batchId, orderIds)
+    activate BS
+    
+    BS -> OS: validateOrders(orderIds)
+    activate OS
+    OS --> BS: Valid
+    deactivate OS
+    
+    BS -> DB: UPDATE orders\nSET batch_id = ?\nWHERE id IN (...)
+    activate DB
+    DB --> BS: Updated
+    deactivate DB
+    
+    BS --> BC: Success
+    deactivate BS
+    BC --> UI: Orders added
+    deactivate BC
+    
+    UI --> Staff: Cập nhật danh sách
+end
+
+== Niêm phong ==
+
+Staff -> UI: Nhấn "Niêm phong"
+UI -> BC: POST /api/batches/{batchId}/seal
+activate BC
+BC -> BS: sealBatch(batchId)
+activate BS
+BS -> DB: UPDATE batch_packages\nSET status = 'SEALED',\nsealed_at = NOW()
+activate DB
+DB --> BS: OK
+deactivate DB
+BS --> BC: Sealed
+deactivate BS
+BC --> UI: Status: SEALED
+deactivate BC
+
+UI --> Staff: Lô đã niêm phong
+
+== Xuất kho ==
+
+Staff -> UI: Nhấn "Xuất kho"
+UI -> BC: POST /api/batches/{batchId}/dispatch
+activate BC
+BC -> BS: dispatchBatch(batchId)
+activate BS
+
+BS -> DB: UPDATE batch_packages\nSET status = 'IN_TRANSIT',\ndispatched_at = NOW()
+activate DB
+DB --> BS: OK
+deactivate DB
+
+BS -> OS: updateOrdersStatus(orderIds, 'IN_TRANSIT_TO_xxx')
+activate OS
+OS -> DB: UPDATE orders\nSET status = 'IN_TRANSIT_TO_xxx'
+activate DB
+DB --> OS: OK
+deactivate DB
+
+OS -> DB: INSERT INTO order_status_history\n(multiple records)
+activate DB
+DB --> OS: OK
+deactivate DB
+OS --> BS: OK
+deactivate OS
+
+BS --> BC: Dispatched
+deactivate BS
+BC --> UI: Status: IN_TRANSIT
+deactivate BC
+
+UI --> Staff: Lô đã xuất kho
+
+@enduml
+
+
+' ================================================================================
+' UC03.2: TIẾP NHẬN VÀ PHÂN PHỐI LÔ HÀNG ĐẾN
+' ================================================================================
+'
+' ĐẶC TẢ USE CASE:
+' ----------------
+' Tên Use Case    : Tiếp nhận và phân phối lô hàng đến
+' Mã Use Case     : UC03.2
+' Actor chính     : Nhân viên Kho (Warehouse Staff)
+' Mô tả           : Nhân viên kho tiếp nhận lô hàng từ đơn vị vận chuyển,
+'                   kiểm tra, xác nhận và phân phối các đơn hàng trong lô.
+'
+' Tiền điều kiện  :
+'   - Có lô hàng đang trên đường đến (IN_TRANSIT)
+'   - Nhân viên đã đăng nhập với vai trò WAREHOUSE_STAFF
+'
+' Hậu điều kiện   :
+'   - Lô hàng được đánh dấu ARRIVED, sau đó DISTRIBUTED
+'   - Các đơn hàng được cập nhật trạng thái mới
+'
+' ================================================================================
+
+@startuml UC03-2-Activity-ReceiveBatch
+' ================================================================================
+' ACTIVITY DIAGRAM - UC03.2: Tiếp nhận và phân phối lô hàng đến
+' ================================================================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor #27AE60
+    EndColor #E74C3C
+}
+
+title Activity Diagram - UC03.2: Tiếp Nhận Và Phân Phối Lô Hàng Đến
+
+|#Pink|Nhân viên Kho|
+|#LightGreen|Hệ thống|
+|#LightGray|Database|
+
+|Hệ thống|
+start
+:Hiển thị màn hình\n**Lô hàng đến**;
+
+|Database|
+:SELECT * FROM batch_packages\nWHERE destination_id = ?\nAND status = 'IN_TRANSIT';
+
+|Hệ thống|
+:Hiển thị danh sách lô\nđang trên đường đến;
+
+|Nhân viên Kho|
+:Chọn lô hàng cần tiếp nhận;
+
+:Quét mã lô hàng\n(Batch code);
+
+|Hệ thống|
+|Database|
+:SELECT * FROM batch_packages\nWHERE batch_code = ?;
+
+:SELECT COUNT(*) FROM orders\nWHERE batch_id = ?;
+
+|Hệ thống|
+:Hiển thị thông tin lô\n- Số lượng đơn\n- Bưu cục gửi\n- Thời gian xuất kho;
+
+|Nhân viên Kho|
+:Kiểm tra **số lượng kiện**\nthực tế so với manifest;
+
+if (Số lượng khớp?) then (Có)
+    :Nhấn **"Xác nhận nhận hàng"**;
+    
+    |Hệ thống|
+    |Database|
+    :UPDATE batch_packages\nSET status = 'ARRIVED',\narrived_at = NOW();
+    
+    |Nhân viên Kho|
+    :Mở lô và lấy các đơn ra;
+    
+    fork
+        :Quét từng đơn\nkiểm tra tình trạng;
+    fork again
+        :Phân loại đơn theo\nđích đến tiếp theo;
+    end fork
+    
+    :Nhấn **"Phân phối"**;
+    
+    |Hệ thống|
+    |Database|
+    :UPDATE batch_packages\nSET status = 'DISTRIBUTED';
+    
+    |Hệ thống|
+    if (Đây là bưu cục đích cuối?) then (Có)
+        |Database|
+        :UPDATE orders\nSET status = 'AT_DESTINATION_OFFICE'\nWHERE batch_id = ?;
+        
+        :INSERT INTO order_status_history\n(multiple records);
+        
+        |Hệ thống|
+        :Thêm vào danh sách\nchờ giao hàng;
+    else (Không - trung chuyển)
+        |Database|
+        :UPDATE orders\nSET status = 'AT_xxx'\nWHERE batch_id = ?;
+        
+        |Hệ thống|
+        :Thêm vào danh sách\nchờ gom lô tiếp;
+    endif
+    
+else (Không - thiếu/thừa)
+    |Nhân viên Kho|
+    :Ghi nhận **bất thường**\n- Số lượng thiếu/thừa\n- Mô tả chi tiết;
+    
+    :Chụp ảnh làm bằng chứng;
+    
+    |Hệ thống|
+    |Database|
+    :INSERT INTO batch_issues\n(batch_id, type, description, photo_url);
+    
+    :INSERT INTO notifications\n(to_office, type='BATCH_ISSUE');
+    
+    |Hệ thống|
+    :Gửi thông báo đến\nQuản lý và bưu cục gửi;
+    
+    |Nhân viên Kho|
+    :Tiếp tục xử lý\ncác đơn có trong lô;
+endif
+
+|Hệ thống|
+:Hoàn tất tiếp nhận\nvà phân phối lô hàng;
+
+stop
+
+@enduml
+
+
+@startuml UC03-2-Sequence-ReceiveDistributeBatch
+' ================================================================================
+' SEQUENCE DIAGRAM - UC03.2: Tiếp nhận và phân phối lô hàng đến
+' ================================================================================
+
+skinparam sequenceArrowThickness 2
+
+title Sequence Diagram - UC03.2: Tiếp Nhận Và Phân Phối Lô Hàng Đến
+
+actor "Nhân viên Kho" as Staff #Pink
+participant "<<boundary>>\nBatchUI" as UI #LightBlue
+participant "<<controller>>\nBatchController" as BC #LightGreen
+participant "<<service>>\nBatchService" as BS #Pink
+participant "<<service>>\nOrderService" as OS #Orange
+database "<<entity>>\nDatabase" as DB #LightGray
+
+autonumber
+
+== Quét và xác thực lô hàng ==
+
+Staff -> UI: Mở màn hình "Nhận lô hàng đến"
+activate UI
+
+UI -> BC: GET /api/batches/incoming
+activate BC
+BC -> BS: getIncomingBatches(officeId)
+activate BS
+BS -> DB: SELECT * FROM batches\nWHERE dest_office_id = ?\nAND status = 'IN_TRANSIT'
+activate DB
+DB --> BS: List<Batch>
+deactivate DB
+BS --> BC: List<BatchDTO>
+deactivate BS
+BC --> UI: Incoming batches
+deactivate BC
+
+UI --> Staff: Hiển thị danh sách lô đang đến
+
+Staff -> UI: Quét mã vạch lô hàng
+UI -> BC: GET /api/batches/{batchCode}
+activate BC
+BC -> BS: getBatchByCode(batchCode)
+activate BS
+BS -> DB: SELECT * FROM batches WHERE code = ?
+activate DB
+DB --> BS: Batch + packages
+deactivate DB
+BS --> BC: BatchDetailDTO
+deactivate BS
+BC --> UI: Batch info
+deactivate BC
+
+UI --> Staff: Hiển thị thông tin lô\n(số lượng expected: N)
+
+== Kiểm tra và xác nhận nhận lô ==
+
+loop Mỗi bưu kiện
+    Staff -> UI: Quét mã đơn hàng
+    UI --> Staff: Đã quét: X/N
+end
+
+Staff -> UI: Nhấn "Xác nhận nhận lô"
+UI -> BC: PUT /api/batches/{batchId}/receive\n{actualCount, scannedTrackings}
+activate BC
+BC -> BS: receiveBatch(batchId, receiveDTO)
+activate BS
+
+BS -> DB: UPDATE batches\nSET status = 'ARRIVED',\nreceived_at = NOW()
+activate DB
+DB --> BS: OK
+deactivate DB
+
+BS --> BC: BatchReceivedDTO
+deactivate BS
+BC --> UI: Received confirmation
+deactivate BC
+
+UI --> Staff: ✓ Đã nhận lô hàng
+
+== Phân phối đơn hàng ==
+
+Staff -> UI: Nhấn "Phân phối"
+UI -> BC: POST /api/batches/{batchId}/distribute
+activate BC
+BC -> BS: distributeBatch(batchId)
+activate BS
+
+alt Bưu cục đích cuối
+    BS -> OS: updateOrdersToDestination(batchId)
+    activate OS
+    OS -> DB: UPDATE orders\nSET status = 'AT_DESTINATION_OFFICE'
+    activate DB
+    DB --> OS: OK
+    deactivate DB
+    OS --> BS: OK
+    deactivate OS
+    
+else Trung chuyển
+    BS -> OS: updateOrdersForTransit(batchId)
+    activate OS
+    OS -> DB: UPDATE orders\nSET status = 'AT_HUB'
+    activate DB
+    DB --> OS: OK
+    deactivate DB
+    OS --> BS: OK
+    deactivate OS
+end
+
+BS -> DB: UPDATE batches\nSET status = 'DISTRIBUTED'
+activate DB
+DB --> BS: OK
+deactivate DB
+
+BS --> BC: DistributionResultDTO
+deactivate BS
+BC --> UI: Distribution summary
+deactivate BC
+
+UI --> Staff: ✓ Phân phối hoàn tất
+deactivate UI
+
+@enduml
+
+
+' ================================================================================
+' UC04: GIAO HÀNG
+' ================================================================================
+
+' ================================================================================
+' UC04.1: SHIPPER LẤY HÀNG TỪ KHÁCH (FIRST-MILE)
+' ================================================================================
+'
+' ĐẶC TẢ USE CASE:
+' ----------------
+' Tên Use Case    : Shipper lấy hàng từ khách (First-Mile)
+' Mã Use Case     : UC04.1
+' Actor chính     : Shipper
+' Actor phụ       : Quản lý Phường (phân công), Khách hàng (gửi hàng)
+' Mô tả           : Shipper được phân công đến địa chỉ khách hàng để lấy 
+'                   bưu kiện và mang về bưu cục.
+'
+' Tiền điều kiện  :
+'   - Có đơn hàng với trạng thái PENDING_PICKUP
+'   - Shipper đã được phân công đơn lấy hàng
+'   - Shipper đã đăng nhập vào app
+'
+' Hậu điều kiện   :
+'   - Đơn hàng được cập nhật: PICKED_UP → AT_ORIGIN_OFFICE
+'   - Bưu kiện được mang về bưu cục
+'
+' Luồng sự kiện chính:
+'   1. Shipper xem danh sách đơn lấy hàng được giao
+'   2. Shipper bắt đầu ca làm việc (kích hoạt GPS)
+'   3. Shipper chọn đơn và xem địa chỉ lấy hàng
+'   4. Shipper di chuyển đến địa chỉ (tích hợp Google Maps)
+'   5. Shipper gặp khách và nhận bưu kiện
+'   6. Shipper kiểm tra và cân lại bưu kiện
+'   7. Shipper xác nhận đã lấy hàng
+'   8. Shipper mang hàng về bưu cục
+'   9. Shipper bàn giao tại bưu cục
+'
+' Ngoại lệ:
+'   E1. Không liên lạc được khách: Báo cáo và chuyển sang đơn khác
+'   E2. Khách hủy đơn: Cập nhật trạng thái CANCELLED
+'
+' ================================================================================
+
+@startuml UC04-1-Activity-PickupOrder
+' ================================================================================
+' ACTIVITY DIAGRAM - UC04.1: Shipper lấy hàng từ khách
+' ================================================================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor #27AE60
+    EndColor #E74C3C
+}
+
+title Activity Diagram - UC04.1: Shipper Lấy Hàng Từ Khách (First-Mile)
+
+|#Lime|Shipper|
+|#LightGreen|Hệ thống|
+|#LightGray|Database|
+
+|Hệ thống|
+start
+:Hiển thị màn hình\nđăng nhập App Shipper;
+
+|Shipper|
+:Đăng nhập **App Shipper**;
+
+|Hệ thống|
+|Database|
+:SELECT * FROM orders\nWHERE shipper_id = ?\nAND status = 'PENDING_PICKUP';
+
+|Hệ thống|
+:Hiển thị danh sách đơn\n**lấy hàng** được giao;
+
+|Shipper|
+:Nhấn **"Bắt đầu ca"**;
+
+|Hệ thống|
+|Database|
+:INSERT INTO shipper_sessions\n(shipper_id, started_at);
+
+|Hệ thống|
+:Kích hoạt **GPS Tracking**;
+:Bắt đầu ghi nhận vị trí;
+
+|Shipper|
+:Chọn đơn cần lấy đầu tiên;
+
+|Hệ thống|
+:Hiển thị thông tin đơn\n- Địa chỉ lấy hàng\n- SĐT khách hàng\n- Mô tả bưu kiện;
+
+|Shipper|
+:Nhấn **"Điều hướng"**;
+
+|Hệ thống|
+:Mở **Google Maps**\nvới địa chỉ đích;
+
+|Shipper|
+:Di chuyển đến địa chỉ\nkhách hàng;
+
+:Đến nơi - Nhấn\n**"Đã đến địa điểm"**;
+
+|Hệ thống|
+:Gửi thông báo\nđến khách hàng;
+
+|Shipper|
+:Gọi điện / Nhắn tin\ncho khách hàng;
+
+if (Khách có mặt?) then (Có)
+    :Nhận bưu kiện từ khách;
+else (Không)
+    :Chọn lý do không lấy được\n☐ Khách không có mặt\n☐ Khách hẹn lại\n☐ Khách hủy đơn;
+    
+    |Hệ thống|
+    |Database|
+    if (Khách hủy?) then (Có)
+        :UPDATE orders\nSET status = 'CANCELLED';
+    else (Không)
+        :UPDATE orders\nSET pickup_scheduled_at = ?;
+    endif
+    
+    |Shipper|
+    :Chuyển sang đơn tiếp theo;
+    stop
+endif
+
+|Shipper|
+:Kiểm tra bưu kiện\n- Loại hàng đúng mô tả?\n- Đóng gói an toàn?;
+
+:Cân lại bưu kiện\n(nếu cần);
+
+if (Cân nặng khác nhiều?) then (Có)
+    :Cập nhật cân nặng thực tế;
+    
+    |Hệ thống|
+    :Tính lại giá cước;
+    :Thông báo chênh lệch;
+    
+    |Shipper|
+    if (Khách đồng ý giá mới?) then (Có)
+        :Thu tiền thêm\n(nếu cần);
+    else (Không)
+        :Trả lại bưu kiện;
+        stop
+    endif
+endif
+
+|Shipper|
+:Chụp ảnh bưu kiện;
+
+:Nhấn **"Xác nhận đã lấy"**;
+
+|Hệ thống|
+|Database|
+:UPDATE orders\nSET status = 'PICKED_UP',\nactual_weight = ?,\npickup_photo_url = ?;
+
+:INSERT INTO order_status_history\n(order_id, status, timestamp, location);
+
+|Hệ thống|
+:Gửi thông báo đến khách\nđơn đã được lấy;
+
+|Shipper|
+:Lấy các đơn còn lại\n(lặp lại quy trình);
+
+:Di chuyển về **Bưu cục**;
+
+:Bàn giao bưu kiện\ntại quầy;
+
+|Hệ thống|
+|Database|
+:UPDATE orders\nSET status = 'AT_ORIGIN_OFFICE';
+
+:INSERT INTO order_status_history\n(order_id, status, timestamp);
+
+|Shipper|
+:Nhấn **"Kết thúc ca"**;
+
+|Hệ thống|
+|Database|
+:UPDATE shipper_sessions\nSET ended_at = NOW();
+
+|Hệ thống|
+:Tắt GPS Tracking;
+:Tổng kết ca làm việc;
+:Hoàn tất quy trình\nlấy hàng First-Mile;
+
+stop
+
+@enduml
+
+
+@startuml UC04-1-Sequence-PickupOrder
+' ================================================================================
+' SEQUENCE DIAGRAM - UC04.1: Shipper lấy hàng từ khách
+' ================================================================================
+
+skinparam sequenceArrowThickness 2
+
+title Sequence Diagram - UC04.1: Shipper Lấy Hàng Từ Khách (First-Mile)
+
+actor "Shipper" as Shipper #Lime
+actor "Khách hàng" as Customer #Gold
+participant "<<boundary>>\nShipperApp" as App #LightBlue
+participant "<<controller>>\nShipperController" as SC #LightGreen
+participant "<<controller>>\nTrackingController" as TC #Pink
+participant "<<service>>\nOrderService" as OS #Orange
+participant "<<external>>\nGoogle Maps" as Maps #Cyan
+database "<<entity>>\nDatabase" as DB #LightGray
+
+autonumber
+
+== Bắt đầu ca làm việc ==
+
+Shipper -> App: Đăng nhập
+activate App
+
+Shipper -> App: Xem đơn lấy hàng
+App -> SC: GET /api/shipper/pickup-orders
+activate SC
+SC -> DB: SELECT * FROM orders\nWHERE shipper_id = ?\nAND status = 'PENDING_PICKUP'
+activate DB
+DB --> SC: List<Order>
+deactivate DB
+SC --> App: PickupOrders
+deactivate SC
+App --> Shipper: Danh sách đơn cần lấy
+
+Shipper -> App: Nhấn "Bắt đầu ca"
+App -> TC: POST /api/tracking/start-session\n{shipperId}
+activate TC
+TC -> DB: INSERT INTO shipper_sessions\n(started_at, ...)
+activate DB
+DB --> TC: sessionId
+deactivate DB
+TC --> App: Session started
+deactivate TC
+App -> App: Bật GPS tracking
+
+== Lấy hàng ==
+
+Shipper -> App: Chọn đơn hàng
+App --> Shipper: Thông tin đơn + địa chỉ
+
+Shipper -> App: Nhấn "Điều hướng"
+App -> Maps: Open navigation\n(destination: address)
+activate Maps
+Maps --> Shipper: Hiển thị đường đi
+deactivate Maps
+
+Shipper -> Shipper: Di chuyển đến địa chỉ
+
+Shipper -> App: Nhấn "Đã đến"
+App -> SC: POST /api/shipper/orders/{id}/arrived
+activate SC
+SC --> App: OK
+deactivate SC
+
+Shipper -> Customer: Gọi điện thông báo
+
+Customer -> Shipper: Đưa bưu kiện
+
+Shipper -> App: Cân bưu kiện\n(nếu cần cập nhật)
+Shipper -> App: Chụp ảnh bưu kiện
+Shipper -> App: Nhấn "Xác nhận đã lấy"
+
+App -> SC: POST /api/shipper/orders/{id}/picked-up\n{weight, photoUrl}
+activate SC
+
+SC -> OS: confirmPickup(orderId, data)
+activate OS
+
+OS -> DB: UPDATE orders\nSET status = 'PICKED_UP',\nactual_weight = ?
+activate DB
+DB --> OS: OK
+deactivate DB
+
+OS -> DB: INSERT INTO order_status_history\n(PICKED_UP, timestamp, location)
+activate DB
+DB --> OS: OK
+deactivate DB
+
+OS --> SC: OrderDTO
+deactivate OS
+
+SC --> App: Pickup confirmed
+deactivate SC
+
+App --> Shipper: Lấy hàng thành công ✓
+App --> Customer: Push notification:\n"Đơn hàng đã được lấy"
+
+== Bàn giao tại bưu cục ==
+
+Shipper -> Shipper: Về bưu cục
+Shipper -> App: Quét mã đơn tại quầy
+
+App -> SC: POST /api/shipper/orders/{id}/handover
+activate SC
+SC -> OS: handoverToOffice(orderId)
+activate OS
+OS -> DB: UPDATE orders\nSET status = 'AT_ORIGIN_OFFICE'
+activate DB
+DB --> OS: OK
+deactivate DB
+OS --> SC: OK
+deactivate OS
+SC --> App: Handover confirmed
+deactivate SC
+
+App --> Shipper: Bàn giao thành công
+
+@enduml
+
+
+' ================================================================================
+' UC04.2: SHIPPER GIAO HÀNG CHO NGƯỜI NHẬN (LAST-MILE)
+' ================================================================================
+'
+' ĐẶC TẢ USE CASE:
+' ----------------
+' Tên Use Case    : Shipper giao hàng cho người nhận (Last-Mile)
+' Mã Use Case     : UC04.2
+' Actor chính     : Shipper
+' Actor phụ       : Quản lý Phường (phân công), Người nhận
+' Mô tả           : Shipper được phân công giao bưu kiện đến địa chỉ người nhận,
+'                   thu tiền COD (nếu có) và xác nhận giao hàng thành công.
+'
+' Tiền điều kiện  :
+'   - Đơn hàng có trạng thái AT_DESTINATION_OFFICE
+'   - Shipper đã được phân công giao hàng
+'   - Shipper đã đăng nhập và bắt đầu ca
+'
+' Hậu điều kiện   :
+'   - Giao thành công: Status = DELIVERED
+'   - Giao thất bại: Status = DELIVERY_FAILED (có thể giao lại hoặc trả)
+'
+' Luồng sự kiện chính:
+'   1. Quản lý phân công đơn cho Shipper
+'   2. Shipper nhận danh sách đơn cần giao
+'   3. Shipper bắt đầu giao hàng (kích hoạt GPS tracking)
+'   4. Shipper di chuyển đến địa chỉ người nhận
+'   5. Khách hàng có thể theo dõi vị trí Shipper real-time
+'   6. Shipper gặp người nhận và bàn giao bưu kiện
+'   7. Nếu có COD: Shipper thu tiền
+'   8. Shipper xác nhận giao hàng thành công
+'
+' Luồng thay thế:
+'   6a. Không gặp được người nhận:
+'       - Shipper liên hệ qua điện thoại
+'       - Nếu không liên lạc được: Đánh dấu DELIVERY_FAILED
+'   7a. Người nhận từ chối nhận hàng:
+'       - Ghi nhận lý do
+'       - Đánh dấu DELIVERY_FAILED → RETURNING
+'
+' ================================================================================
+
+@startuml UC04-2-Activity-DeliverOrder
+' ================================================================================
+' ACTIVITY DIAGRAM - UC04.2: Shipper giao hàng cho người nhận
+' ================================================================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor #27AE60
+    EndColor #E74C3C
+}
+
+title Activity Diagram - UC04.2: Shipper Giao Hàng Cho Người Nhận (Last-Mile)
+
+|#Lime|Shipper|
+|#LightGreen|Hệ thống|
+|#LightGray|Database|
+
+|Hệ thống|
+start
+:Hiển thị màn hình\ndanh sách đơn giao hàng;
+
+|Database|
+:SELECT * FROM orders\nWHERE shipper_id = ?\nAND status = 'AT_DESTINATION_OFFICE';
+
+|Hệ thống|
+:Hiển thị danh sách đơn\n**giao hàng** được phân công;
+
+|Shipper|
+:Nhận bưu kiện từ kho;
+
+:Nhấn **"Bắt đầu giao hàng"**;
+
+|Hệ thống|
+|Database|
+:UPDATE orders\nSET status = 'OUT_FOR_DELIVERY'\nWHERE shipper_id = ?;
+
+:INSERT INTO shipper_sessions\n(type='DELIVERY', started_at);
+
+|Hệ thống|
+:Kích hoạt **GPS Tracking**;
+
+:Bắt đầu broadcast\nvị trí real-time;
+
+:Gửi thông báo đến người nhận:\n"Đơn hàng đang được giao";
+
+|Shipper|
+:Chọn đơn giao đầu tiên;
+
+|Hệ thống|
+:Hiển thị thông tin\n- Địa chỉ người nhận\n- SĐT người nhận\n- Ghi chú giao hàng\n- Số tiền COD (nếu có);
+
+|Shipper|
+:Nhấn **"Điều hướng"**;
+
+|Hệ thống|
+:Mở Google Maps\nvới tuyến đường tối ưu;
+
+|Shipper|
+:Di chuyển đến địa chỉ;
+
+:Đến nơi - Nhấn\n**"Đã đến"**;
+
+|Hệ thống|
+:Gửi thông báo\nđến người nhận;
+
+|Shipper|
+:Liên hệ người nhận\n(gọi điện / nhắn tin);
+
+if (Người nhận có mặt?) then (Có)
+    :Gặp người nhận\nbàn giao bưu kiện;
+else (Không)
+    if (Liên lạc được?) then (Có)
+        :Hẹn giờ khác\nhoặc gửi người thân;
+    else (Không)
+        :Chọn lý do thất bại\n☐ Không liên lạc được\n☐ Địa chỉ sai\n☐ Khác;
+        
+        |Hệ thống|
+        |Database|
+        :UPDATE orders\nSET status = 'DELIVERY_FAILED',\nfailure_reason = ?;
+        
+        :INSERT INTO order_status_history\n(status, reason, timestamp);
+        
+        |Shipper|
+        :Chuyển sang đơn tiếp;
+        stop
+    endif
+endif
+
+|Shipper|
+if (Có thu COD?) then (Có)
+    :Thu tiền COD từ người nhận;
+    
+    if (Người nhận đồng ý?) then (Có)
+        :Nhận tiền và đếm\nxác nhận số tiền;
+    else (Không - từ chối nhận)
+        :Ghi nhận lý do từ chối;
+        
+        |Hệ thống|
+        |Database|
+        :UPDATE orders\nSET status = 'DELIVERY_FAILED',\nfailure_reason = 'REJECTED';
+        
+        |Shipper|
+        stop
+    endif
+endif
+
+|Shipper|
+:Yêu cầu người nhận\n**ký xác nhận**;
+
+:Nhận chữ ký trên màn hình\nhoặc OTP xác nhận;
+
+:Chụp ảnh bằng chứng\ngiao hàng;
+
+:Nhấn **"Hoàn thành"**;
+
+|Hệ thống|
+|Database|
+:UPDATE orders\nSET status = 'DELIVERED',\ndelivered_at = NOW(),\nsignature_url = ?,\nphoto_url = ?,\ncod_collected = ?;
+
+:INSERT INTO order_status_history\n(status='DELIVERED', timestamp);
+
+|Hệ thống|
+:Gửi thông báo đến người nhận:\n"Đơn hàng đã giao thành công";
+
+|Shipper|
+:Tiếp tục giao đơn tiếp theo\n(lặp lại quy trình);
+
+:Hoàn thành tất cả đơn\n→ Về bưu cục;
+
+:Nộp tiền COD đã thu;
+
+|Hệ thống|
+|Database|
+:UPDATE shipper_sessions\nSET ended_at = NOW(),\ncod_total = ?;
+
+|Shipper|
+:Kết thúc ca làm việc;
+
+|Hệ thống|
+:Hoàn tất quy trình\ngiao hàng Last-Mile;
+
+stop
+
+@enduml
+
+
+@startuml UC04-2-Sequence-DeliverOrder
+' ================================================================================
+' SEQUENCE DIAGRAM - UC04.2: Shipper giao hàng cho người nhận
+' ================================================================================
+
+skinparam sequenceArrowThickness 2
+
+title Sequence Diagram - UC04.2: Shipper Giao Hàng Cho Người Nhận (Last-Mile)
+
+actor "Quản lý\nPhường" as Manager #Orange
+actor "Shipper" as Shipper #Lime
+actor "Người nhận" as Receiver #Gold
+participant "<<boundary>>\nShipperApp" as App #LightBlue
+participant "<<controller>>\nOrderController" as OC #LightGreen
+participant "<<controller>>\nTrackingController" as TC #Pink
+participant "<<service>>\nOrderService" as OS #Orange
+participant "<<websocket>>\nLocationWS" as WS #Cyan
+database "<<entity>>\nDatabase" as DB #LightGray
+
+autonumber
+
+== Phân công giao hàng ==
+
+Manager -> OC: POST /api/orders/assign-delivery\n{orderIds, shipperId}
+activate OC
+OC -> OS: assignDelivery(orderIds, shipperId)
+activate OS
+OS -> DB: UPDATE orders\nSET shipper_id = ?,\nassigned_for_delivery_at = NOW()
+activate DB
+DB --> OS: OK
+deactivate DB
+OS --> OC: OK
+deactivate OS
+OC --> Manager: Assigned
+deactivate OC
+
+== Bắt đầu giao hàng ==
+
+Shipper -> App: Xem đơn cần giao
+App -> OC: GET /api/shipper/delivery-orders
+activate OC
+OC --> App: List<Order>
+deactivate OC
+App --> Shipper: Danh sách đơn
+
+Shipper -> App: Nhấn "Bắt đầu giao"
+App -> TC: POST /api/tracking/start-delivery-session\n{shipperId, orderIds}
+activate TC
+
+TC -> DB: UPDATE orders\nSET status = 'OUT_FOR_DELIVERY'
+activate DB
+DB --> TC: OK
+deactivate DB
+
+TC -> WS: Initialize broadcast channel
+activate WS
+WS --> TC: Channel ready
+deactivate WS
+
+TC --> App: Session started
+deactivate TC
+
+App -> App: Bật GPS tracking
+
+== Theo dõi real-time ==
+
+loop Mỗi 5 giây
+    App -> TC: POST /api/tracking/update-location\n{lat, lng, orderId}
+    TC -> WS: Broadcast location
+    WS --> Receiver: Push {lat, lng}
+    Receiver -> Receiver: Cập nhật marker\ntrên bản đồ
+end
+
+== Giao hàng ==
+
+Shipper -> Shipper: Di chuyển đến địa chỉ
+Shipper -> App: Nhấn "Đã đến"
+
+Shipper -> Receiver: Gọi điện thông báo
+Receiver -> Shipper: Gặp nhận hàng
+
+alt Có thu COD
+    Shipper -> Receiver: Yêu cầu thanh toán\n{codAmount}
+    Receiver -> Shipper: Thanh toán tiền mặt
+    Shipper -> App: Xác nhận đã thu COD
+end
+
+Receiver -> App: Ký xác nhận\n(chữ ký điện tử / OTP)
+Shipper -> App: Chụp ảnh bằng chứng
+
+Shipper -> App: Nhấn "Hoàn thành giao hàng"
+
+App -> OC: POST /api/orders/{id}/delivered\n{signature, photo, codCollected}
+activate OC
+
+OC -> OS: confirmDelivery(orderId, data)
+activate OS
+
+OS -> DB: UPDATE orders\nSET status = 'DELIVERED',\ndelivered_at = NOW(),\nsignature_url = ?,\nphoto_url = ?
+activate DB
+DB --> OS: OK
+deactivate DB
+
+OS -> DB: INSERT INTO order_status_history\n(DELIVERED, ...)
+activate DB
+DB --> OS: OK
+deactivate DB
+
+alt Có COD
+    OS -> DB: UPDATE orders\nSET cod_collected = true
+    activate DB
+    DB --> OS: OK
+    deactivate DB
+end
+
+OS --> OC: OrderDTO
+deactivate OS
+
+OC --> App: Delivery confirmed
+deactivate OC
+
+App --> Shipper: Giao hàng thành công ✓
+App --> Receiver: Push: "Đơn hàng đã giao thành công"
+
+@enduml
+
+
+' ================================================================================
+' UC05: QUẢN LÝ BƯU CỤC VÀ NHÂN VIÊN
+' ================================================================================
+
+' ================================================================================
+' UC05.1: TẠO NHÂN VIÊN MỚI
+' ================================================================================
+'
+' ĐẶC TẢ USE CASE:
+' ----------------
+' Tên Use Case    : Tạo nhân viên mới
+' Mã Use Case     : UC05.1
+' Actor chính     : Province Admin / Ward Manager
+' Mô tả           : Quản lý tạo tài khoản nhân viên mới (Staff hoặc Shipper)
+'                   và phân công về bưu cục thuộc phạm vi quản lý.
+'
+' Tiền điều kiện  :
+'   - Actor đã đăng nhập với vai trò PROVINCE_ADMIN hoặc WARD_MANAGER
+'   - Actor có quyền tạo nhân viên trong phạm vi quản lý
+'
+' Hậu điều kiện   :
+'   - Tài khoản nhân viên được tạo
+'   - Nhân viên được phân công về bưu cục
+'   - Thông tin đăng nhập được gửi cho nhân viên mới
+'
+' Luồng sự kiện chính:
+'   1. Admin chọn "Thêm nhân viên mới"
+'   2. Hệ thống hiển thị form với danh sách bưu cục trong phạm vi quản lý
+'   3. Admin nhập thông tin nhân viên
+'   4. Admin chọn vai trò (Staff/Shipper) và bưu cục
+'   5. Hệ thống validate thông tin
+'   6. Hệ thống tạo tài khoản với mật khẩu mặc định
+'   7. Hệ thống gửi thông tin đăng nhập qua email/SMS
+'
+' Quyền tạo nhân viên:
+'   - System Admin: Tạo Hub Admin
+'   - Hub Admin: Tạo Province Admin
+'   - Province Admin: Tạo Ward Manager, Staff, Shipper (trong tỉnh)
+'   - Ward Manager: Tạo Staff, Shipper (trong phường)
+'
+' ================================================================================
+
+@startuml UC05-1-Activity-CreateEmployee
+' ================================================================================
+' ACTIVITY DIAGRAM - UC05.1: Tạo nhân viên mới
+' ================================================================================
+
+skinparam activity {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+    StartColor #27AE60
+    EndColor #E74C3C
+}
+
+title Activity Diagram - UC05.1: Tạo Nhân Viên Mới
+
+|#LightBlue|Admin|
+|#LightGreen|Hệ thống|
+|#LightGray|Database|
+
+|Hệ thống|
+start
+:Hiển thị màn hình\n**Quản lý Nhân viên**;
+
+|Admin|
+:Nhấn **"Thêm nhân viên mới"**;
+
+|Hệ thống|
+:Xác định phạm vi quản lý\ncủa Admin hiện tại;
+
+|Database|
+:SELECT * FROM offices\nWHERE province_id IN\n(admin's provinces);
+
+:SELECT * FROM roles\nWHERE can_be_created_by = ?;
+
+|Hệ thống|
+:Hiển thị form tạo nhân viên\nvới danh sách bưu cục và vai trò;
+
+note right
+  Province Admin có thể tạo:
+  - Ward Manager
+  - Warehouse Staff
+  - Counter Staff
+  - Shipper
+  
+  Ward Manager có thể tạo:
+  - Warehouse Staff
+  - Counter Staff
+  - Shipper
+end note
+
+|Admin|
+:Nhập thông tin cá nhân\n- Họ tên\n- Số điện thoại\n- Email\n- CMND/CCCD\n- Địa chỉ;
+
+:Chọn **vai trò** nhân viên;
+
+:Chọn **bưu cục** làm việc;
+
+if (Vai trò = Shipper?) then (Có)
+    :Nhập thông tin bổ sung\n- Biển số xe\n- Loại xe\n- Bằng lái;
+endif
+
+:Nhấn **"Tạo nhân viên"**;
+
+|Hệ thống|
+|Database|
+:SELECT * FROM accounts\nWHERE phone = ? OR email = ?;
+
+|Hệ thống|
+if (Thông tin hợp lệ?) then (Có)
+    :Tạo username từ email\nhoặc SĐT;
+    
+    :Tạo mật khẩu ngẫu nhiên;
+    
+    :Hash mật khẩu\n(BCrypt);
+    
+    |Database|
+    :INSERT INTO accounts\n(username, password_hash, role);
+    
+    :INSERT INTO employees\n(name, phone, email,\naccount_id, office_id);
+    
+    |Hệ thống|
+    if (Vai trò = Shipper?) then (Có)
+        |Database|
+        :INSERT INTO shippers\n(employee_id, vehicle_number,\nvehicle_type);
+    endif
+    
+    |Hệ thống|
+    :Gửi email thông báo\n- Username\n- Mật khẩu tạm thời\n- Link đổi mật khẩu;
+    
+    :Gửi SMS thông báo\n(backup);
+    
+    |Admin|
+    :Nhận thông báo\n**"Tạo nhân viên thành công"**;
+    
+    :Xem thông tin nhân viên\nvừa tạo;
+    
+else (Không)
+    |Hệ thống|
+    :Hiển thị lỗi cụ thể\n- SĐT đã tồn tại?\n- Email đã tồn tại?\n- Thông tin không hợp lệ?;
+    
+    |Admin|
+    :Sửa thông tin và\nthử lại;
+endif
+
+|Hệ thống|
+:Hoàn tất quy trình\ntạo nhân viên;
+
+stop
+
+@enduml
+
+
+@startuml UC05-1-Sequence-CreateEmployee
+' ================================================================================
+' SEQUENCE DIAGRAM - UC05.1: Tạo nhân viên mới
+' ================================================================================
+
+skinparam sequenceArrowThickness 2
+
+title Sequence Diagram - UC05.1: Tạo Nhân Viên Mới
+
+actor "Province Admin" as Admin #LightBlue
+participant "<<boundary>>\nEmployeeUI" as UI #LightGray
+participant "<<controller>>\nUserController" as UC #LightGreen
+participant "<<service>>\nUserService" as US #Pink
+participant "<<service>>\nAuthService" as AS #Orange
+participant "<<service>>\nNotificationService" as NS #Cyan
+database "<<entity>>\nDatabase" as DB #LightGray
+
+autonumber
+
+== Load form ==
+
+Admin -> UI: Nhấn "Thêm nhân viên"
+activate UI
+
+UI -> UC: GET /api/offices?scope=managed
+activate UC
+UC -> US: getOfficesInScope(adminId)
+activate US
+US -> DB: SELECT offices\nWHERE province_id IN\n(admin's provinces)
+activate DB
+DB --> US: List<Office>
+deactivate DB
+US --> UC: List<OfficeDTO>
+deactivate US
+UC --> UI: Offices
+deactivate UC
+
+UI -> UC: GET /api/roles/creatable
+activate UC
+UC --> UI: [WARD_MANAGER, STAFF, SHIPPER]
+deactivate UC
+
+UI --> Admin: Form với dropdown\nbưu cục và vai trò
+
+== Tạo nhân viên ==
+
+Admin -> UI: Điền thông tin & Submit
+
+UI -> UC: POST /api/users/employees\n{name, phone, email, role, officeId, ...}
+activate UC
+
+UC -> US: createEmployee(employeeDTO)
+activate US
+
+US -> DB: SELECT * FROM accounts\nWHERE phone = ? OR email = ?
+activate DB
+DB --> US: null (không trùng)
+deactivate DB
+
+US -> AS: createAccount(username, role)
+activate AS
+
+AS -> AS: generatePassword()
+note right: Random 12 ký tự\n+ chữ + số + ký tự đặc biệt
+
+AS -> AS: hashPassword(password)
+note right: BCrypt với salt
+
+AS -> DB: INSERT INTO accounts\n(username, password_hash, role, ...)
+activate DB
+DB --> AS: accountId
+deactivate DB
+
+AS --> US: AccountDTO\n{id, username, tempPassword}
+deactivate AS
+
+US -> DB: INSERT INTO employees\n(name, phone, email, account_id, office_id, ...)
+activate DB
+DB --> US: employeeId
+deactivate DB
+
+alt Vai trò = SHIPPER
+    US -> DB: INSERT INTO shippers\n(employee_id, vehicle_number, ...)
+    activate DB
+    DB --> US: shipperId
+    deactivate DB
+end
+
+US --> UC: EmployeeDTO
+deactivate US
+
+== Gửi thông báo ==
+
+UC -> NS: sendWelcomeNotification(employee, tempPassword)
+activate NS
+
+NS -> NS: Compose email
+note right
+  Subject: Chào mừng bạn đến với PMS
+  Body:
+  - Thông tin tài khoản
+  - Username: xxx
+  - Mật khẩu: yyy
+  - Link đổi mật khẩu
+end note
+
+NS -> NS: Send email
+NS -> NS: Send SMS (backup)
+
+NS --> UC: Notification sent
+deactivate NS
+
+UC --> UI: EmployeeResponse\n{id, name, username, office, role}
+deactivate UC
+
+UI --> Admin: Hiển thị thông tin nhân viên mới\n+ Thông báo thành công
+
+@enduml
+
+
+' ================================================================================
+' KẾT THÚC TÀI LIỆU
+' ================================================================================
+'
+' TỔNG KẾT:
+' =========
+' File này chứa đặc tả chi tiết và sơ đồ UML cho 5 Use Case lớn:
+'
+' 1. UC01: Tạo Đơn Hàng
+'    - UC01.1: Tạo đơn tại quầy (Activity + Sequence)
+'    - UC01.2: Tạo đơn lấy hàng online (Activity + Sequence)
+'
+' 2. UC02: Theo Dõi Đơn Hàng
+'    - UC02.1: Tra cứu theo mã tracking (Activity + Sequence)
+'
+' 3. UC03: Quản Lý Lô Hàng
+'    - UC03.1: Tạo và đóng gói lô (Activity + Sequence)
+'    - UC03.2: Tiếp nhận lô đến (Activity)
+'
+' 4. UC04: Giao Hàng
+'    - UC04.1: Lấy hàng First-Mile (Activity + Sequence)
+'    - UC04.2: Giao hàng Last-Mile (Activity + Sequence)
+'
+' 5. UC05: Quản Lý Bưu Cục và Nhân Viên
+'    - UC05.1: Tạo nhân viên mới (Activity + Sequence)
+'
+' CÁCH SỬ DỤNG:
+' =============
+' 1. Copy từng block @startuml ... @enduml vào PlantUML editor
+' 2. Hoặc sử dụng PlantUML plugin trong VS Code/IntelliJ
+' 3. Export ra PNG/SVG để đưa vào tài liệu
+'
+' CÔNG CỤ:
+' ========
+' - PlantUML Online: https://www.plantuml.com/plantuml
+' - VS Code Extension: PlantUML
+' - IntelliJ Plugin: PlantUML Integration
+'
+' ================================================================================
