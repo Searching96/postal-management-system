@@ -31,12 +31,20 @@ public abstract class BaseEntity {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        // Fix 1: Only set createdAt if it is null (allows manual backdating)
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        
+        // Ensure updatedAt matches createdAt on initial insert if null
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
     }
 
-    @PostUpdate
+    // Fix 2: Changed from @PostUpdate to @PreUpdate so it saves to DB
+    @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 }
