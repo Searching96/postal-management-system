@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, Plus, Package, Eye } from "lucide-react";
+import { Search, Plus, Package, Eye, MessageCircle, AlertTriangle, X } from "lucide-react";
 import {
     Card,
     Button,
@@ -28,6 +28,14 @@ export function OrderListPage() {
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
     const pageSize = 10;
+
+    // Modal states
+    const [showCommentModal, setShowCommentModal] = useState(false);
+    const [showComplaintModal, setShowComplaintModal] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [commentText, setCommentText] = useState("");
+    const [complaintText, setComplaintText] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const fetchOrders = async () => {
         setIsLoading(true);
@@ -97,6 +105,69 @@ export function OrderListPage() {
         { value: "CANCELLED", label: "Đã hủy" },
         { value: "RETURNED", label: "Đã trả lại" }
     ];
+
+    // Handler functions for modals
+    const handleOpenComment = (order: Order) => {
+        setSelectedOrder(order);
+        setCommentText("");
+        setShowCommentModal(true);
+    };
+
+    const handleOpenComplaint = (order: Order) => {
+        setSelectedOrder(order);
+        setComplaintText("");
+        setShowComplaintModal(true);
+    };
+
+    const handleCloseModals = () => {
+        setShowCommentModal(false);
+        setShowComplaintModal(false);
+        setSelectedOrder(null);
+        setCommentText("");
+        setComplaintText("");
+    };
+
+    const handleSubmitComment = async () => {
+        if (!commentText.trim()) {
+            toast.error("Vui lòng nhập nội dung đánh giá");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            // TODO: Call API to submit comment
+            // await orderService.submitComment(selectedOrder?.orderId, commentText);
+
+            toast.success("Gửi đánh giá thành công!");
+            handleCloseModals();
+        } catch (error) {
+            console.error(error);
+            toast.error("Không thể gửi đánh giá. Vui lòng thử lại.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleSubmitComplaint = async () => {
+        if (!complaintText.trim()) {
+            toast.error("Vui lòng nhập nội dung khiếu nại");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            // TODO: Call API to submit complaint
+            // await orderService.submitComplaint(selectedOrder?.orderId, complaintText);
+
+            toast.success("Gửi khiếu nại thành công!");
+            handleCloseModals();
+        } catch (error) {
+            console.error(error);
+            toast.error("Không thể gửi khiếu nại. Vui lòng thử lại.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -198,6 +269,29 @@ export function OrderListPage() {
                                                         <Eye className="h-5 w-5" />
                                                     </Button>
                                                 </Link>
+                                                {isCustomer && (
+                                                    <>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-10 w-10 p-0 text-gray-500 hover:text-green-600 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            title="Đánh giá dịch vụ"
+                                                            disabled={order.status !== "DELIVERED"}
+                                                            onClick={() => handleOpenComment(order)}
+                                                        >
+                                                            <MessageCircle className="h-5 w-5" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-10 w-10 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50"
+                                                            title="Gửi khiếu nại"
+                                                            onClick={() => handleOpenComplaint(order)}
+                                                        >
+                                                            <AlertTriangle className="h-5 w-5" />
+                                                        </Button>
+                                                    </>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -216,6 +310,122 @@ export function OrderListPage() {
                     pageSize={pageSize}
                     onPageChange={setPage}
                 />
+            )}
+
+            {/* Comment Modal */}
+            {showCommentModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-green-50 to-white">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-green-100 rounded-lg">
+                                    <MessageCircle className="h-5 w-5 text-green-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900">Gửi đánh giá dịch vụ</h3>
+                                    <p className="text-sm text-gray-500">Mã vận đơn: {selectedOrder?.trackingNumber}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleCloseModals}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <X className="h-5 w-5 text-gray-500" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Nội dung đánh giá <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                value={commentText}
+                                onChange={(e) => setCommentText(e.target.value)}
+                                placeholder="Nhập đánh giá của bạn về dịch vụ..."
+                                rows={6}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none resize-none"
+                            />
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-end gap-3 p-6 border-t bg-gray-50">
+                            <Button
+                                variant="outline"
+                                onClick={handleCloseModals}
+                                disabled={isSubmitting}
+                            >
+                                Hủy
+                            </Button>
+                            <Button
+                                onClick={handleSubmitComment}
+                                isLoading={isSubmitting}
+                                className="bg-green-600 hover:bg-green-700"
+                            >
+                                Gửi
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Complaint Modal */}
+            {showComplaintModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-red-50 to-white">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-red-100 rounded-lg">
+                                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900">Gửi khiếu nại</h3>
+                                    <p className="text-sm text-gray-500">Mã vận đơn: {selectedOrder?.trackingNumber}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleCloseModals}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <X className="h-5 w-5 text-gray-500" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Nội dung khiếu nại <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                value={complaintText}
+                                onChange={(e) => setComplaintText(e.target.value)}
+                                placeholder="Nhập nội dung khiếu nại của bạn..."
+                                rows={6}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none"
+                            />
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-end gap-3 p-6 border-t bg-gray-50">
+                            <Button
+                                variant="outline"
+                                onClick={handleCloseModals}
+                                disabled={isSubmitting}
+                            >
+                                Hủy
+                            </Button>
+                            <Button
+                                onClick={handleSubmitComplaint}
+                                isLoading={isSubmitting}
+                                className="bg-red-600 hover:bg-red-700"
+                            >
+                                Gửi
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

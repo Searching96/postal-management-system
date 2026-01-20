@@ -15,6 +15,7 @@ import {
   CreateOrderPage,
   OrderDetailsPage,
   TrackOrderPage,
+  IncomingDeliveriesPage,
   BatchListPage,
   BatchDetailsPage,
   ShipperManagementPage,
@@ -97,6 +98,11 @@ function App() {
               <Route element={<RoleRoute allowedRoles={["PO_STAFF", "WH_STAFF", "PO_WARD_MANAGER", "WH_WARD_MANAGER", "PO_PROVINCE_ADMIN", "WH_PROVINCE_ADMIN", "HUB_ADMIN", "SYSTEM_ADMIN", "CUSTOMER"]} />}>
                 <Route path="/orders" element={<OrderListPage />} />
                 <Route path="/orders/:id" element={<OrderDetailsPage />} />
+              </Route>
+
+              {/* Incoming Deliveries (Customer & Staff) */}
+              <Route element={<RoleRoute allowedRoles={["CUSTOMER", "PO_STAFF", "WH_STAFF", "PO_WARD_MANAGER", "WH_WARD_MANAGER", "PO_PROVINCE_ADMIN", "WH_PROVINCE_ADMIN", "HUB_ADMIN", "SYSTEM_ADMIN"]} />}>
+                <Route path="/orders/incoming-deliveries" element={<IncomingDeliveriesPage />} />
               </Route>
 
               {/* Staff Duties (Delivery & Transit) */}

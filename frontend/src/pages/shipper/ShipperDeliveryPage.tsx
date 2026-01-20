@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShipperMapPanel } from '../../components/map/ShipperMapPanel';
+import { useAuth } from '../../lib/AuthContext';
+import { EmployeeMeResponse } from '../../models';
 
 
 const ShipperDeliveryPage = () => {
@@ -127,9 +129,40 @@ const ShipperDeliveryPage = () => {
         }
     };
 
-    const handleNavigate = (address: string) => {
-        const encodedAddress = encodeURIComponent(address);
-        window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
+    const { user } = useAuth();
+
+    const handleNavigate = (destinationAddress: string) => {
+        let originAddress = '';
+
+        // Type guard to check if user is an employee and has office details
+        const isEmployee = (u: any): u is EmployeeMeResponse => {
+            return u && 'office' in u;
+        };
+
+        if (user && isEmployee(user) && user.office) {
+            const office = user.office;
+            // Construct address from office details
+            const parts = [
+                office.addressLine1,
+                office.wardName,
+                office.province?.name
+            ].filter(Boolean); // Remove null/undefined/empty strings
+
+            if (parts.length > 0) {
+                originAddress = parts.join(', ');
+            }
+        }
+
+        const encodedDest = encodeURIComponent(destinationAddress);
+        let url = `https://www.google.com/maps/dir/?api=1&destination=${encodedDest}`;
+
+        // If we have an origin address, add it to the URL
+        if (originAddress) {
+            const encodedOrigin = encodeURIComponent(originAddress);
+            url += `&origin=${encodedOrigin}`;
+        }
+
+        window.open(url, '_blank');
     };
 
     const handleCall = (phone: string) => {

@@ -14,6 +14,7 @@ import {
   Send,
   Route,
   MessageSquare,
+  Inbox,
 } from "lucide-react";
 import { useState } from "react";
 import { getRoleLabel } from "../lib/utils";
@@ -71,6 +72,7 @@ export function Layout() {
 
   if (isPO || isWH || role === "HUB_ADMIN" || role === "SYSTEM_ADMIN") {
     primaryNav.push({ to: "/orders", icon: Package, label: "Quản lý đơn hàng" });
+    primaryNav.push({ to: "/orders/incoming-deliveries", icon: Inbox, label: "Đơn hàng đang đến" });
 
     if (isPO) {
       primaryNav.push({ to: "/orders/pending-pickups", icon: Truck, label: "Đơn chờ lấy hàng" });
@@ -90,6 +92,7 @@ export function Layout() {
   if (role === "CUSTOMER") {
     primaryNav.push({ to: "/customer/pickup", icon: Truck, label: "Tạo yêu cầu lấy hàng" });
     primaryNav.push({ to: "/orders", icon: Package, label: "Đơn hàng của tôi" });
+    primaryNav.push({ to: "/orders/incoming-deliveries", icon: Inbox, label: "Đơn hàng đang đến" });
   }
 
   const secondaryNav = [

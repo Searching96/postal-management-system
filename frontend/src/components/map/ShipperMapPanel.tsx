@@ -95,32 +95,35 @@ interface ShipperMapPanelProps {
 export function ShipperMapPanel({ orders, mode = 'delivery' }: ShipperMapPanelProps) {
     const [geocodedOrders, setGeocodedOrders] = useState<GeocodedOrder[]>([]);
     const [isGeocoding, setIsGeocoding] = useState(true);
-    const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
 
-    // Get current driver location
-    useEffect(() => {
-        if ('geolocation' in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setCurrentLocation([position.coords.latitude, position.coords.longitude]);
-                },
-                (error) => {
-                    console.error("Error getting location:", error);
-                }
-            );
+    // MOCK GPS: Using HCM ward office coordinates (SPX TP.HCM - Thủ Đức area)
+    const MOCK_WARD_OFFICE_LOCATION: [number, number] = [10.8506, 106.7630];
+    const [currentLocation] = useState<[number, number] | null>(MOCK_WARD_OFFICE_LOCATION);
 
-            const watchId = navigator.geolocation.watchPosition(
-                (position) => {
-                    setCurrentLocation([position.coords.latitude, position.coords.longitude]);
-                },
-                (error) => {
-                    console.error("Error watching location:", error);
-                }
-            );
+    // Original geolocation code (commented out for demo)
+    // useEffect(() => {
+    //     if ('geolocation' in navigator) {
+    //         navigator.geolocation.getCurrentPosition(
+    //             (position) => {
+    //                 setCurrentLocation([position.coords.latitude, position.coords.longitude]);
+    //             },
+    //             (error) => {
+    //                 console.error("Error getting location:", error);
+    //             }
+    //         );
 
-            return () => navigator.geolocation.clearWatch(watchId);
-        }
-    }, []);
+    //         const watchId = navigator.geolocation.watchPosition(
+    //             (position) => {
+    //                 setCurrentLocation([position.coords.latitude, position.coords.longitude]);
+    //             },
+    //             (error) => {
+    //                 console.error("Error watching location:", error);
+    //             }
+    //         );
+
+    //         return () => navigator.geolocation.clearWatch(watchId);
+    //     }
+    // }, []);
 
     useEffect(() => {
         const geocodeOrders = async () => {
@@ -253,7 +256,9 @@ export function ShipperMapPanel({ orders, mode = 'delivery' }: ShipperMapPanelPr
                         >
                             <Popup>
                                 <div className="text-center">
-                                    <p className="font-bold text-blue-600 text-sm">Vị trí của bạn</p>
+                                    <p className="font-bold text-blue-600 text-sm">Vị trí Bưu cục</p>
+                                    <p className="text-xs text-gray-600 mt-1">SPX TP.HCM - Thủ Đức</p>
+                                    <p className="text-xs text-gray-500">86 Quốc lộ 1K, Thủ Đức</p>
                                 </div>
                             </Popup>
                         </Marker>
@@ -324,7 +329,7 @@ export function ShipperMapPanel({ orders, mode = 'delivery' }: ShipperMapPanelPr
                         {/* Driver status */}
                         <div className="flex items-center gap-1.5">
                             <div className={`w-2.5 h-2.5 rounded-full ${currentLocation ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                            <span>{currentLocation ? 'Đã có vị trí GPS' : 'Đang tìm GPS...'}</span>
+                            <span>{currentLocation ? 'Vị trí Bưu cục (Demo)' : 'Đang tìm GPS...'}</span>
                         </div>
                     </div>
                     <span className="text-gray-400">Nhấp vào marker để xem chi tiết</span>

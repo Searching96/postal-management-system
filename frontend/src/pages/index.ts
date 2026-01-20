@@ -12,6 +12,7 @@ export { OrderListPage } from './orders/OrderListPage';
 export { CreateOrderPage } from './orders/CreateOrderPage';
 export { OrderDetailsPage } from './orders/OrderDetailsPage';
 export { TrackOrderPage } from './orders/TrackOrderPage';
+export { IncomingDeliveriesPage } from './orders/IncomingDeliveriesPage';
 export { BatchListPage } from './batches/BatchListPage';
 export { BatchDetailsPage } from './batches/BatchDetailsPage';
 export { ShipperManagementPage } from './admin/ShipperManagementPage';
