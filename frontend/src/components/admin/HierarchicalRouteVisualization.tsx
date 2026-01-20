@@ -94,11 +94,11 @@ export function HierarchicalRouteVisualization({
                     return (
                         <div key={level} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                             {/* Header */}
-                            <button
-                                onClick={() => toggleExpanded(level)}
-                                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                            >
-                                <div className="flex items-center gap-3 flex-1">
+                            <div className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                                <button
+                                    onClick={() => toggleExpanded(level)}
+                                    className="flex items-center gap-3 flex-1 text-left"
+                                >
                                     {hasRoutes && (
                                         isExpanded ? (
                                             <ChevronDown className="w-5 h-5 text-gray-400" />
@@ -107,7 +107,7 @@ export function HierarchicalRouteVisualization({
                                         )
                                     )}
                                     {!hasRoutes && <div className="w-5" />}
-                                    <div className="text-left">
+                                    <div>
                                         <p className="font-semibold text-gray-900">
                                             {getRouteLevelLabel(level)}
                                         </p>
@@ -115,20 +115,17 @@ export function HierarchicalRouteVisualization({
                                             {hasRoutes ? `${levelRoutes.length} tuyến` : 'Không có tuyến'}
                                         </p>
                                     </div>
-                                </div>
+                                </button>
 
                                 {canCreate && (
                                     <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onCreateRoute?.(level);
-                                        }}
+                                        onClick={() => onCreateRoute?.(level)}
                                         className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                                     >
                                         + Tạo
                                     </button>
                                 )}
-                            </button>
+                            </div>
 
                             {/* Route list */}
                             {isExpanded && hasRoutes && (

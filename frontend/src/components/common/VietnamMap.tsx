@@ -22,6 +22,7 @@ export interface MapMarker {
     id: string;
     position: LatLngExpression;
     popupContent: React.ReactNode;
+    icon?: L.Icon | L.DivIcon;
 }
 
 export interface MapPolyline {
@@ -102,7 +103,11 @@ export function VietnamMap({
             />
 
             {markers.map(marker => (
-                <Marker key={marker.id} position={marker.position}>
+                <Marker
+                    key={marker.id}
+                    position={marker.position}
+                    icon={marker.icon || DefaultIcon}
+                >
                     <Popup>{marker.popupContent}</Popup>
                 </Marker>
             ))}

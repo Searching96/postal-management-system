@@ -16,6 +16,10 @@ export interface OfficeOption {
     name: string;
     code: string;
     type: string;
+    regionName?: string;
+    parentOfficeId?: string;
+    wardCode?: string;
+    provinceCode?: string;
 }
 
 /**
@@ -66,7 +70,10 @@ export async function getOffices(type?: string): Promise<OfficeOption[]> {
             name: office.officeName,
             code: office.officeType,
             type: office.officeType,
+            regionName: office.regionName,
             parentOfficeId: office.parentOfficeId,
+            wardCode: office.wardCode,
+            provinceCode: office.provinceCode,
         }));
     } catch (error) {
         console.error('Error fetching offices:', error);
@@ -103,7 +110,19 @@ export async function getWardOffices(): Promise<OfficeOption[]> {
 export async function getWardOfficesByProvince(provinceCode: string): Promise<OfficeOption[]> {
     try {
         const response = await api.get(`/administrative/provinces/${provinceCode}/post-offices`);
-        return response.data.data || [];
+        const offices = response.data.data || [];
+
+        // Map to OfficeOption format
+        return offices.map((office: any) => ({
+            id: office.officeId,
+            name: office.officeName,
+            code: office.wardCode || office.officeId, // Use wardCode if available, otherwise officeId
+            type: office.officeType,
+            regionName: office.regionName,
+            parentOfficeId: office.parentOfficeId,
+            wardCode: office.wardCode,
+            provinceCode: office.provinceCode,
+        }));
     } catch (error) {
         console.error('Error fetching ward offices:', error);
         return [];

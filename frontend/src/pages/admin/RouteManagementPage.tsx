@@ -33,7 +33,10 @@ import { officeDataService } from '../../services/officeDataService';
 interface Location {
     id: string;
     name: string;
-    type: 'PROVINCE_WAREHOUSE' | 'HUB' | 'SYSTEM_HUB';
+    type: 'PROVINCE_WAREHOUSE' | 'HUB' | 'SYSTEM_HUB' | 'WARD_OFFICE';
+    regionName?: string;
+    wardCode?: string;
+    provinceCode?: string;
 }
 
 interface RouteManagementPageProps {
@@ -85,13 +88,17 @@ export function RouteManagementPage({ filterRouteType }: RouteManagementPageProp
                     id: h.id,
                     name: h.name,
                     type: h.type === 'SYSTEM_HUB' ? 'SYSTEM_HUB' as const : 'HUB' as const,
-                    parentOfficeId: h.parentOfficeId
+                    regionName: h.regionName,
+                    wardCode: h.wardCode,
+                    provinceCode: h.provinceCode
                 })),
                 ...provinceWhData.map((w: any) => ({
                     id: w.id,
                     name: w.name,
                     type: 'PROVINCE_WAREHOUSE' as const,
-                    parentOfficeId: w.parentOfficeId
+                    regionName: w.regionName,
+                    wardCode: w.wardCode,
+                    provinceCode: w.provinceCode
                 }))
             ];
             setAvailableLocations(locations);
@@ -283,6 +290,7 @@ export function RouteManagementPage({ filterRouteType }: RouteManagementPageProp
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1">
                     <RouteNetworkMap
                         routes={filteredRoutes}
+                        availableLocations={availableLocations}
                         onEdgeClick={handleEdgeClick}
                     />
                 </div>

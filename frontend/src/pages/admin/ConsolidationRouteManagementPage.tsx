@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Loader2, RefreshCw, Info } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCw, Info, LayoutList, Map as MapIcon } from 'lucide-react';
 import { useAuth } from '../../lib/AuthContext';
 import { EmployeeMeResponse } from '../../models/user';
 import {
@@ -21,9 +21,10 @@ import {
     getAllProvinces,
     getHubWarehouses,
     getProvinceWarehouses,
-    getWardsByProvince,
+    getWardOfficesByProvince,
 } from '../../services/officeDataService';
 import { HierarchicalRouteVisualization } from '../../components/admin/HierarchicalRouteVisualization';
+import { ConsolidationRouteMap } from '../../components/admin/ConsolidationRouteMap';
 import { CreateConsolidationRouteModal } from '../../components/admin/modals/CreateConsolidationRouteModal';
 import { RerouteModal } from '../../components/admin/modals/RerouteModal';
 
@@ -34,6 +35,7 @@ export function ConsolidationRouteManagementPage() {
     const [error, setError] = useState<string | null>(null);
     const [selectedRoute, setSelectedRoute] = useState<ConsolidationRoute | null>(null);
     const [routeStatus, setRouteStatus] = useState<ConsolidationStatusResponse | null>(null);
+    const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
     // Modal states
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -45,7 +47,6 @@ export function ConsolidationRouteManagementPage() {
     // Data options from API
     const [provinces, setProvinces] = useState<any[]>([]);
     const [warehouses, setWarehouses] = useState<any[]>([]);
-    const [wardsByProvince, setWardsByProvince] = useState<Record<string, any[]>>({});
 
     useEffect(() => {
         loadAllData();
@@ -109,16 +110,12 @@ export function ConsolidationRouteManagementPage() {
         setShowCreateModal(true);
     }
 
-    async function handleFetchWards(provinceCode: string) {
+    async function handleFetchWardOffices(provinceCode: string) {
         try {
-            const wards = await getWardsByProvince(provinceCode);
-            setWardsByProvince((prev) => ({
-                ...prev,
-                [provinceCode]: wards,
-            }));
-            return wards;
+            const wardOffices = await getWardOfficesByProvince(provinceCode);
+            return wardOffices;
         } catch (err) {
-            console.error('Error fetching wards:', err);
+            console.error('Error fetching ward offices:', err);
             return [];
         }
     }
@@ -212,14 +209,42 @@ export function ConsolidationRouteManagementPage() {
                         Tổng cộng: {routes.length} tuyến ({routes.filter((r) => r.status.isActive).length} hoạt động)
                     </p>
                 </div>
-                <button
-                    onClick={loadRoutes}
-                    disabled={loading}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
-                >
-                    <RefreshCw className="w-4 h-4" />
-                    Làm mới
-                </button>
+                <div className="flex items-center gap-3">
+                    {/* View Mode Toggle */}
+                    <div className="inline-flex rounded-lg border border-gray-300 bg-white p-1">
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                viewMode === 'list'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                        >
+                            <LayoutList className="w-4 h-4" />
+                            List
+                        </button>
+                        <button
+                            onClick={() => setViewMode('map')}
+                            className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                viewMode === 'map'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                        >
+                            <MapIcon className="w-4 h-4" />
+                            Map
+                        </button>
+                    </div>
+
+                    <button
+                        onClick={loadRoutes}
+                        disabled={loading}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        Làm mới
+                    </button>
+                </div>
             </div>
 
             {/* Error message */}
@@ -236,15 +261,23 @@ export function ConsolidationRouteManagementPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left: Route List */}
+                    {/* Left: Route Visualization (List or Map) */}
                     <div className="lg:col-span-2">
-                        <HierarchicalRouteVisualization
-                            routes={routes}
-                            currentUser={employeeUser}
-                            selectedRoute={selectedRoute}
-                            onSelectRoute={setSelectedRoute}
-                            onCreateRoute={handleCreateRoute}
-                        />
+                        {viewMode === 'list' ? (
+                            <HierarchicalRouteVisualization
+                                routes={routes}
+                                currentUser={employeeUser}
+                                selectedRoute={selectedRoute}
+                                onSelectRoute={setSelectedRoute}
+                                onCreateRoute={handleCreateRoute}
+                            />
+                        ) : (
+                            <ConsolidationRouteMap
+                                routes={routes}
+                                selectedRoute={selectedRoute}
+                                onRouteClick={setSelectedRoute}
+                            />
+                        )}
                     </div>
 
                     {/* Right: Route Details */}
@@ -409,10 +442,9 @@ export function ConsolidationRouteManagementPage() {
                     setCreateRouteLevel(null);
                 }}
                 onSubmit={handleSubmitCreate}
-                onFetchWards={handleFetchWards}
+                onFetchWardOffices={handleFetchWardOffices}
                 provinces={provinces}
                 warehouses={warehouses}
-                wards={Object.values(wardsByProvince).flat()}
             />
 
             <RerouteModal
