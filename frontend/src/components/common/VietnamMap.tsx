@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { LatLngExpression } from 'leaflet';
 import L from 'leaflet';
@@ -114,6 +114,27 @@ function ClickablePolyline({ line }: { line: MapPolyline }) {
     );
 }
 
+// Internal component to handle auto-zooming
+function MapBoundsFitter({ markers }: { markers: MapMarker[] }) {
+    const map = useMap();
+
+    useEffect(() => {
+        if (markers.length > 0) {
+            try {
+                // Leaflet expects [lat, lng] tuples, ensure positions are correct
+                const bounds = L.latLngBounds(markers.map(m => m.position as L.LatLngTuple));
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+                }
+            } catch (e) {
+                console.warn("Failed to fit bounds:", e);
+            }
+        }
+    }, [markers, map]);
+
+    return null;
+}
+
 export function VietnamMap({
     markers = [],
     polylines = [],
@@ -125,6 +146,8 @@ export function VietnamMap({
             zoom={DEFAULT_ZOOM}
             style={{ height, width: '100%' }}
         >
+            <MapBoundsFitter markers={markers} />
+
             <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                 url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"

@@ -78,7 +78,7 @@ export const WARD_COORDINATES: Record<string, [number, number]> = {
 
     // --- GIA LÂM DISTRICT ---
     '00565': [21.0100, 105.9500], // Gia Lâm (General)
-    '00577': [20.9760, 105.9120], // Bát Tràng (Ceramic Village)
+    '00577': [20.9960, 105.9135], // Bát Tràng (Ceramic Village)
     '00541': [21.0750, 105.9450], // Phù Đổng
 
     // --- ĐÔNG ANH DISTRICT ---

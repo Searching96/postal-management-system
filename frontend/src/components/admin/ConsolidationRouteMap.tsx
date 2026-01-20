@@ -11,10 +11,10 @@ const PROVINCE_COORDINATES: Record<string, [number, number]> = {
 };
 
 const HARDCODED_WARD_NAMES: Record<string, string> = {
-    '00103': 'Tây Hồ', '00091': 'Phú Thượng', '00611': 'Xuân Đỉnh',
-    '00619': 'Phú Diễn', '00622': 'Xuân Phương', '00634': 'Tây Mỗ',
+    '00091': 'Phú Thượng',
+    '00619': 'Phú Diễn', '00622': 'Xuân Phương',
     '00199': 'Láng', '00226': 'Văn Miếu - QTGiám', '00229': 'Kim Liên',
-    '00364': 'Khương Đình', '00664': 'Đại Thanh', '00679': 'Ngọc Hồi',
+    '00364': 'Khương Đình', '00664': 'Đại Thanh',
     '00340': 'Yên Sở', '00283': 'Vĩnh Tuy', '00577': 'Bát Tràng',
     '00565': 'Gia Lâm', '00541': 'Phù Đổng', '00127': 'Việt Hưng',
     '00118': 'Bồ Đề', '00145': 'Long Biên',
