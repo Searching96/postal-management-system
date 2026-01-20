@@ -71,28 +71,42 @@ export function OrderListPage() {
     // Status mapping
     const getStatusBadge = (status: string) => {
         const map: Record<string, string> = {
-            CREATED: "info",         // Mới tạo
-            PENDING: "secondary",    // Chờ xử lý
-            ACCEPTED: "primary",    // Đang xử lý
-            SHIPPING: "warning",     // Đang vận chuyển
-            DELIVERING: "primary",   // Đang giao
-            COMPLETED: "success",    // Hoàn thành
-            CANCELLED: "destructive", // Đã hủy
-            RETURNED: "destructive"   // Đã trả lại
+            CREATED: "info",
+            PENDING_PICKUP: "warning",
+            PICKED_UP: "primary",
+            AT_ORIGIN_OFFICE: "primary",
+            IN_TRANSIT_TO_HUB: "secondary",
+            AT_HUB: "secondary",
+            IN_TRANSIT_TO_DESTINATION: "secondary",
+            AT_DESTINATION_HUB: "secondary",
+            IN_TRANSIT_TO_OFFICE: "secondary",
+            AT_DESTINATION_OFFICE: "primary",
+            OUT_FOR_DELIVERY: "warning",
+            DELIVERED: "success",
+            DELIVERY_FAILED: "destructive",
+            CANCELLED: "destructive",
+            RETURNED: "destructive"
         };
         const labels: Record<string, string> = {
             CREATED: "Mới tạo",
-            PENDING: "Chờ xử lý",
-            ACCEPTED: "Đang xử lý",
-            SHIPPING: "Đang vận chuyển",
-            DELIVERING: "Đang giao",
-            COMPLETED: "Hoàn thành",
+            PENDING_PICKUP: "Chờ lấy hàng",
+            PICKED_UP: "Đang lấy hàng",
+            AT_ORIGIN_OFFICE: "Tại bưu cục gốc",
+            IN_TRANSIT_TO_HUB: "Đang đến Hub",
+            AT_HUB: "Tại Hub",
+            IN_TRANSIT_TO_DESTINATION: "Trung chuyển",
+            AT_DESTINATION_HUB: "Tại Hub đích",
+            IN_TRANSIT_TO_OFFICE: "Đang về bưu cục",
+            AT_DESTINATION_OFFICE: "Tại bưu cục phát",
+            OUT_FOR_DELIVERY: "Đang giao hàng",
+            DELIVERED: "Giao thành công",
+            DELIVERY_FAILED: "Giao thất bại",
             CANCELLED: "Đã hủy",
-            RETURNED: "Đã trả lại"
+            RETURNED: "Đã trả hàng"
         };
 
         return (
-            <Badge variant={map[status] || "default" as any}>
+            <Badge variant={(map[status] || "default") as any}>
                 {labels[status] || status}
             </Badge>
         );

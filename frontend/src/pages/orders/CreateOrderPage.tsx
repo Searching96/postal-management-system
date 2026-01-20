@@ -199,20 +199,30 @@ export function CreateOrderPage() {
         setIsSubmitting(true);
         try {
             const res = await orderService.createOrder(data);
+            console.log("API Response:", res); // DEBUG: See full response
+
+            // Backend returns Order directly, not wrapped in ApiResponse
             const orderData = {
-                ...res.data,
+                ...(res.data || res), // Handle both ApiResponse<Order> and Order
                 lengthCm: data.lengthCm,
                 widthCm: data.widthCm,
                 heightCm: data.heightCm
             };
 
+            console.log("Order Data:", orderData); // DEBUG: See processed order
+            console.log("Has orderId?", orderData.orderId); // DEBUG: Check orderId
+
             if (orderData.id || orderData.orderId) {
                 setCreatedOrder(orderData);
                 setShowSuccessDialog(true);
                 toast.success("Tạo vận đơn thành công!");
+            } else {
+                console.error("Order missing id/orderId", orderData);
+                toast.error("Đơn hàng được tạo nhưng thiếu mã định danh");
             }
-        } catch {
-            toast.error("Tạo đơn thất bại");
+        } catch (error) {
+            console.error("Create order error:", error); // DEBUG: See error details
+            toast.error("Tạo đơn thất bại: " + (error as any)?.response?.data?.message || (error as Error)?.message || "Unknown error");
         } finally {
             setIsSubmitting(false);
         }

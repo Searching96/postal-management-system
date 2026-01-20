@@ -61,6 +61,12 @@ export function Layout() {
 
   if (role === "PO_WARD_MANAGER" || role === "WH_WARD_MANAGER") {
     primaryNav.push({ to: "/admin/ward", icon: Building2, label: "Quản lý xã" });
+    if (role === "WH_WARD_MANAGER") {
+      primaryNav.push({ to: "/admin/wh-ward-dashboard", icon: Home, label: "Bảng điều khiển" });
+    }
+    if (role === "PO_WARD_MANAGER") {
+      primaryNav.push({ to: "/admin/po-ward-dashboard", icon: Home, label: "Bảng điều khiển" });
+    }
   }
 
   if (role === "HUB_ADMIN" || role === "WH_PROVINCE_ADMIN" || role === "WH_WARD_MANAGER" || role === "PO_PROVINCE_ADMIN" || role === "PO_WARD_MANAGER") {
@@ -72,7 +78,6 @@ export function Layout() {
 
   if (isPO || isWH || role === "HUB_ADMIN" || role === "SYSTEM_ADMIN") {
     primaryNav.push({ to: "/orders", icon: Package, label: "Quản lý đơn hàng" });
-    primaryNav.push({ to: "/orders/incoming-deliveries", icon: Inbox, label: "Đơn hàng đang đến" });
 
     if (isPO) {
       primaryNav.push({ to: "/orders/pending-pickups", icon: Truck, label: "Đơn chờ lấy hàng" });
@@ -81,6 +86,7 @@ export function Layout() {
     if (isPO || isWH) {
       primaryNav.push({ to: "/orders/delivery", icon: Send, label: "Giao Bưu tá" });
       primaryNav.push({ to: "/staff/packing-requests", icon: Package, label: "Quản lý kiện hàng" });
+      primaryNav.push({ to: "/complaints", icon: MessageSquare, label: "Khiếu nại" });
     }
   }
 

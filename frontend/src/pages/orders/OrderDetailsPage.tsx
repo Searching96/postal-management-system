@@ -99,20 +99,21 @@ export function OrderDetailsPage() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case "COMPLETED":
             case "DELIVERED": return "success";
             case "CANCELLED":
-            case "DELIVERY_FAILED": return "destructive";
-            case "RETURNED": return "warning";
-            case "DELIVERING":
-            case "OUT_FOR_DELIVERY": return "primary";
-            case "SHIPPING":
-            case "IN_TRANSIT_TO_HUB":
-            case "IN_TRANSIT_TO_OFFICE": return "info";
-            case "ACCEPTED":
+            case "DELIVERY_FAILED":
+            case "RETURNED": return "destructive";
+            case "OUT_FOR_DELIVERY": return "warning";
+            case "PENDING_PICKUP": return "warning";
+            case "CREATED": return "info";
+            case "PICKED_UP":
             case "AT_ORIGIN_OFFICE":
-            case "AT_HUB":
             case "AT_DESTINATION_OFFICE": return "primary";
+            case "IN_TRANSIT_TO_HUB":
+            case "AT_HUB":
+            case "IN_TRANSIT_TO_DESTINATION":
+            case "AT_DESTINATION_HUB":
+            case "IN_TRANSIT_TO_OFFICE": return "secondary";
             default: return "default";
         }
     };
@@ -120,22 +121,20 @@ export function OrderDetailsPage() {
     const getStatusLabel = (status: string) => {
         const labels: Record<string, string> = {
             CREATED: "Mới tạo",
-            ACCEPTED: "Đang xử lý",
-            SHIPPING: "Đang vận chuyển",
-            DELIVERING: "Đang giao",
-            COMPLETED: "Hoàn thành",
-            DELIVERED: "Đã giao thành công",
-            CANCELLED: "Đã hủy",
-            RETURNED: "Đã trả lại",
-            PENDING_PICKUP: "Chờ bưu tá lấy hàng",
-            PICKED_UP: "Đã lấy hàng",
-            AT_ORIGIN_OFFICE: "Tại bưu cục gửi",
-            IN_TRANSIT_TO_HUB: "Đang chuyển đến kho",
-            AT_HUB: "Tại kho tập kết",
-            IN_TRANSIT_TO_OFFICE: "Đang chuyển đến bưu cục phát",
+            PENDING_PICKUP: "Chờ lấy hàng",
+            PICKED_UP: "Đang lấy hàng",
+            AT_ORIGIN_OFFICE: "Tại bưu cục gốc",
+            IN_TRANSIT_TO_HUB: "Đang đến Hub",
+            AT_HUB: "Tại Hub",
+            IN_TRANSIT_TO_DESTINATION: "Trung chuyển",
+            AT_DESTINATION_HUB: "Tại Hub đích",
+            IN_TRANSIT_TO_OFFICE: "Đang về bưu cục",
             AT_DESTINATION_OFFICE: "Tại bưu cục phát",
             OUT_FOR_DELIVERY: "Đang giao hàng",
-            DELIVERY_FAILED: "Giao hàng thất bại"
+            DELIVERED: "Giao thành công",
+            DELIVERY_FAILED: "Giao thất bại",
+            CANCELLED: "Đã hủy",
+            RETURNED: "Đã trả hàng"
         };
         return labels[status] || status;
     };

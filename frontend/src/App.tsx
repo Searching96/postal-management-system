@@ -30,7 +30,10 @@ import {
   DebugLoginPage,
   ConsolidationRouteManagementPage,
   UnifiedRouteManagementPage,
-  PackingRequestPage
+  PackingRequestPage,
+  ComplaintPage,
+  WHWardManagerDashboard,
+  POWardManagerDashboard
 } from "./pages";
 
 function App() {
@@ -81,6 +84,8 @@ function App() {
               {/* Ward Manager */}
               <Route element={<RoleRoute allowedRoles={["PO_WARD_MANAGER", "WH_WARD_MANAGER"]} />}>
                 <Route path="/admin/ward" element={<WardManagerPage />} />
+                <Route path="/admin/wh-ward-dashboard" element={<WHWardManagerDashboard />} />
+                <Route path="/admin/po-ward-dashboard" element={<POWardManagerDashboard />} />
               </Route>
 
               {/* Shipper Management (Hub/WH Province/WH Ward/PO Province/PO Ward) */}
@@ -110,10 +115,11 @@ function App() {
                 <Route path="/orders/delivery" element={<AssignDeliveryPage />} />
                 <Route path="/batches" element={<BatchListPage />} />
                 <Route path="/batches/:id" element={<BatchDetailsPage />} />
+                <Route path="/complaints" element={<ComplaintPage />} />
               </Route>
 
               {/* Warehouse Staff - Packing Requests */}
-              <Route element={<RoleRoute allowedRoles={["WH_STAFF"]} />}>
+              <Route element={<RoleRoute allowedRoles={["WH_STAFF", "WH_WARD_MANAGER", "WH_PROVINCE_ADMIN"]} />}>
                 <Route path="/staff/packing-requests" element={<PackingRequestPage />} />
               </Route>
 

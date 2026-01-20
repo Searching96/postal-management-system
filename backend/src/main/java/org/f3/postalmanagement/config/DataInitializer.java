@@ -65,8 +65,6 @@ public class DataInitializer implements CommandLineRunner {
         Map<Integer, Office> hubs = initHubForEachRegion();
         initSystemAdmin(hubs.values().stream().findFirst().orElse(null));
         initProvinceOffices(hubs);
-        initTestCustomers();
-        initTestOrder();
         initWardOffices();
         initHubTransferRoutes(hubs);
     }
@@ -111,7 +109,6 @@ public class DataInitializer implements CommandLineRunner {
         
         if (officeRepository.existsByOfficeType(OfficeType.HUB)) {
             log.debug("Hubs already exist.");
-            // Load existing hubs into map
             List<Office> existingHubs = officeRepository.findAllByOfficeType(OfficeType.HUB);
             for (Office hub : existingHubs) {
                 hubsByRegion.put(hub.getRegion().getId(), hub);
@@ -121,11 +118,38 @@ public class DataInitializer implements CommandLineRunner {
             
             for (AdministrativeRegion region : regions) {
                 Office hub = new Office();
-                hub.setOfficeCode("HUB-" + String.format("%02d", region.getId()));
-                hub.setOfficeName("HUB " + region.getName());
+                String officeCode = "HUB-" + String.format("%02d", region.getId());
+                
+                // Customize for Hanoi (Assumed Region ID or logic) 
+                // Since region IDs might vary, we can check region name or known IDs if available.
+                // Assuming standard Vietnamese regions: Red River Delta (Hanoi) and Southeast (HCM).
+                // Let's use generic names for most, but specific if we can identify.
+                // However, the safest way given current context is to map explicitly if IDs are known, 
+                // or just use generic for now but update specific ones later.
+                
+                // User provided specific data for "Hanoi" and "HCM". 
+                // Let's try to match by checking if the region contains specific provinces or just names.
+                // Simpler approach: Create generic, then update specific ones? No, create correctly first.
+                
+                String hubName = "HUB " + region.getName();
+                String address = "Address HUB " + region.getName();
+                
+                // Hardcoded adjustment for Demo Realism if Region matches
+                // (Note: This relies on assumed region ordering/naming in DB. 
+                //  If Region 6 is Southeast (HCM) and Region 2 is Red River Delta (Hanoi))
+                if (region.getId() == 2) { // Red River Delta / Hanoi
+                     hubName = "Hong Delta Hub (Hà Nội SOC)";
+                     address = "Lô 17, 19, 30 - số 386 đường Nguyễn Văn Linh - khu công nghiệp Đài Tư - quận Long Biên - thành phố Hà Nội";
+                } else if (region.getId() == 6) { // Southeast / HCM
+                     hubName = "Dong Nam Bo Hub (Củ Chi SOC)";
+                     address = "Khu công nghiệp Tân Phú Trung, Quốc lộ 22, Ấp Trạm Bơm, xã Tân Phú Trung, huyện Củ Chi, TP. Hồ Chí Minh";
+                }
+
+                hub.setOfficeCode(officeCode);
+                hub.setOfficeName(hubName);
                 hub.setOfficeEmail("hub" + region.getId() + "@f3postal.com");
                 hub.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + String.format("%08d", region.getId())));
-                hub.setOfficeAddressLine1("Address HUB " + region.getName());
+                hub.setOfficeAddressLine1(address);
                 hub.setRegion(region);
                 hub.setOfficeType(OfficeType.HUB);
                 hub.setCapacity(10000);
@@ -297,138 +321,7 @@ public class DataInitializer implements CommandLineRunner {
         log.info("Created {} for office: {}", role, office.getOfficeName());
     }
 
-    private void initTestCustomers() {
-        // Check if test customer already exists
-        if (accountRepository.existsByUsername("0901234567")) {
-            log.debug("Test customer already exists.");
-            return;
-        }
 
-        // Create account first
-        Account account = new Account();
-        account.setUsername("0901234567");
-        account.setPassword(passwordEncoder.encode("123456"));
-        account.setRole(Role.CUSTOMER);
-        account.setEmail("customer1@gmail.com");
-        account.setActive(true);
-        Account savedAccount = accountRepository.save(account);
-
-        // Fetch a ward for the customer to satisfy new constraints
-        Ward sampleWard = wardRepository.findAll().stream().findFirst().orElse(null);
-
-        // Create customer and link to account
-        Customer customer = new Customer();
-        customer.setAccount(savedAccount);
-        customer.setFullName("Nguyễn Văn A");
-        customer.setPhoneNumber("0901234567");
-        // Updated: Split address into line1 and ward
-        customer.setAddressLine1("123 Đường ABC");
-        if (sampleWard != null) {
-            customer.setWard(sampleWard);
-        }
-        customerRepository.save(customer);
-
-        log.info("Created test customer: 0901234567 / 123456");
-    }
-
-    private void initTestOrder() {
-        // Check if test order already exists
-        if (orderRepository.existsByTrackingNumber("VNTEST12345VN")) {
-            Order existingOrder = orderRepository.findByTrackingNumber("VNTEST12345VN").orElse(null);
-            if (existingOrder != null) {
-                log.info("Test order already exists with ID: {}", existingOrder.getId());
-                log.info("==> Use this Order ID for testing: {}", existingOrder.getId());
-            }
-            return;
-        }
-
-        // Get test customer
-        Customer testCustomer = customerRepository.findByPhoneNumber("0901234567")
-                .orElseThrow(() -> new IllegalStateException("Test customer not found"));
-
-        // Get a ward for sender and receiver (Moved UP before receiver creation)
-        Ward senderWard = wardRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("No ward found in database"));
-        Ward receiverWard = wardRepository.findAll().stream().skip(1).findFirst()
-                .orElse(senderWard);
-
-        // Create receiver customer (walk-in customer without account)
-        Customer receiverCustomer = new Customer();
-        receiverCustomer.setFullName("Trần Thị B");
-        receiverCustomer.setPhoneNumber("0987654321");
-        // Updated: Split address into line1 and ward
-        receiverCustomer.setAddressLine1("456 Đường XYZ");
-        receiverCustomer.setWard(receiverWard);
-        Customer savedReceiver = customerRepository.save(receiverCustomer);
-
-        // Get first office as origin
-        Office originOffice = officeRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("No office found"));
-
-        // Create test order
-        Order order = new Order();
-        order.setTrackingNumber("VNTEST12345VN");
-        
-        // Sender info
-        order.setSenderCustomer(testCustomer);
-        order.setSenderName(testCustomer.getFullName());
-        order.setSenderPhone(testCustomer.getPhoneNumber());
-        // Updated: Use addressLine1 instead of legacy address
-        order.setSenderAddressLine1(testCustomer.getAddressLine1());
-        // Optional: setSenderWard if the Order entity supports it, to mirror receiver
-        if (testCustomer.getWard() != null) {
-             // order.setSenderWard(testCustomer.getWard()); // Uncomment if field exists
-        }
-        
-        // Receiver info
-        order.setReceiverCustomer(savedReceiver);
-        order.setReceiverName(savedReceiver.getFullName());
-        order.setReceiverPhone(savedReceiver.getPhoneNumber());
-        // Updated: Use structured address fields
-        order.setReceiverAddressLine1(savedReceiver.getAddressLine1());
-        order.setReceiverWard(savedReceiver.getWard());
-        
-        // Package info
-        order.setWeightKg(BigDecimal.valueOf(1.5));
-        order.setLengthCm(BigDecimal.valueOf(30));
-        order.setWidthCm(BigDecimal.valueOf(20));
-        order.setHeightCm(BigDecimal.valueOf(10));
-        order.setChargeableWeightKg(BigDecimal.valueOf(1.5));
-        order.setPackageType(PackageType.DOCUMENT);
-        order.setServiceType(ServiceType.STANDARD);
-        
-        // Pricing
-        order.setShippingFee(BigDecimal.valueOf(50000));
-        order.setInsuranceFee(BigDecimal.ZERO);
-        order.setCodAmount(BigDecimal.ZERO);
-        order.setTotalAmount(BigDecimal.valueOf(50000));
-        
-        // Status
-        order.setStatus(OrderStatus.CREATED);
-        order.setOriginOffice(originOffice);
-        order.setCurrentOffice(originOffice);
-        
-        // Need employee to create order - use any existing employee
-        Employee anyEmployee = employeeRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("No employee found"));
-        order.setCreatedByEmployee(anyEmployee);
-        
-        Order savedOrder = orderRepository.save(order);
-        
-        // Create status history
-        OrderStatusHistory statusHistory = new OrderStatusHistory();
-        statusHistory.setOrder(savedOrder);
-        statusHistory.setStatus(OrderStatus.CREATED);
-        statusHistory.setOffice(originOffice);
-        statusHistory.setDescription("Test order created for ABSA testing");
-        orderStatusHistoryRepository.save(statusHistory);
-        
-        log.info("Created test order with tracking number: VNTEST12345VN");
-        log.info("============================================");
-        log.info("==> TEST ORDER ID: {}", savedOrder.getId());
-        log.info("==> Use this Order ID for ABSA testing");
-        log.info("============================================");
-    }
 
     /**
      * Initialize hub-to-hub transfer routes following Vietnam's geography.

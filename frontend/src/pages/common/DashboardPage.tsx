@@ -228,6 +228,24 @@ export function DashboardPage() {
         color: "text-green-600",
         to: "/admin/ward"
       });
+      if (role === "WH_WARD_MANAGER") {
+        actions.push({
+          title: "Bảng điều khiển Warehouse",
+          desc: "Xem thống kê & hiệu suất kho",
+          icon: BarChart3,
+          color: "text-blue-600",
+          to: "/admin/wh-ward-dashboard"
+        });
+      }
+      if (role === "PO_WARD_MANAGER") {
+        actions.push({
+          title: "Bảng điều khiển Bưu cục",
+          desc: "Xem thống kê & vận hành trạm",
+          icon: BarChart3,
+          color: "text-orange-600",
+          to: "/admin/po-ward-dashboard"
+        });
+      }
     }
 
     if (isShipper) {

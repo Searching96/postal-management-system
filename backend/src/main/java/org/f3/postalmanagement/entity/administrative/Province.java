@@ -24,4 +24,8 @@ public class Province {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "administrative_unit_id")
     private AdministrativeUnit administrativeUnit;
+
+    public String getName() {
+        return this.name;
+    }
 }

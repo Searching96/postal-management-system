@@ -195,10 +195,10 @@ export function PackingRequestPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-                        Packing Requests (Consolidation)
+                        Yêu cầu đóng gói
                     </h1>
                     <p className="text-sm text-muted-foreground mt-1">
-                        Manage outgoing batches and view packing instructions.
+                        Quản lý các kiện hàng đi và xem hướng dẫn đóng gói.
                     </p>
                 </div>
             </div>
@@ -217,9 +217,9 @@ export function PackingRequestPage() {
                 `}
                     >
                         <Package className="w-4 h-4" />
-                        Bundle Packing
+                        Đóng gói kiện hàng
                         <span className="bg-gray-100 text-gray-900 py-0.5 px-2.5 rounded-full text-xs font-medium ml-2">
-                            {Math.max(MOCK_BATCHES.length - packedBatches.length, 0)} Pending
+                            {Math.max(MOCK_BATCHES.length - packedBatches.length, 0)} Đang chờ
                         </span>
                     </button>
                     <button
@@ -233,7 +233,7 @@ export function PackingRequestPage() {
                 `}
                     >
                         <Container className="w-4 h-4" />
-                        Container Loading
+                        Đóng container / xe tải
                     </button>
                 </nav>
             </div>
@@ -248,7 +248,7 @@ export function PackingRequestPage() {
                                 <Package className="w-6 h-6 text-blue-600" />
                             </div>
                             <div>
-                                <p className="text-sm font-medium text-gray-500">Pending Packing</p>
+                                <p className="text-sm font-medium text-gray-500">Đang chờ đóng gói</p>
                                 <h3 className="text-2xl font-bold text-gray-900">{MOCK_BATCHES.length - packedBatches.length}</h3>
                             </div>
                         </div>
@@ -258,7 +258,7 @@ export function PackingRequestPage() {
                                 <CheckSquare className="w-6 h-6 text-green-600" />
                             </div>
                             <div>
-                                <p className="text-sm font-medium text-gray-500">Completd Today</p>
+                                <p className="text-sm font-medium text-gray-500">Hoàn thành hôm nay</p>
                                 <h3 className="text-2xl font-bold text-gray-900">{packedBatches.length}</h3>
                             </div>
                         </div>
@@ -268,7 +268,7 @@ export function PackingRequestPage() {
                                 <Truck className="w-6 h-6 text-amber-600" />
                             </div>
                             <div>
-                                <p className="text-sm font-medium text-gray-500">Next Truck</p>
+                                <p className="text-sm font-medium text-gray-500">Xe tiếp theo</p>
                                 <h3 className="text-xl font-bold text-gray-900">16:30</h3>
                             </div>
                         </div>
@@ -282,7 +282,7 @@ export function PackingRequestPage() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
                                     type="text"
-                                    placeholder="Search by Batch ID or Type..."
+                                    placeholder="Tìm theo Mã kiện hoặc Loại..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
@@ -290,7 +290,7 @@ export function PackingRequestPage() {
                             </div>
                             <button className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
                                 <Filter className="w-4 h-4" />
-                                Filter Status
+                                Lọc trạng thái
                             </button>
                         </div>
 
@@ -299,13 +299,13 @@ export function PackingRequestPage() {
                             <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
                                     <tr>
-                                        <th className="px-6 py-3 font-medium">Batch ID</th>
-                                        <th className="px-6 py-3 font-medium">Bundle Type</th>
-                                        <th className="px-6 py-3 font-medium">Dimensions (mm)</th>
-                                        <th className="px-6 py-3 font-medium">Items</th>
-                                        <th className="px-6 py-3 font-medium">Fill Rate</th>
-                                        <th className="px-6 py-3 font-medium">Status</th>
-                                        <th className="px-6 py-3 font-medium text-right">Actions</th>
+                                        <th className="px-6 py-3 font-medium">Mã kiện</th>
+                                        <th className="px-6 py-3 font-medium">Loại kiện</th>
+                                        <th className="px-6 py-3 font-medium">Kích thước (mm)</th>
+                                        <th className="px-6 py-3 font-medium">Số lượng</th>
+                                        <th className="px-6 py-3 font-medium">Tỷ lệ lấp đầy</th>
+                                        <th className="px-6 py-3 font-medium">Trạng thái</th>
+                                        <th className="px-6 py-3 font-medium text-right">Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
@@ -322,7 +322,7 @@ export function PackingRequestPage() {
                                                             batch.type === 'MEDIUM' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                                                                 'bg-purple-50 text-purple-700 border-purple-200'
                                                         }`}>
-                                                        {batch.type}
+                                                        {batch.type === 'SMALL' ? 'NHỎ' : batch.type === 'MEDIUM' ? 'TRUNG BÌNH' : batch.type}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-500">
@@ -331,7 +331,7 @@ export function PackingRequestPage() {
                                                 <td className="px-6 py-4 text-gray-500">
                                                     <div className="flex items-center gap-2">
                                                         <Box className="w-4 h-4 text-gray-400" />
-                                                        <span>{batch.items} pcs</span>
+                                                        <span>{batch.items} món</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -349,11 +349,11 @@ export function PackingRequestPage() {
                                                     {isPacked ? (
                                                         <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-50 text-green-700 border border-green-200 gap-1">
                                                             <CheckCircle2 className="w-3 h-3" />
-                                                            Packed
+                                                            Đã đóng gói
                                                         </span>
                                                     ) : (
                                                         <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">
-                                                            Pending Packing
+                                                            Chờ đóng gói
                                                         </span>
                                                     )}
                                                 </td>
@@ -364,7 +364,7 @@ export function PackingRequestPage() {
                                                             }`}
                                                     >
                                                         <Play className="w-3 h-3 fill-current" />
-                                                        {isPacked ? 'Review Packing' : 'Start Packing'}
+                                                        {isPacked ? 'Xem lại đóng gói' : 'Bắt đầu đóng gói'}
                                                     </button>
                                                 </td>
                                             </tr>
@@ -379,8 +379,8 @@ export function PackingRequestPage() {
                                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-4">
                                     <AlertCircle className="w-6 h-6 text-gray-400" />
                                 </div>
-                                <h3 className="text-lg font-medium text-gray-900">No batches found</h3>
-                                <p className="text-gray-500 mt-1">Try adjusting your search criteria.</p>
+                                <h3 className="text-lg font-medium text-gray-900">Không tìm thấy kiện hàng nào</h3>
+                                <p className="text-gray-500 mt-1">Vui lòng thử điều chỉnh tiêu chí tìm kiếm.</p>
                             </div>
                         )}
                     </div>
@@ -391,22 +391,22 @@ export function PackingRequestPage() {
                     <div className="flex items-start justify-between mb-6">
                         <div>
                             <div className="flex items-center gap-2">
-                                <h2 className="text-lg font-bold text-gray-900">Truck Load Plan #{MOCK_CONTAINER.id}</h2>
+                                <h2 className="text-lg font-bold text-gray-900">Kế hoạch xếp hàng xe tải #{MOCK_CONTAINER.id}</h2>
                                 {isContainerLoaded ? (
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                         <CheckCircle2 className="w-3 h-3 mr-1" />
-                                        Loaded
+                                        Đã xếp xong
                                     </span>
                                 ) : (
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                        Pending Load
+                                        Chờ xếp hàng
                                     </span>
                                 )}
                             </div>
-                            <p className="text-sm text-gray-500 mt-1">Visualization of bundles loaded into the transport vehicle.</p>
+                            <p className="text-sm text-gray-500 mt-1">Hình ảnh minh họa các kiện hàng được xếp vào xe vận chuyển.</p>
 
                             <div className="flex items-center gap-2 mt-2">
-                                <span className="text-sm font-medium text-gray-500">Volumetric Fill:</span>
+                                <span className="text-sm font-medium text-gray-500">Tỷ lệ lấp đầy thể tích:</span>
                                 <div className="w-32 h-2.5 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
                                     <div
                                         className="h-full bg-blue-600 rounded-full"
@@ -423,7 +423,7 @@ export function PackingRequestPage() {
                             <div className="flex items-center justify-between mb-4 flex-shrink-0">
                                 <h3 className="text-sm font-semibold text-gray-700">Danh sách kiện hàng</h3>
                                 <span className="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
-                                    READY: {MOCK_CONTAINER.placements.filter(p => packedBatches.includes(p.id)).length}/{MOCK_CONTAINER.items}
+                                    SẴN SÀNG: {MOCK_CONTAINER.placements.filter(p => packedBatches.includes(p.id)).length}/{MOCK_CONTAINER.items}
                                 </span>
                             </div>
                             <div className="overflow-y-auto flex-1 pr-1 space-y-2">
@@ -446,8 +446,8 @@ export function PackingRequestPage() {
                                                 ) : (
                                                     <span className="w-4 h-4 rounded-full border-2 border-gray-300 flex-shrink-0" />
                                                 )}
-                                                Bundle #{p.id}
-                                                {hasBeenPlaced && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">IN TRUCK</span>}
+                                                Kiện #{p.id}
+                                                {hasBeenPlaced && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">ĐÃ XẾP XE</span>}
                                             </span>
                                             <span className={`text-xs ${isPacked ? 'text-green-700' : 'text-gray-400'}`}>
                                                 {p.l}x{p.w}x{p.h}
@@ -464,7 +464,7 @@ export function PackingRequestPage() {
                                 isOpen={true}
                                 onClose={() => { }}
                                 onConfirm={!isContainerLoaded ? handleConfirmContainer : undefined}
-                                title="Truck Load Plan Visualization"
+                                title="Hình ảnh minh họa kế hoạch xếp xe tải"
                                 type="CONTAINER"
                                 embedded={true}
                                 onStepChange={setContainerStep}
@@ -483,7 +483,7 @@ export function PackingRequestPage() {
                     onClose={() => setSelectedBatch(null)}
                     onConfirm={!packedBatches.includes(selectedBatch.id) ? () => handleConfirmPacked(selectedBatch.id) : undefined}
                     onCompleteAll={handleCompleteAllBundles}
-                    title={`Packing Bundle #${selectedBatch.id}`}
+                    title={`Đóng gói kiện hàng #${selectedBatch.id}`}
                     type="BUNDLE"
                 />
             )}

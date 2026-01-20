@@ -539,7 +539,7 @@ export function ProvinceAdminPage() {
       {activeTab === "offices" && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-gray-900">Danh sách Cặp Bưu Cục</h2>
+            <h2 className="text-xl font-bold text-gray-900">Danh sách Cặp Bưu Cục & Kho</h2>
             <Button onClick={() => setIsOfficeModalOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" /> Tạo Cặp Mới
             </Button>

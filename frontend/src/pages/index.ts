@@ -30,3 +30,6 @@ export { default as ShipperDashboardPage } from './shipper/ShipperDashboardPage'
 export { default as ShipperDeliveryPage } from './shipper/ShipperDeliveryPage';
 export { default as ShipperPickupPage } from './shipper/ShipperPickupPage';
 export { PackingRequestPage } from "./staff/PackingRequestPage";
+export { ComplaintPage } from "./complaints/ComplaintPage";
+export { WHWardManagerDashboard } from "./ward_manager/WHWardManagerDashboard";
+export { POWardManagerDashboard } from "./ward_manager/POWardManagerDashboard";

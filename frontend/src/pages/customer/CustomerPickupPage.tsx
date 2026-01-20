@@ -77,7 +77,8 @@ export function CustomerPickupPage() {
 
     // Auto-calculate Price Effect
     useEffect(() => {
-        if (!formData.receiverWardCode || formData.weightKg <= 0) {
+        // Need both sender and receiver ward codes for customer pickup
+        if (!formData.senderWardCode || !formData.receiverWardCode || formData.weightKg <= 0) {
             setPriceResult(null);
             return;
         }
@@ -87,6 +88,7 @@ export function CustomerPickupPage() {
         const timeoutId = setTimeout(async () => {
             try {
                 const payload = {
+                    originWardCode: formData.senderWardCode, // REQUIRED for customer orders
                     destinationWardCode: formData.receiverWardCode,
                     packageType: formData.packageType,
                     weightKg: formData.weightKg,
@@ -102,6 +104,7 @@ export function CustomerPickupPage() {
                 setPriceResult(res);
             } catch (error) {
                 console.error("Calculation failed", error);
+                setPriceResult(null);
             } finally {
                 setIsCalculating(false);
             }
@@ -110,6 +113,7 @@ export function CustomerPickupPage() {
         return () => clearTimeout(timeoutId);
 
     }, [
+        formData.senderWardCode, // Added to dependencies
         formData.receiverWardCode,
         formData.packageType,
         formData.weightKg,
@@ -128,14 +132,13 @@ export function CustomerPickupPage() {
         }
         setIsSubmitting(true);
         try {
-            const res = await orderService.createOrder(formData);
-            if (res.success) {
-                toast.success("Tạo đơn hàng thành công!");
-                navigate(`/orders/${res.data.id}`);
-            }
+            // Use customer pickup endpoint instead of regular createOrder
+            const res = await orderService.createCustomerPickupOrder(formData);
+            toast.success("Tạo đơn hàng thành công! Bưu tá sẽ đến lấy hàng.");
+            navigate(`/orders/${res.orderId || res.id}`);
         } catch (error) {
             console.error("Creation failed", error);
-            toast.error("Tạo đơn hàng thất bại.");
+            toast.error("Tạo đơn hàng thất bại: " + ((error as any)?.response?.data?.message || ""));
         } finally {
             setIsSubmitting(false);
         }
@@ -143,8 +146,9 @@ export function CustomerPickupPage() {
 
     const nextStep = () => {
         if (currentStep === "INFO") {
-            if (!formData.senderName || !formData.receiverName || !formData.receiverWardCode) {
-                toast.error("Vui lòng điền đủ thông tin bắt buộc");
+            if (!formData.senderName || !formData.senderPhone || !formData.senderWardCode ||
+                !formData.receiverName || !formData.receiverPhone || !formData.receiverWardCode) {
+                toast.error("Vui lòng điền đủ thông tin bắt buộc (địa chỉ người gửi và người nhận)");
                 return;
             }
             setCurrentStep("DETAILS");
@@ -155,6 +159,10 @@ export function CustomerPickupPage() {
             }
             if (isCalculating) {
                 toast.info("Đang tính phí, vui lòng đợi...");
+                return;
+            }
+            if (!priceResult) {
+                toast.error("Vui lòng đợi tính phí hoàn tất");
                 return;
             }
             setCurrentStep("CONFIRM");
