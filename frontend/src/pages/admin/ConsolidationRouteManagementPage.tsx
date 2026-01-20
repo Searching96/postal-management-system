@@ -48,9 +48,11 @@ export function ConsolidationRouteManagementPage() {
         }
     };
 
+    // UPDATE: handleOfficeClick to use the name directly from the route data or fallback
     const handleOfficeClick = (officeCode: string, route: ConsolidationRoute) => {
-        // officeCode could be 'warehouse-01' or '00123'
-        const name = officeCode === 'warehouse-01' ? 'Hanoi Central (PW)' : `Office ${officeCode}`;
+        // Find the stop to get the official name
+        const stop = route.routeStops.find(s => s.officeCode === officeCode);
+        const name = stop?.officeName || (officeCode === 'warehouse-01' ? 'Hanoi Central (PW)' : `Office ${officeCode}`);
         handleNodeInteraction(officeCode, name, route);
     };
 
@@ -83,7 +85,6 @@ export function ConsolidationRouteManagementPage() {
     if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
     const selectedStop = selectedRoute?.routeStops.find(s => s.officeCode === selectedOfficeCode);
-    const nextId = (selectedStop as any)?.nextDestinationId;
 
     return (
         <div className="space-y-6 p-6 max-w-7xl mx-auto">
@@ -136,7 +137,8 @@ export function ConsolidationRouteManagementPage() {
                                                         {idx + 1}
                                                     </div>
                                                     <span className={`font-medium text-sm ${isWarehouse ? 'text-orange-900' : ''}`}>
-                                                        {isWarehouse ? 'Hanoi Central (PW)' : `Office ${stop.officeCode}`}
+                                                        {/* Use the name from the data directly */}
+                                                        {stop.officeName}
                                                     </span>
                                                 </div>
                                                 {isSelected && <div className="w-2 h-2 bg-blue-600 rounded-full" />}
@@ -144,11 +146,16 @@ export function ConsolidationRouteManagementPage() {
 
                                             <div className="mt-2 text-xs flex items-center gap-1 text-gray-500 bg-gray-100/50 p-1.5 rounded">
                                                 <ArrowRight className="w-3 h-3 text-gray-400" />
-                                                {!nextId ? (
+                                                {!stopNextId ? (
                                                     <span className="text-gray-400 italic">Disconnected (End of Line)</span>
                                                 ) : (
-                                                    <span className={nextId === 'warehouse-01' ? 'text-orange-600 font-bold' : ''}>
-                                                        {nextId === 'warehouse-01' ? 'PW (Warehouse)' : `Office ${nextId}`}
+                                                    <span className={stopNextId === 'warehouse-01' ? 'text-orange-600 font-bold' : ''}>
+                                                        {/* Helper to find the name of the NEXT node for display */}
+                                                        {(() => {
+                                                            if (stopNextId === 'warehouse-01') return 'PW (Warehouse)';
+                                                            const nextStop = selectedRoute.routeStops.find(s => s.officeCode === stopNextId);
+                                                            return nextStop ? nextStop.officeName : `Office ${stopNextId}`;
+                                                        })()}
                                                     </span>
                                                 )}
                                             </div>

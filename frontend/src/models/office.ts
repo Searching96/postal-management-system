@@ -1,3 +1,4 @@
+export type OfficeType = 'SYSTEM_HUB' | 'HUB' | 'PROVINCE_WAREHOUSE' | 'WARD_OFFICE' | 'CUSTOMER_LOCATION';
 
 export interface OfficeResponse {
   officeId: string;

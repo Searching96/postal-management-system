@@ -10,16 +10,6 @@ const PROVINCE_COORDINATES: Record<string, [number, number]> = {
     '01': [21.0285, 105.8542], // Hà Nội Center (Warehouse)
 };
 
-const HARDCODED_WARD_NAMES: Record<string, string> = {
-    '00091': 'Phú Thượng',
-    '00619': 'Phú Diễn', '00622': 'Xuân Phương',
-    '00199': 'Láng', '00226': 'Văn Miếu - QTGiám', '00229': 'Kim Liên',
-    '00364': 'Khương Đình', '00664': 'Đại Thanh',
-    '00340': 'Yên Sở', '00283': 'Vĩnh Tuy', '00577': 'Bát Tràng',
-    '00565': 'Gia Lâm', '00541': 'Phù Đổng', '00127': 'Việt Hưng',
-    '00118': 'Bồ Đề', '00145': 'Long Biên',
-};
-
 function createOfficeIcon(type: string, isSelected: boolean = false, isSelectionMode: boolean = false): L.DivIcon {
     const isWarehouse = type === 'PROVINCE_WAREHOUSE';
     const color = isWarehouse ? '#ea580c' : '#16a34a';
@@ -100,7 +90,8 @@ export function ConsolidationRouteMap({
 
                     const isSelected = selectedOfficeCode === stop.officeCode;
                     const type = isWarehouse ? 'PROVINCE_WAREHOUSE' : 'WARD_OFFICE';
-                    const name = isWarehouse ? 'Hanoi Central (PW)' : (HARDCODED_WARD_NAMES[stop.officeCode] || stop.officeCode);
+                    // Use the name from the route stop object
+                    const name = stop.officeName || (isWarehouse ? 'Hanoi Central (PW)' : stop.officeCode);
 
                     list.push({
                         id: uniqueKey,

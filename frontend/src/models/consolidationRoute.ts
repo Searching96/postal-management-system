@@ -3,6 +3,7 @@ import { OfficeType } from './office';
 export interface RouteStop {
     wardCode: string;
     wardOfficeName: string;
+    officeName?: string; // Added for visualization
     order: number;
     distanceKm?: number;
 }

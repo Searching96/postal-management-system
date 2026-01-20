@@ -1,6 +1,18 @@
 // mockData.ts
 import { ConsolidationRoute, RouteLevel } from '../models/consolidationRoute';
 
+// Shared mapping for Ward Names (moved here so it can be used in data generation)
+const WARD_NAMES: Record<string, string> = {
+    '00091': 'Phú Thượng',
+    '00619': 'Phú Diễn', '00622': 'Xuân Phương',
+    '00199': 'Láng', '00226': 'Văn Miếu - QTGiám', '00229': 'Kim Liên',
+    '00364': 'Khương Đình', '00664': 'Đại Thanh',
+    '00340': 'Yên Sở', '00283': 'Vĩnh Tuy', '00577': 'Bát Tràng',
+    '00565': 'Gia Lâm', '00541': 'Phù Đổng', '00127': 'Việt Hưng',
+    '00118': 'Bồ Đề', '00145': 'Long Biên',
+    'warehouse-01': 'Hanoi Central (PW)'
+};
+
 const createLinkedSequence = (routeId: string, codes: string[], isDisconnected: boolean = false) => {
     // FIX: Only prepend Warehouse if it's a standard connected loop
     // If disconnected (standalone), just use the codes provided
@@ -15,11 +27,13 @@ const createLinkedSequence = (routeId: string, codes: string[], isDisconnected: 
             nextId = null;
         }
 
+        const name = WARD_NAMES[code] || `Office ${code}`;
+
         return {
             id: `stop-${routeId}-${code}`,
             officeId: code,
             officeCode: code,
-            officeName: code === 'warehouse-01' ? 'Hanoi Central Warehouse' : `Office ${code}`,
+            officeName: name, // Updated to use real names
             nextDestinationId: nextId,
             isPickUp: code !== 'warehouse-01',
             stopOrder: index
