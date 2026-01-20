@@ -11,6 +11,14 @@ export default defineConfig({
         target: "http://localhost:8080",
         changeOrigin: true,
       },
+      "/nominatim": {
+        target: "https://nominatim.openstreetmap.org",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/nominatim/, ""),
+        headers: {
+          "User-Agent": "PostalManagementSystem/1.0",
+        },
+      },
     },
   },
 });

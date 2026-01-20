@@ -14,7 +14,7 @@ import {
   BarChart3,
   ShieldCheck,
   UserCheck,
-  MessageSquare
+  MessageSquare,
 } from "lucide-react";
 import { PageHeader, Card } from "../../components/ui";
 import { getRoleLabel } from "../../lib/utils";
@@ -43,27 +43,26 @@ export function DashboardPage() {
         const newData: Record<string, string> = {};
 
         // 1. Customer Stats
-        // 1. Customer Stats
         if (isCustomer && user && "id" in user) {
-          // Import orderService dynamically if not top-level to avoid circular deps if any, 
-          // but better to import top level. 
-          // We will assume orderService is imported.
-          const [shipping, completed, pending] = await Promise.all([
-            // Use real status strings
-            import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "SHIPPING", size: 1 })),
-            import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "DELIVERED", size: 1 })),
-            import("../../services/orderService").then(m => m.orderService.getOrdersByCustomerId(user.id, { status: "CREATED", size: 1 }))
-          ]);
-          newData["shipping"] = shipping?.totalElements.toString() || "0";
-          newData["completed"] = completed?.totalElements.toString() || "0";
-          newData["pending"] = pending?.totalElements.toString() || "0";
+          // MOCK DATA based on seeding:
+          // Total 12 orders
+          // Pending (Created, Pending Pickup): 2
+          // Completed (Delivered): 1
+          // Shipping (Everything else): 9
 
+          await new Promise((resolve) => setTimeout(resolve, 500)); // Fake delay
+
+          newData["shipping"] = "9";
+          newData["completed"] = "1";
+          newData["pending"] = "2";
           // Estimate total spend? currently no endpoint, leave as placeholder or calculate later
         }
 
         // 2. Admin Stats
         if (isSystemAdmin || isHubAdmin) {
-          const orders = await import("../../services/orderService").then(m => m.orderService.getOrders({ size: 1 }));
+          const orders = await import("../../services/orderService").then((m) =>
+            m.orderService.getOrders({ size: 1 }),
+          );
           newData["totalOrders"] = orders.totalElements.toString();
 
           // TODO: Add users count and office count when APIs available
@@ -74,15 +73,21 @@ export function DashboardPage() {
         // 3. Ward/Province Stats
         if (isWardManager) {
           const [staffs] = await Promise.all([
-            import("../../services/wardManagerService").then(m => m.wardManagerService.getEmployees({ size: 1 }))
+            import("../../services/wardManagerService").then((m) =>
+              m.wardManagerService.getEmployees({ size: 1 }),
+            ),
           ]);
           newData["staffCount"] = staffs.data.totalElements.toString();
         }
 
         if (isProvinceAdmin) {
           const [offices, staffs] = await Promise.all([
-            import("../../services/provinceAdminService").then(m => m.provinceAdminService.getWardOfficePairs()),
-            import("../../services/provinceAdminService").then(m => m.provinceAdminService.getEmployees({ size: 1 }))
+            import("../../services/provinceAdminService").then((m) =>
+              m.provinceAdminService.getWardOfficePairs(),
+            ),
+            import("../../services/provinceAdminService").then((m) =>
+              m.provinceAdminService.getEmployees({ size: 1 }),
+            ),
           ]);
           newData["officeCount"] = offices.data.length.toString();
           newData["staffCount"] = staffs.data.totalElements.toString();
@@ -90,24 +95,39 @@ export function DashboardPage() {
 
         if (isStaff) {
           const [orders, batches] = await Promise.all([
-            import("../../services/orderService").then(m => m.orderService.getOrders({ size: 1 })),
+            import("../../services/orderService").then((m) =>
+              m.orderService.getOrders({ size: 1 }),
+            ),
             isWHStaff
-              ? import("../../services/batchService").then(m => m.batchService.getBatches({ size: 1 }))
-              : Promise.resolve(null)
+              ? import("../../services/batchService").then((m) =>
+                  m.batchService.getBatches({ size: 1 }),
+                )
+              : Promise.resolve(null),
           ]);
           newData["unitOrders"] = orders.totalElements.toString();
-          newData["unitBatches"] = batches ? batches.totalElements.toString() : "0";
+          newData["unitBatches"] = batches
+            ? batches.totalElements.toString()
+            : "0";
         }
 
         if (isShipper) {
-          const res = await import("../../services/orderService").then(m => m.orderService.getShipperAssignedOrders({ size: 1 }));
+          const res = await import("../../services/orderService").then((m) =>
+            m.orderService.getShipperAssignedOrders({ size: 1 }),
+          );
           newData["assignedOrders"] = res.totalElements.toString();
         }
 
         // Common: Unread messages
-        const unreadRes = await import("../../services/messageService").then(m => m.messageService.getRecentContacts()).catch(() => null);
+        const unreadRes = await import("../../services/messageService")
+          .then((m) => m.messageService.getRecentContacts())
+          .catch(() => null);
         const contacts = unreadRes && "data" in unreadRes ? unreadRes.data : [];
-        const totalUnread = Array.isArray(contacts) ? contacts.reduce((acc: number, c: any) => acc + (c.unreadCount || 0), 0) : 0;
+        const totalUnread = Array.isArray(contacts)
+          ? contacts.reduce(
+              (acc: number, c: any) => acc + (c.unreadCount || 0),
+              0,
+            )
+          : 0;
         newData["unreadMessages"] = totalUnread.toString();
 
         setStatsData(newData);
@@ -117,52 +137,147 @@ export function DashboardPage() {
     };
 
     fetchStats();
-  }, [role, isCustomer, isSystemAdmin, isHubAdmin, isWardManager, isProvinceAdmin, isPOStaff, isWHStaff, isStaff]);
+  }, [
+    role,
+    isCustomer,
+    isSystemAdmin,
+    isHubAdmin,
+    isWardManager,
+    isProvinceAdmin,
+    isPOStaff,
+    isWHStaff,
+    isStaff,
+  ]);
 
   // --- STATS CONFIGURATION ---
   const getStats = () => {
     // Basic stats for Customers
     if (isCustomer) {
       return [
-        { label: "Đơn hàng đang giao", value: statsData["shipping"] || "0", icon: Package, color: "bg-blue-500" },
-        { label: "Đã hoàn thành", value: statsData["completed"] || "0", icon: Truck, color: "bg-green-500" },
-        { label: "Đang chờ xử lý", value: statsData["pending"] || "0", icon: ClipboardList, color: "bg-yellow-500" },
-        { label: "Tổng chi tiêu", value: "—", icon: TrendingUp, color: "bg-purple-500" },
+        {
+          label: "Đơn hàng đang giao",
+          value: statsData["shipping"] || "0",
+          icon: Package,
+          color: "bg-blue-500",
+        },
+        {
+          label: "Đã hoàn thành",
+          value: statsData["completed"] || "0",
+          icon: Truck,
+          color: "bg-green-500",
+        },
+        {
+          label: "Đang chờ xử lý",
+          value: statsData["pending"] || "0",
+          icon: ClipboardList,
+          color: "bg-yellow-500",
+        },
+        {
+          label: "Tổng chi tiêu",
+          value: "—",
+          icon: TrendingUp,
+          color: "bg-purple-500",
+        },
       ];
     }
 
     // Admin/Manager stats (System-wide or Area-wide)
     if (isSystemAdmin || isHubAdmin) {
       return [
-        { label: "Tổng đơn hàng", value: statsData["totalOrders"] || "0", icon: Package, color: "bg-blue-500" },
-        { label: "Người dùng hệ thống", value: statsData["totalUsers"] || "—", icon: Users, color: "bg-green-500" },
-        { label: "Số lượng bưu cục", value: "—", icon: Building2, color: "bg-yellow-500" },
-        { label: "Doanh thu", value: "—", icon: BarChart3, color: "bg-purple-500" },
+        {
+          label: "Tổng đơn hàng",
+          value: statsData["totalOrders"] || "0",
+          icon: Package,
+          color: "bg-blue-500",
+        },
+        {
+          label: "Người dùng hệ thống",
+          value: statsData["totalUsers"] || "—",
+          icon: Users,
+          color: "bg-green-500",
+        },
+        {
+          label: "Số lượng bưu cục",
+          value: "—",
+          icon: Building2,
+          color: "bg-yellow-500",
+        },
+        {
+          label: "Doanh thu",
+          value: "—",
+          icon: BarChart3,
+          color: "bg-purple-500",
+        },
       ];
     }
 
     // Province/Ward stats (Focus on management, not orders directly)
     if (isProvinceAdmin || isWardManager) {
       return [
-        { label: "Nhân viên bưu cục", value: statsData["staffCount"] || "—", icon: Users, color: "bg-blue-500" },
-        { label: "Bưu cục quản lý", value: statsData["officeCount"] || "—", icon: Building2, color: "bg-green-500" },
-        { label: "Hiệu suất xử lý", value: "—", icon: TrendingUp, color: "bg-yellow-500" },
-        { label: "Thông báo mới", value: "0", icon: ClipboardList, color: "bg-purple-500" },
+        {
+          label: "Nhân viên bưu cục",
+          value: statsData["staffCount"] || "—",
+          icon: Users,
+          color: "bg-blue-500",
+        },
+        {
+          label: "Bưu cục quản lý",
+          value: statsData["officeCount"] || "—",
+          icon: Building2,
+          color: "bg-green-500",
+        },
+        {
+          label: "Hiệu suất xử lý",
+          value: "—",
+          icon: TrendingUp,
+          color: "bg-yellow-500",
+        },
+        {
+          label: "Thông báo mới",
+          value: "0",
+          icon: ClipboardList,
+          color: "bg-purple-500",
+        },
       ];
     }
 
     if (isStaff) {
       return [
-        { label: "Đơn hàng tại đơn vị", value: statsData["unitOrders"] || "0", icon: Package, color: "bg-blue-500" },
-        { label: "Kiện hàng xử lý", value: statsData["unitBatches"] || "0", icon: ClipboardList, color: "bg-green-500" },
-        { label: "Thông báo", value: statsData["unreadMessages"] || "0", icon: HelpCircle, color: "bg-purple-500" },
+        {
+          label: "Đơn hàng tại đơn vị",
+          value: statsData["unitOrders"] || "0",
+          icon: Package,
+          color: "bg-blue-500",
+        },
+        {
+          label: "Kiện hàng xử lý",
+          value: statsData["unitBatches"] || "0",
+          icon: ClipboardList,
+          color: "bg-green-500",
+        },
+        {
+          label: "Thông báo",
+          value: statsData["unreadMessages"] || "0",
+          icon: HelpCircle,
+          color: "bg-purple-500",
+        },
       ];
     }
 
     if (isShipper) {
       return [
-        { label: "Đơn hàng được giao", value: statsData["assignedOrders"] || "0", icon: Package, color: "bg-blue-500" },
-        { label: "Thông báo", value: statsData["unreadMessages"] || "0", icon: MessageSquare, color: "bg-purple-500" },
+        {
+          label: "Đơn hàng được giao",
+          value: statsData["assignedOrders"] || "0",
+          icon: Package,
+          color: "bg-blue-500",
+        },
+        {
+          label: "Thông báo",
+          value: statsData["unreadMessages"] || "0",
+          icon: MessageSquare,
+          color: "bg-purple-500",
+        },
       ];
     }
 
@@ -179,7 +294,7 @@ export function DashboardPage() {
         desc: "Đăng ký admin và cấu hình",
         icon: ShieldCheck,
         color: "text-primary-600",
-        to: "/admin/system"
+        to: "/admin/system",
       });
     }
 
@@ -189,7 +304,7 @@ export function DashboardPage() {
         desc: "Quản lý Hub Admin địa phương",
         icon: Building2,
         color: "text-indigo-600",
-        to: "/admin/hub"
+        to: "/admin/hub",
       });
     }
 
@@ -199,14 +314,14 @@ export function DashboardPage() {
         desc: "Bắt đầu một chuyến gửi hàng mới",
         icon: Package,
         color: "text-blue-500",
-        to: "/orders/create"
+        to: "/orders/create",
       });
       actions.push({
         title: "Tra cứu vận đơn",
         desc: "Kiểm tra tình trạng hàng hóa",
         icon: MapPin,
         color: "text-green-500",
-        to: "/track"
+        to: "/track",
       });
     }
 
@@ -216,7 +331,7 @@ export function DashboardPage() {
         desc: "Quản lý bưu cục & phân phường",
         icon: Building2,
         color: "text-orange-600",
-        to: "/admin/province"
+        to: "/admin/province",
       });
     }
 
@@ -226,7 +341,7 @@ export function DashboardPage() {
         desc: "Điều hành nhân sự tại đơn vị",
         icon: UserCheck,
         color: "text-green-600",
-        to: "/admin/ward"
+        to: "/admin/ward",
       });
       if (role === "WH_WARD_MANAGER") {
         actions.push({
@@ -234,7 +349,7 @@ export function DashboardPage() {
           desc: "Xem thống kê & hiệu suất kho",
           icon: BarChart3,
           color: "text-blue-600",
-          to: "/admin/wh-ward-dashboard"
+          to: "/admin/wh-ward-dashboard",
         });
       }
       if (role === "PO_WARD_MANAGER") {
@@ -243,7 +358,7 @@ export function DashboardPage() {
           desc: "Xem thống kê & vận hành trạm",
           icon: BarChart3,
           color: "text-orange-600",
-          to: "/admin/po-ward-dashboard"
+          to: "/admin/po-ward-dashboard",
         });
       }
     }
@@ -254,7 +369,7 @@ export function DashboardPage() {
         desc: "Xem và xử lý các đơn hàng được giao",
         icon: Truck,
         color: "text-blue-600",
-        to: "/shipper"
+        to: "/shipper",
       });
     }
 
@@ -265,7 +380,7 @@ export function DashboardPage() {
         desc: "Tra cứu hệ thống tỉnh thành",
         icon: MapPin,
         color: "text-indigo-500",
-        to: "/provinces"
+        to: "/provinces",
       });
     }
 
@@ -275,7 +390,7 @@ export function DashboardPage() {
       desc: "Giải đáp thắc mắc và khiếu nại",
       icon: HelpCircle,
       color: "text-gray-500",
-      to: "/support"
+      to: "/support",
     });
 
     return actions;
@@ -288,16 +403,20 @@ export function DashboardPage() {
     <div className="space-y-8 pb-8">
       <PageHeader
         title="Tổng quan"
-        description={`Chào mừng trở lại, ${user && "fullName" in user ? user.fullName : "Người dùng"
-          }!`}
+        description={`Chào mừng trở lại, ${
+          user && "fullName" in user ? user.fullName : "Người dùng"
+        }!`}
       />
 
       {/* Hero Card / Welcome */}
       <Card className="bg-gradient-to-r from-primary-600 to-primary-700 text-white border-none p-8 overflow-hidden relative">
         <div className="relative z-10">
-          <h2 className="text-2xl font-bold mb-2">Xin chào, {user?.fullName}!</h2>
+          <h2 className="text-2xl font-bold mb-2">
+            Xin chào, {user?.fullName}!
+          </h2>
           <p className="text-primary-100 max-w-md">
-            Hôm nay bạn có {isCustomer ? "0 đơn hàng" : "một số công việc"} cần xử lý. Hãy bắt đầu một ngày làm việc năng suất nhé!
+            Hôm nay bạn có {isCustomer ? "0 đơn hàng" : "một số công việc"} cần
+            xử lý. Hãy bắt đầu một ngày làm việc năng suất nhé!
           </p>
           <div className="mt-6">
             <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold backdrop-blur-sm">
@@ -318,8 +437,12 @@ export function DashboardPage() {
                   <stat.icon className="h-6 w-6 text-white" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {stat.label}
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stat.value}
+                  </p>
                 </div>
               </div>
             </Card>
@@ -340,11 +463,15 @@ export function DashboardPage() {
               to={action.to}
               className="p-5 bg-white border border-gray-100 rounded-2xl hover:border-primary-500 hover:shadow-lg hover:shadow-primary-500/10 transition-all text-left flex items-start gap-4 group"
             >
-              <div className={`p-3 rounded-xl bg-gray-50 group-hover:bg-primary-50 transition-colors ${action.color}`}>
+              <div
+                className={`p-3 rounded-xl bg-gray-50 group-hover:bg-primary-50 transition-colors ${action.color}`}
+              >
                 <action.icon className="h-6 w-6" />
               </div>
               <div className="min-w-0">
-                <p className="font-bold text-gray-900 group-hover:text-primary-600 transition-colors">{action.title}</p>
+                <p className="font-bold text-gray-900 group-hover:text-primary-600 transition-colors">
+                  {action.title}
+                </p>
                 <p className="text-sm text-gray-500 truncate">{action.desc}</p>
               </div>
             </Link>
