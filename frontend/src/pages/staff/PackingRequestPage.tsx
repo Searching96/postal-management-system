@@ -233,7 +233,7 @@ export function PackingRequestPage() {
                 `}
                     >
                         <Container className="w-4 h-4" />
-                        Đóng container / xe tải
+                        Tải kiện lên container
                     </button>
                 </nav>
             </div>

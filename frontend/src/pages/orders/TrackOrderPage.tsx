@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Search, Package, MapPin, Calendar, CheckCircle, Clock, Truck, AlertCircle } from "lucide-react";
 import { Card, Button, Input, Badge, LoadingSpinner, Alert } from "../../components/ui";
 import { orderService, Order } from "../../services/orderService";
-import { formatDate } from "../../lib/utils";
+import { formatDate, formatDateTime } from "../../lib/utils";
 
 // Status step configuration
 const STATUS_STEPS = [
@@ -101,6 +101,27 @@ export function TrackOrderPage() {
             RETURNED: "Đã trả hàng"
         };
         return <Badge variant={map[status] || "secondary"}>{labels[status] || status}</Badge>;
+    };
+
+    const getStatusLabel = (status: string) => {
+        const labels: Record<string, string> = {
+            CREATED: "Mới tạo",
+            PENDING_PICKUP: "Chờ lấy hàng",
+            PICKED_UP: "Đang lấy hàng",
+            AT_ORIGIN_OFFICE: "Tại bưu cục gốc",
+            IN_TRANSIT_TO_HUB: "Đang đến Hub",
+            AT_HUB: "Tại Hub",
+            IN_TRANSIT_TO_DESTINATION: "Trung chuyển",
+            AT_DESTINATION_HUB: "Tại Hub đích",
+            IN_TRANSIT_TO_OFFICE: "Đang về bưu cục",
+            AT_DESTINATION_OFFICE: "Tại bưu cục phát",
+            OUT_FOR_DELIVERY: "Đang giao hàng",
+            DELIVERED: "Giao thành công",
+            DELIVERY_FAILED: "Giao thất bại",
+            CANCELLED: "Đã hủy",
+            RETURNED: "Đã trả hàng"
+        };
+        return labels[status] || status;
     };
 
     const currentStepIndex = getCurrentStepIndex();
@@ -230,34 +251,61 @@ export function TrackOrderPage() {
 
                         {/* Order Details */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-100">
-                            {/* Sender */}
+                            {/* Sender (Masked) */}
                             <div className="space-y-2">
                                 <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
                                     <MapPin className="h-4 w-4" />
                                     Người gửi
                                 </div>
-                                <p className="font-medium text-gray-900">{order.senderName}</p>
-                                <p className="text-sm text-gray-600">{order.senderPhone}</p>
-                                {/* Refactored: Display sender address using names */}
-                                <p className="text-sm text-gray-600">{`${order.senderAddressLine1}, ${order.senderWardName || ''}, ${order.senderProvinceName || ''}`}</p>
+                                {/* Use a masking function or utility if available, or basic masking */}
+                                <p className="font-medium text-gray-900">{order.senderName ? order.senderName[0] + "***" + order.senderName[order.senderName.length - 1] : "***"}</p>
+                                {/* Hide full phone for public tracking */}
+                                <p className="text-sm text-gray-600">***</p>
+                                <p className="text-sm text-gray-600">{order.senderProvinceName}</p>
                             </div>
 
-                            {/* Receiver */}
+                            {/* Receiver (Masked) */}
                             <div className="space-y-2">
                                 <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
                                     <MapPin className="h-4 w-4" />
                                     Người nhận
                                 </div>
-                                <p className="font-medium text-gray-900">{order.receiverName}</p>
-                                <p className="text-sm text-gray-600">{order.receiverPhone}</p>
-                                {/* Refactored: Display receiver address using names */}
-                                <p className="text-sm text-gray-600">{`${order.receiverAddressLine1}, ${order.receiverWardName || ''}, ${order.receiverProvinceName || ''}`}</p>
+                                <p className="font-medium text-gray-900">{order.receiverName ? order.receiverName[0] + "***" + order.receiverName[order.receiverName.length - 1] : "***"}</p>
+                                <p className="text-sm text-gray-600">***</p>
+                                <p className="text-sm text-gray-600">{order.receiverProvinceName}</p>
                             </div>
                         </div>
 
-                        {/* Live Tracking Button */}
+                        {/* Detailed Status History */}
+                        {order.statusHistory && order.statusHistory.length > 0 && (
+                            <div className="mt-8 pt-6 border-t border-gray-100">
+                                <h3 className="font-semibold mb-6 flex items-center text-lg">
+                                    <Calendar className="mr-2 text-primary-600" size={20} /> Chi tiết hành trình
+                                </h3>
+                                <div className="relative pl-4 border-l-2 border-gray-100 space-y-8">
+                                    {[...order.statusHistory].reverse().map((item: any, i: number) => (
+                                        <div key={i} className="relative">
+                                            <div className={`absolute -left-[21px] top-1 w-4 h-4 rounded-full border-2 border-white ${i === 0 ? 'bg-primary-500 ring-2 ring-primary-100' : 'bg-gray-300'}`}></div>
+                                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">
+                                                <div>
+                                                    <div className="font-bold text-gray-900">{getStatusLabel(item.status)}</div>
+                                                    <div className="text-sm text-gray-600 mt-1">{item.description}</div>
+                                                    {item.location && <div className="text-xs text-gray-500 mt-1 flex items-center"><MapPin className="h-3 w-3 mr-1" /> {item.location}</div>}
+                                                </div>
+                                                <div className="text-sm text-gray-400 font-mono whitespace-nowrap">
+                                                    {formatDateTime(item.timestamp)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Live Tracking Button (If applicable, maybe restrict this for public tracking if auth required) */}
                         {order.status === "OUT_FOR_DELIVERY" && (
                             <div className="pt-6 mt-6 border-t border-gray-100 flex justify-center">
+                                {/* This might require authentication depending on your app logic. If public, ensure the link is secure or limited. */}
                                 <Button
                                     className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto animate-pulse"
                                     onClick={() => window.open(`/tracking/${order.orderId || order.id!}/live`, '_blank')}

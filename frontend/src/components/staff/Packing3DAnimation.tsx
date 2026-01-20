@@ -159,7 +159,8 @@ export function Packing3DAnimation({ data, isOpen, onClose, onConfirm, title, ty
                 opacity: 1.0,
                 flatshading: true,
                 name: `Item ${p.id}`,
-                hovertemplate: `<b>${type === 'CONTAINER' ? 'Bundle' : 'Item'} #${p.id}</b><br>Size: ${p.l}x${p.w}x${p.h}<br>Pos: (${p.x}, ${p.y}, ${p.z})<extra></extra>`
+                // Translate Hover Info
+                hovertemplate: `<b>${type === 'CONTAINER' ? 'Kiện' : 'Món'} #${p.id}</b><br>Kích thước: ${p.l}x${p.w}x${p.h}<br>Vị trí: (${p.x}, ${p.y}, ${p.z})<extra></extra>`
             });
 
             if (isLatest) {
@@ -179,9 +180,9 @@ export function Packing3DAnimation({ data, isOpen, onClose, onConfirm, title, ty
 
         const layout = {
             scene: {
-                xaxis: { title: 'L', range: [0, data.dim_l] },
-                yaxis: { title: 'W', range: [0, data.dim_w] },
-                zaxis: { title: 'H', range: [0, data.dim_h] },
+                xaxis: { title: 'Dài (L)', range: [0, data.dim_l] },
+                yaxis: { title: 'Rộng (W)', range: [0, data.dim_w] },
+                zaxis: { title: 'Cao (H)', range: [0, data.dim_h] },
                 aspectmode: 'data',
                 camera: { eye: { x: 1.5, y: 1.5, z: 1.2 } }
             },
@@ -209,8 +210,6 @@ export function Packing3DAnimation({ data, isOpen, onClose, onConfirm, title, ty
         // Debug button: notify parent to mark bundles as done
         onCompleteAll?.();
     };
-
-
 
     const handleStepBack = () => {
         setIsPlaying(false);
@@ -244,20 +243,20 @@ export function Packing3DAnimation({ data, isOpen, onClose, onConfirm, title, ty
                 <div className="flex items-center justify-between p-4 border-b bg-gray-50">
                     <div>
                         <h2 className="text-lg font-bold text-gray-800">
-                            {title || (type === 'CONTAINER' ? 'Container Packing Plan' : `Packing Bundle #${data.id}`)}
+                            {title || (type === 'CONTAINER' ? 'Kế hoạch xếp Container' : `Đóng gói Kiện hàng #${data.id}`)}
                         </h2>
                         <div className="text-sm text-gray-500 mt-1 flex gap-4">
-                            <span>{type === 'CONTAINER' ? 'Bundles' : 'Items'}: {currentStep} / {data.items}</span>
-                            <span>Size: {data.dim_l}x{data.dim_w}x{data.dim_h}</span>
-                            <span>Fill: {data.fill_rate}</span>
+                            <span>{type === 'CONTAINER' ? 'Số kiện' : 'Số lượng'}: {currentStep} / {data.items}</span>
+                            <span>Kích thước: {data.dim_l}x{data.dim_w}x{data.dim_h}</span>
+                            <span>Lấp đầy: {data.fill_rate}</span>
                         </div>
                         {currentStep >= data.placements.length ? (
                             <div className="text-sm font-bold text-green-600 mt-1">
-                                ✓ All Items Packed
+                                ✓ Đã hoàn thành đóng gói
                             </div>
                         ) : (
                             <div className="text-sm font-semibold text-blue-600 mt-1">
-                                {type === 'CONTAINER' ? 'Next Bundle' : 'Next Package'}: {data.placements[currentStep]?.id ? '#' + data.placements[currentStep].id : 'Processing...'}
+                                {type === 'CONTAINER' ? 'Kiện tiếp theo' : 'Món tiếp theo'}: {data.placements[currentStep]?.id ? '#' + data.placements[currentStep].id : 'Đang xử lý...'}
                             </div>
                         )}
                     </div>
@@ -294,15 +293,15 @@ export function Packing3DAnimation({ data, isOpen, onClose, onConfirm, title, ty
 
                     <div className="flex flex-wrap items-center justify-between gap-y-2">
                         <div className="flex items-center gap-2">
-                            <label className="text-xs text-gray-500 font-medium uppercase">Speed</label>
+                            <label className="text-xs text-gray-500 font-medium uppercase">Tốc độ</label>
                             <select
                                 value={speed}
                                 onChange={(e) => setSpeed(parseInt(e.target.value))}
                                 className="text-sm bg-gray-100 border-none rounded-md py-1 pl-2 pr-6 cursor-pointer focus:ring-1 focus:ring-blue-500"
                             >
-                                <option value="1000">Slow</option>
-                                <option value="500">Normal</option>
-                                <option value="200">Fast</option>
+                                <option value="1000">Chậm</option>
+                                <option value="500">Bình thường</option>
+                                <option value="200">Nhanh</option>
                             </select>
                         </div>
 
@@ -311,7 +310,7 @@ export function Packing3DAnimation({ data, isOpen, onClose, onConfirm, title, ty
                                 onClick={handleStepBack}
                                 className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100"
                             >
-                                Previous
+                                Lùi lại
                             </button>
 
                             <button
@@ -321,41 +320,45 @@ export function Packing3DAnimation({ data, isOpen, onClose, onConfirm, title, ty
                                     : 'bg-blue-600 hover:bg-blue-700'
                                     }`}
                             >
-                                {isPlaying ? 'Pause ⏸' : 'Play ▶'}
+                                {isPlaying ? 'Dừng ⏸' : 'Phát ▶'}
                             </button>
 
                             <button
                                 onClick={handleStepForward}
                                 className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100"
                             >
-                                Next
+                                Tiếp
                             </button>
 
 
-
-                            {type === 'CONTAINER' && (
-                                <>
-                                    <div className="w-px h-6 bg-gray-300 mx-2 hidden sm:block" />
-
-                                    <button
-                                        onClick={handleCompleteAll}
-                                        className="px-4 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100"
-                                        title="Mark all bundles as packed and ready to load"
-                                    >
-                                        Mark All Bundles Ready
-                                    </button>
-                                </>
-                            )}
                         </div>
 
                         {onConfirm && (
-                            <button
-                                onClick={onConfirm}
-                                disabled={currentStep < data.placements.length}
-                                className="ml-4 px-6 py-2 text-sm font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
-                            >
-                                {type === 'CONTAINER' ? 'Complete Packing' : 'Finish'}
-                            </button>
+                            <>
+                                <div className="w-px h-6 bg-gray-300 mx-2 hidden sm:block" />
+
+                                <button
+                                    onClick={onConfirm}
+                                    disabled={currentStep < data.placements.length}
+                                    className="ml-4 px-6 py-2 text-sm font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
+                                >
+                                    {type === 'CONTAINER' ? 'Hoàn tất tải kiện' : 'Đã xong'}
+                                </button>
+
+                            </>
+                        )}
+
+                        {type === 'CONTAINER' && (
+                            <>
+
+                                <button
+                                    onClick={handleCompleteAll}
+                                    className="px-4 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100"
+                                    title="Đánh dấu tất cả các kiện đã xếp xong"
+                                >
+                                    Debug: Xếp tất cả
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>
