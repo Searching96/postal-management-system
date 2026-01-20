@@ -3,9 +3,10 @@ import 'leaflet/dist/leaflet.css';
 import { LatLngExpression } from 'leaflet';
 import L from 'leaflet';
 import { useRef, useEffect } from 'react';
+// Ensure the plugin is imported so L.Polyline has the .arrowheads method
+import 'leaflet-arrowheads';
 
 // Fix Leaflet generic marker icon missing issue in React
-// This is a known issue with Leaflet + Webpack/Vite
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
@@ -34,6 +35,8 @@ export interface MapPolyline {
     dashArray?: string;
     popupContent?: React.ReactNode;
     onClick?: () => void;
+    // NEW: Add arrowheads property to the interface
+    arrowheads?: any;
 }
 
 interface VietnamMapProps {
@@ -42,17 +45,19 @@ interface VietnamMapProps {
     height?: string;
 }
 
-// Center of Vietnam approx
 const VIETNAM_CENTER: LatLngExpression = [16.0376, 107.0];
 const DEFAULT_ZOOM = 5;
 
-// Clickable polyline with grace zone
 function ClickablePolyline({ line }: { line: MapPolyline }) {
-    const polylineRef = useRef<L.Polyline>(null);
+    // Ref for the invisible click area
+    const clickPolylineRef = useRef<L.Polyline>(null);
+    // Ref for the actual visible line (where we want arrows)
+    const visiblePolylineRef = useRef<L.Polyline>(null);
 
+    // 1. Handle Click Events (on the invisible thick line)
     useEffect(() => {
-        if (polylineRef.current && line.onClick) {
-            const polyline = polylineRef.current;
+        if (clickPolylineRef.current && line.onClick) {
+            const polyline = clickPolylineRef.current;
             polyline.on('click', line.onClick);
 
             return () => {
@@ -61,19 +66,42 @@ function ClickablePolyline({ line }: { line: MapPolyline }) {
         }
     }, [line.onClick]);
 
+    // 2. Handle Arrowheads (on the visible line)
+    useEffect(() => {
+        const polyline = visiblePolylineRef.current;
+
+        // Check if ref exists, arrowheads config exists, and plugin is loaded
+        if (polyline && line.arrowheads && (polyline as any).arrowheads) {
+
+            // Initialize arrowheads
+            (polyline as any).arrowheads(line.arrowheads);
+
+            // Force redraw to ensure they appear
+            // (polyline as any).redraw(); 
+
+            // Cleanup function to remove arrows when component unmounts or data changes
+            return () => {
+                if ((polyline as any).deleteArrowheads) {
+                    (polyline as any).deleteArrowheads();
+                }
+            };
+        }
+    }, [line.arrowheads, line.positions]);
+
     return (
         <>
             {/* Invisible thicker line for easier clicking */}
             <Polyline
-                ref={polylineRef}
+                ref={clickPolylineRef}
                 positions={line.positions}
                 color={line.color}
-                weight={(line.weight ?? 3) + 15} // Much thicker for clicking
-                opacity={0} // Invisible
+                weight={(line.weight ?? 3) + 15}
+                opacity={0}
             />
 
-            {/* Visible line */}
+            {/* Visible line - We attach the visiblePolylineRef here */}
             <Polyline
+                ref={visiblePolylineRef}
                 positions={line.positions}
                 color={line.color}
                 weight={line.weight ?? 3}

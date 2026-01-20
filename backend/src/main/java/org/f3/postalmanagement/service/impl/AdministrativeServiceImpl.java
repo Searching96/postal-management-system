@@ -224,6 +224,8 @@ public class AdministrativeServiceImpl implements IAdministrativeService {
                 .parentOfficeId(office.getParent() != null ? office.getParent().getId() : null)
                 .parentOfficeName(office.getParent() != null ? office.getParent().getOfficeName() : null)
                 .capacity(office.getCapacity())
+                .wardCode(office.getWard() != null ? office.getWard().getCode() : null)
+                .wardName(office.getWard() != null ? office.getWard().getName() : null)
                 .build();
     }
 }

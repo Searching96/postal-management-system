@@ -347,13 +347,28 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         // Lookup Ward
         Ward ward = wardRepository.findById(request.getWardCode())
                 .orElseThrow(() -> new IllegalArgumentException("Ward not found: " + request.getWardCode()));
-        
+
+        // Generate unique office codes based on ward code
+        String warehouseCode = "WH_" + request.getWardCode();
+        String postOfficeCode = "PO_" + request.getWardCode();
+
+        // Check if office codes already exist (prevent duplicates)
+        if (officeRepository.existsByOfficeCode(warehouseCode)) {
+            log.error("Ward warehouse with code {} already exists", warehouseCode);
+            throw new IllegalArgumentException("Ward warehouse for ward " + request.getWardCode() + " already exists");
+        }
+        if (officeRepository.existsByOfficeCode(postOfficeCode)) {
+            log.error("Ward post office with code {} already exists", postOfficeCode);
+            throw new IllegalArgumentException("Ward post office for ward " + request.getWardCode() + " already exists");
+        }
+
         // Create Ward Warehouse (without ward assignment initially)
         Office wardWarehouse = new Office();
         wardWarehouse.setOfficeName(request.getWarehouseName());
         wardWarehouse.setOfficeEmail(request.getWarehouseEmail());
         wardWarehouse.setOfficePhoneNumber(request.getWarehousePhoneNumber());
         wardWarehouse.setOfficeAddressLine1(request.getWarehouseAddressLine1());
+        wardWarehouse.setOfficeCode(warehouseCode);
         wardWarehouse.setOfficeType(OfficeType.WARD_WAREHOUSE);
         wardWarehouse.setRegion(parentWarehouse.getRegion());
         wardWarehouse.setParent(parentWarehouse);
@@ -366,6 +381,7 @@ public class ProvinceAdminServiceImpl implements IProvinceAdminService {
         wardPostOffice.setOfficeEmail(request.getPostOfficeEmail());
         wardPostOffice.setOfficePhoneNumber(request.getPostOfficePhoneNumber());
         wardPostOffice.setOfficeAddressLine1(request.getPostOfficeAddressLine1());
+        wardPostOffice.setOfficeCode(postOfficeCode);
         wardPostOffice.setOfficeType(OfficeType.WARD_POST);
         wardPostOffice.setRegion(parentPostOffice.getRegion());
         wardPostOffice.setParent(parentPostOffice);

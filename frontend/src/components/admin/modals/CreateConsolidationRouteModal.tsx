@@ -362,9 +362,13 @@ export function CreateConsolidationRouteModal({
                                         <span className="text-sm text-gray-600">Đang tải danh sách bưu cục...</span>
                                     </div>
                                 ) : availableWardOffices.length === 0 ? (
-                                    <p className="text-sm text-red-600 py-4 px-3 text-center bg-red-50 rounded border border-red-200">
-                                        ⚠ Không tìm thấy bưu cục phường nào trong tỉnh này. Vui lòng tạo bưu cục phường trước khi tạo tuyến.
-                                    </p>
+                                    <div className="text-sm text-red-600 py-4 px-3 text-center bg-red-50 rounded border border-red-200">
+                                        <p className="font-medium mb-2">⚠ Không tìm thấy bưu cục phường hợp lệ</p>
+                                        <p className="text-xs text-red-500">
+                                            Bưu cục phường (WARD_POST) cần có mã phường (wardCode) được gán để có thể sử dụng trong tuyến tập kết.
+                                            Vui lòng kiểm tra và cập nhật dữ liệu bưu cục.
+                                        </p>
+                                    </div>
                                 ) : stops.length === 0 ? (
                                     <p className="text-sm text-gray-500 py-4 text-center">
                                         Có {availableWardOffices.length} bưu cục phường. Nhấn "Thêm điểm" để bắt đầu.

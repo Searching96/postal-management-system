@@ -112,7 +112,10 @@ export function ConsolidationRouteManagementPage() {
 
     async function handleFetchWardOffices(provinceCode: string) {
         try {
+            console.log('Fetching ward offices for province:', provinceCode);
             const wardOffices = await getWardOfficesByProvince(provinceCode);
+            console.log('Ward offices received:', wardOffices);
+            console.log('Ward offices count:', wardOffices.length);
             return wardOffices;
         } catch (err) {
             console.error('Error fetching ward offices:', err);

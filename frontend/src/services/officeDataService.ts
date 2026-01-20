@@ -106,23 +106,53 @@ export async function getWardOffices(): Promise<OfficeOption[]> {
 
 /**
  * Fetch ward offices by province
+ * Only returns WARD_POST type offices (ward-level post offices) that have ward codes assigned
+ * Excludes PROVINCE_POST (province-level warehouses) as they are destinations, not stops
  */
 export async function getWardOfficesByProvince(provinceCode: string): Promise<OfficeOption[]> {
     try {
+        console.log(`[getWardOfficesByProvince] Fetching for province: ${provinceCode}`);
         const response = await api.get(`/administrative/provinces/${provinceCode}/post-offices`);
         const offices = response.data.data || [];
+        console.log(`[getWardOfficesByProvince] Raw API response (${offices.length} offices):`, offices);
 
-        // Map to OfficeOption format
-        return offices.map((office: any) => ({
-            id: office.officeId,
-            name: office.officeName,
-            code: office.wardCode || office.officeId, // Use wardCode if available, otherwise officeId
-            type: office.officeType,
-            regionName: office.regionName,
-            parentOfficeId: office.parentOfficeId,
-            wardCode: office.wardCode,
-            provinceCode: office.provinceCode,
-        }));
+        // Filter and map to OfficeOption format
+        const filteredOffices = offices
+            .filter((office: any) => {
+                const isWardPost = office.officeType === 'WARD_POST';
+                const hasWardCode = !!office.wardCode;
+                console.log(`[getWardOfficesByProvince] Office ${office.officeName}:`, {
+                    officeType: office.officeType,
+                    isWardPost,
+                    wardCode: office.wardCode,
+                    hasWardCode,
+                    willInclude: isWardPost && hasWardCode
+                });
+                // Only include ward-level post offices (WARD_POST)
+                // Exclude PROVINCE_POST (those are destination warehouses, not route stops)
+                // Also require a valid wardCode since consolidation routes need it
+                return isWardPost && hasWardCode;
+            })
+            .map((office: any) => ({
+                id: office.officeId,
+                name: office.officeName,
+                code: office.wardCode || office.officeId,
+                type: office.officeType,
+                regionName: office.regionName,
+                parentOfficeId: office.parentOfficeId,
+                wardCode: office.wardCode,
+                provinceCode: office.provinceCode,
+            }));
+
+        console.log(`[getWardOfficesByProvince] Filtered offices (${filteredOffices.length}):`, filteredOffices);
+
+        // Log warning if offices were filtered out due to missing ward codes
+        const excludedCount = offices.filter((o: any) => o.officeType === 'WARD_POST' && !o.wardCode).length;
+        if (excludedCount > 0) {
+            console.warn(`${excludedCount} WARD_POST office(s) excluded due to missing wardCode in province ${provinceCode}`);
+        }
+
+        return filteredOffices;
     } catch (error) {
         console.error('Error fetching ward offices:', error);
         return [];

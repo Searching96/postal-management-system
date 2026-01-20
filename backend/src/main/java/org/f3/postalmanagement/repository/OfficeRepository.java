@@ -18,6 +18,8 @@ public interface OfficeRepository extends JpaRepository<Office, UUID> {
 
     boolean existsByOfficeEmail(String officeEmail);
 
+    boolean existsByOfficeCode(String officeCode);
+
     java.util.Optional<Office> findByOfficeEmail(String officeEmail);
 
     Optional<Office> findByOfficeName(String officeName);

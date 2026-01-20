@@ -5,6 +5,7 @@ import { AlertTriangle, MapPin, Lock } from 'lucide-react';
 import { useAuth } from '../../lib/AuthContext';
 import type { EmployeeMeResponse } from '../../models/user';
 import L from 'leaflet';
+import { getWardCoordinates } from '../../constants/wardCoordinates';
 
 interface Location {
     id: string;
@@ -178,33 +179,40 @@ function getProvinceCodeFromWardCode(wardCode: string | undefined): string | nul
     return wardCode.substring(0, 2);
 }
 
-// Get coordinates based on available location data (priority: provinceCode > wardCode > regionName)
+// Get coordinates based on available location data (priority: wardCode > provinceCode > regionName)
 function getCoordinates(
     location: { regionName?: string; wardCode?: string; provinceCode?: string },
     index: number
 ): [number, number] {
     console.log('getCoordinates called with:', location);
 
-    // Priority 1: Try using provinceCode directly
+    // Priority 1: Try exact ward-level coordinates
+    const wardCoords = getWardCoordinates(location.wardCode);
+    if (wardCoords) {
+        console.log('Using ward-level coordinates for:', location.wardCode);
+        return wardCoords;
+    }
+
+    // Priority 2: Try using provinceCode directly
     if (location.provinceCode && PROVINCE_COORDINATES[location.provinceCode]) {
         console.log('Using province code coordinates:', location.provinceCode);
         return PROVINCE_COORDINATES[location.provinceCode];
     }
 
-    // Priority 2: Extract province code from wardCode
+    // Priority 3: Extract province code from wardCode
     const provinceCode = getProvinceCodeFromWardCode(location.wardCode);
     if (provinceCode && PROVINCE_COORDINATES[provinceCode]) {
         console.log('Using province code from ward code:', provinceCode);
         return PROVINCE_COORDINATES[provinceCode];
     }
 
-    // Priority 3: Try using regionName
+    // Priority 4: Try using regionName
     if (location.regionName && REGION_COORDINATES[location.regionName]) {
         console.log('Using region coordinates:', location.regionName);
         return REGION_COORDINATES[location.regionName];
     }
 
-    // Priority 4: Keyword matching on regionName
+    // Priority 5: Keyword matching on regionName
     if (location.regionName) {
         const name = location.regionName.toLowerCase();
         if (name.includes('núi phía bắc') || name.includes('tây bắc') || name.includes('đông bắc')) return [22.0, 104.0];
