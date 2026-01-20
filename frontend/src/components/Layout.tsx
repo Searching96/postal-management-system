@@ -71,6 +71,7 @@ export function Layout() {
 
   if (role === "HUB_ADMIN" || role === "WH_PROVINCE_ADMIN" || role === "WH_WARD_MANAGER" || role === "PO_PROVINCE_ADMIN" || role === "PO_WARD_MANAGER") {
     primaryNav.push({ to: "/admin/shippers", icon: Truck, label: "Quản lý Bưu tá" });
+    primaryNav.push({ to: "/customer-ratings", icon: MessageSquare, label: "Phân tích ý kiến khách hàng" });
   }
 
   const isPO = role.startsWith("PO_");
