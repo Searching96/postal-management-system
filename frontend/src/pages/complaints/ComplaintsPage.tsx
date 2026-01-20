@@ -96,9 +96,9 @@ const MOCK_STATUS_HISTORY: StatusHistoryItem[] = [
 const MOCK_COMPLAINTS: Complaint[] = [
     {
         id: "1",
-        trackingNumber: "VN000123456",
-        senderName: "Nguyễn Văn An",
-        senderPhone: "0901234567",
+        trackingNumber: "VN918273645",
+        senderName: "Trần Nguyễn Đức Phúc",
+        senderPhone: "0912345678",
         creatorName: "Trần Thị Hồng",
         creatorPhone: "0993334444",
         shipperName: "Lê Văn Hùng",
