@@ -31,15 +31,40 @@ interface GeocodedOrder extends Order {
 // Cache for geocoding results to avoid repeated API calls
 const geocodeCache = new Map<string, [number, number] | null>();
 
+// Rate limiting for geocoding requests (Nominatim requires max 1 request/second)
+let lastGeocodingTime = 0;
+const GEOCODING_DELAY = 1000; // 1 second between requests
+
 async function geocodeAddress(address: string): Promise<[number, number] | null> {
     if (geocodeCache.has(address)) {
         return geocodeCache.get(address) ?? null;
     }
 
+    // Rate limiting: wait if we're making requests too quickly
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastGeocodingTime;
+    if (timeSinceLastRequest < GEOCODING_DELAY) {
+        await new Promise(resolve => setTimeout(resolve, GEOCODING_DELAY - timeSinceLastRequest));
+    }
+    lastGeocodingTime = Date.now();
+
     try {
         const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=vn`
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=vn`,
+            {
+                headers: {
+                    'User-Agent': 'PostalManagementSystem/1.0',
+                    'Accept': 'application/json',
+                }
+            }
         );
+
+        if (!response.ok) {
+            console.warn(`Geocoding failed for "${address}": ${response.status} ${response.statusText}`);
+            geocodeCache.set(address, null);
+            return null;
+        }
+
         const data = await response.json();
 
         if (data && data.length > 0) {

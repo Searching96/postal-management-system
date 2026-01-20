@@ -71,6 +71,18 @@ public class Order extends BaseEntity {
     @JoinColumn(name = "sender_ward_code")
     private Ward senderWard;
 
+    /**
+     * Sender's latitude coordinate (for map display)
+     */
+    @Column(name = "sender_latitude")
+    private Double senderLatitude;
+
+    /**
+     * Sender's longitude coordinate (for map display)
+     */
+    @Column(name = "sender_longitude")
+    private Double senderLongitude;
+
     // ==================== RECEIVER INFORMATION ====================
 
     /**
@@ -104,6 +116,18 @@ public class Order extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receiver_ward_code", referencedColumnName = "code")
     private Ward receiverWard;
+
+    /**
+     * Receiver's latitude coordinate (for map display)
+     */
+    @Column(name = "receiver_latitude")
+    private Double receiverLatitude;
+
+    /**
+     * Receiver's longitude coordinate (for map display)
+     */
+    @Column(name = "receiver_longitude")
+    private Double receiverLongitude;
 
     // ==================== PACKAGE INFORMATION ====================
 

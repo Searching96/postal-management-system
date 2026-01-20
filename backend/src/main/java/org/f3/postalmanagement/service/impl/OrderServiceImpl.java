@@ -32,6 +32,7 @@ import org.f3.postalmanagement.enums.ServiceType;
 import org.f3.postalmanagement.enums.SubscriptionPlan;
 import org.f3.postalmanagement.repository.*;
 import org.f3.postalmanagement.service.IABSAService;
+import org.f3.postalmanagement.service.IGeocodingService;
 import org.f3.postalmanagement.service.INotificationService;
 import org.f3.postalmanagement.service.IOrderService;
 import org.springframework.data.domain.Page;
@@ -65,6 +66,7 @@ public class OrderServiceImpl implements IOrderService {
     private final OfficeRepository officeRepository;
     private final INotificationService notificationService;
     private final IABSAService absaService;
+    private final IGeocodingService geocodingService;
 
     // ==================== PRICING CONSTANTS ====================
     // In a real system, these would come from a PriceTable entity
@@ -343,7 +345,10 @@ public class OrderServiceImpl implements IOrderService {
         // Notes
         order.setDeliveryInstructions(request.getDeliveryInstructions());
         order.setInternalNotes(request.getInternalNotes());
-        
+
+        // Geocode addresses to get coordinates (stored for map display)
+        geocodeOrderAddresses(order);
+
         // Save order
         Order savedOrder = orderRepository.save(order);
         
@@ -625,12 +630,16 @@ public class OrderServiceImpl implements IOrderService {
                 .senderWardCode(order.getSenderWard() != null ? order.getSenderWard().getCode() : null)
                 .senderWardName(order.getSenderWard() != null ? order.getSenderWard().getName() : null)
                 .senderProvinceName(order.getSenderWard() != null && order.getSenderWard().getProvince() != null ? order.getSenderWard().getProvince().getName() : null)
+                .senderLatitude(order.getSenderLatitude())
+                .senderLongitude(order.getSenderLongitude())
                 .receiverName(order.getReceiverName())
                 .receiverPhone(order.getReceiverPhone())
                 .receiverAddressLine1(order.getReceiverAddressLine1())
                 .receiverWardCode(order.getReceiverWard() != null ? order.getReceiverWard().getCode() : null)
                 .receiverWardName(order.getReceiverWard() != null ? order.getReceiverWard().getName() : null)
                 .receiverProvinceName(order.getReceiverWard() != null && order.getReceiverWard().getProvince() != null ? order.getReceiverWard().getProvince().getName() : null)
+                .receiverLatitude(order.getReceiverLatitude())
+                .receiverLongitude(order.getReceiverLongitude())
                 .packageType(order.getPackageType())
                 .packageDescription(order.getPackageDescription())
                 .weightKg(order.getWeightKg())
@@ -832,10 +841,13 @@ public class OrderServiceImpl implements IOrderService {
         order.setDestinationOffice(findDestinationOffice(receiverWard));
         
         // No createdByEmployee for customer-created orders
-        
+
         // Notes
         order.setDeliveryInstructions(request.getDeliveryInstructions());
-        
+
+        // Geocode addresses to get coordinates (stored for map display)
+        geocodeOrderAddresses(order);
+
         // Save order
         Order savedOrder = orderRepository.save(order);
         
@@ -1443,5 +1455,40 @@ public class OrderServiceImpl implements IOrderService {
         );
 
         return offices.isEmpty() ? null : offices.get(0);
+    }
+
+    /**
+     * Geocode sender and receiver addresses and store coordinates in order.
+     * Geocoding is done asynchronously to avoid blocking order creation.
+     */
+    private void geocodeOrderAddresses(Order order) {
+        try {
+            // Geocode sender address
+            String senderFullAddress = String.format("%s, %s, %s",
+                    order.getSenderAddressLine1(),
+                    order.getSenderWard().getName(),
+                    order.getSenderWard().getProvince().getName());
+
+            geocodingService.geocodeAddress(senderFullAddress).ifPresent(coords -> {
+                order.setSenderLatitude(coords[0]);
+                order.setSenderLongitude(coords[1]);
+                log.debug("Geocoded sender address: [{}, {}]", coords[0], coords[1]);
+            });
+
+            // Geocode receiver address
+            String receiverFullAddress = String.format("%s, %s, %s",
+                    order.getReceiverAddressLine1(),
+                    order.getReceiverWard().getName(),
+                    order.getReceiverWard().getProvince().getName());
+
+            geocodingService.geocodeAddress(receiverFullAddress).ifPresent(coords -> {
+                order.setReceiverLatitude(coords[0]);
+                order.setReceiverLongitude(coords[1]);
+                log.debug("Geocoded receiver address: [{}, {}]", coords[0], coords[1]);
+            });
+        } catch (Exception e) {
+            // Don't fail order creation if geocoding fails
+            log.warn("Failed to geocode addresses for order, continuing without coordinates", e);
+        }
     }
 }
