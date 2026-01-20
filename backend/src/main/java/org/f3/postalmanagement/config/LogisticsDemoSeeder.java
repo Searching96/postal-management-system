@@ -53,7 +53,7 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         // 1. Ensure Wards
         // user provided: 120 P.Yên Lãng, Đống Đa, Hà Nội (Hanoi)
         // user provided: Khu phố 34, Phường Linh Xuân, Thành phố Hồ Chí Minh (HCM)
-        Ward hanoiWard = ensureWard("01", "Thịnh Quang"); // Approximating based on Dong Da
+        Ward hanoiWard = ensureWard("01", "Đống Đa"); // Approximating based on Dong Da
         Ward hcmWard = ensureWard("79", "Linh Xuân");
 
         if (hanoiWard == null || hcmWard == null) {
@@ -61,27 +61,25 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
             return;
         }
 
-        // 2. Ensure Specific Post Offices (Realistic Names)
+        // 2. Ensure Specific Post Offices (Realistic Names) as requested by User
         Office hanoiPost = ensurePostOffice("Điểm dịch vụ SPX Hà Nội - Đống Đa 5", 
                 "530 Láng, P. Láng Hạ ,Q. Đống Đa, TP Hà Nội", hanoiWard);
         
         Office hcmPost = ensurePostOffice("Điểm dịch vụ SPX TP. Hồ Chí Minh - Thủ Đức/ Linh Xuân", 
                 "86 Quốc lộ 1K, Phường Linh Xuân, TP.HCM", hcmWard);
-        
-        // Find Hubs (Created by DataInitializer with realistic names hopefully, or fallback)
+
+        // 2. Find existing offices created by DataInitializer (DO NOT create duplicates)
+        // Find Hubs
         Office hanoiHub = findHub("01", "Hong Delta Hub (Hà Nội SOC)");
         Office hcmHub = findHub("79", "Dong Nam Bo Hub (Củ Chi SOC)");
 
-        // Find Province and Ward level offices for both cities
+        // Find Province and Ward level offices (created by DataInitializer)
         Office hanoiProvinceWH = findOfficeByEmailOrType("warehouse.01@f3postal.com", OfficeType.PROVINCE_WAREHOUSE);
         Office hcmProvinceWH = findOfficeByEmailOrType("warehouse.79@f3postal.com", OfficeType.PROVINCE_WAREHOUSE);
 
-        Office hanoiWardWH = findOfficeByEmailOrType("wh.ward1.01@f3postal.com", OfficeType.WARD_WAREHOUSE);
-        Office hcmWardWH = findOfficeByEmailOrType("wh.ward1.79@f3postal.com", OfficeType.WARD_WAREHOUSE);
-
-        Office hanoiWardPO = findOfficeByEmailOrType("po.ward1.01@f3postal.com", OfficeType.WARD_POST);
-        Office hcmWardPO = findOfficeByEmailOrType("po.ward1.79@f3postal.com", OfficeType.WARD_POST);
-
+        Office hanoiProvincePO = findOfficeByEmailOrType("post.01@f3postal.com", OfficeType.PROVINCE_POST);
+        Office hcmProvincePO = findOfficeByEmailOrType("post.79@f3postal.com", OfficeType.PROVINCE_POST);
+        
         // 3. Create comprehensive staff for HANOI
         if (hanoiHub != null) {
             ensureStaffForOffice(hanoiHub, "0901000001", "Hub Admin HN", Role.HUB_ADMIN);
@@ -90,15 +88,17 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
             ensureStaffForOffice(hanoiProvinceWH, "0901000002", "WH Province Admin HN", Role.WH_PROVINCE_ADMIN);
             ensureStaffForOffice(hanoiProvinceWH, "0901000003", "WH Staff HN", Role.WH_STAFF);
         }
-        if (hanoiWardWH != null) {
-            ensureStaffForOffice(hanoiWardWH, "0901000004", "WH Ward Manager HN", Role.WH_WARD_MANAGER);
+        
+        if (hanoiProvincePO != null) {
+            ensureStaffForOffice(hanoiProvincePO, "0901000005", "PO Province Admin HN", Role.PO_PROVINCE_ADMIN);
+            ensureStaffForOffice(hanoiProvincePO, "0901000006", "PO Staff HN", Role.PO_STAFF);
         }
-        ensureStaffForOffice(hanoiPost, "0901000005", "PO Province Admin HN", Role.PO_PROVINCE_ADMIN);
-        ensureStaffForOffice(hanoiPost, "0901000006", "PO Staff HN", Role.PO_STAFF);
-        if (hanoiWardPO != null) {
-            ensureStaffForOffice(hanoiWardPO, "0901000007", "PO Ward Manager HN", Role.PO_WARD_MANAGER);
+
+        // Assign Demo Staff to the specific Hanoi Post Office
+        if (hanoiPost != null) {
+            ensureStaffForOffice(hanoiPost, "0901000007", "PO Ward Manager HN", Role.PO_WARD_MANAGER);
+            ensureStaffForOffice(hanoiPost, "0901000008", "Shipper HN", Role.SHIPPER);
         }
-        ensureStaffForOffice(hanoiPost, "0901000008", "Shipper HN", Role.SHIPPER);
 
         // 4. Create comprehensive staff for HCM
         if (hcmHub != null) {
@@ -108,36 +108,37 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
             ensureStaffForOffice(hcmProvinceWH, "0979000002", "WH Province Admin HCM", Role.WH_PROVINCE_ADMIN);
             ensureStaffForOffice(hcmProvinceWH, "0979000003", "WH Staff HCM", Role.WH_STAFF);
         }
-        if (hcmWardWH != null) {
-            ensureStaffForOffice(hcmWardWH, "0979000004", "WH Ward Manager HCM", Role.WH_WARD_MANAGER);
+        
+        if (hcmProvincePO != null) {
+            ensureStaffForOffice(hcmProvincePO, "0979000005", "PO Province Admin HCM", Role.PO_PROVINCE_ADMIN);
+            ensureStaffForOffice(hcmProvincePO, "0979000006", "PO Staff HCM", Role.PO_STAFF);
         }
-        ensureStaffForOffice(hcmPost, "0979000005", "PO Province Admin HCM", Role.PO_PROVINCE_ADMIN);
-        ensureStaffForOffice(hcmPost, "0979000006", "PO Staff HCM", Role.PO_STAFF);
-        if (hcmWardPO != null) {
-            ensureStaffForOffice(hcmWardPO, "0979000007", "PO Ward Manager HCM", Role.PO_WARD_MANAGER);
-        }
-        Employee hcmShipper = ensureStaffForOffice(hcmPost, "0979000008", "Shipper Thủ Đức HCM", Role.SHIPPER);
-
-        // 4.5. Create Office Pairs and Ward Assignments
-        log.info("Creating office pairs and ward assignments...");
-
-        // Create office pair for Hanoi ward if both WH and PO exist
-        if (hanoiWardWH != null && hanoiWardPO != null) {
-            OfficePair hanoiPair = createOfficePairIfNotExists(hanoiWardWH, hanoiWardPO);
-            // Assign all wards in Hanoi to this office pair
-            assignWardsToOfficePair("01", hanoiPair);
-        } else {
-            log.warn("Skipping Hanoi ward assignments - missing WH or PO");
+        Employee hcmShipper = null;
+        
+        // Assign Demo Staff to the specific HCM Post Office
+        if (hcmPost != null) {
+            ensureStaffForOffice(hcmPost, "0979000007", "PO Ward Manager HCM", Role.PO_WARD_MANAGER);
+            hcmShipper = ensureStaffForOffice(hcmPost, "0979000008", "Shipper Thủ Đức HCM", Role.SHIPPER);
         }
 
-        // Create office pair for HCM ward if both WH and PO exist
-        if (hcmWardWH != null && hcmWardPO != null) {
-            OfficePair hcmPair = createOfficePairIfNotExists(hcmWardWH, hcmWardPO);
-            // Assign all wards in HCM to this office pair
-            assignWardsToOfficePair("79", hcmPair);
-        } else {
-            log.warn("Skipping HCM ward assignments - missing WH or PO");
+        // 4.5. Find existing Office Pairs (created by DataInitializer) and create Ward Assignments
+        log.info("Creating ward assignments for Demo Offices...");
+
+        // Ensure Assignment for Hanoi: Custom PO <-> Province Warehouse (as fallback warehouse)
+        if (hanoiPost != null && hanoiProvinceWH != null) {
+            OfficePair hanoiPair = ensureOfficePair(hanoiProvinceWH, hanoiPost);
+            ensureWardAssignment(hanoiWard, hanoiPair);
+            log.info("Assigned Ward {} to Custom PO {}", hanoiWard.getName(), hanoiPost.getOfficeName());
         }
+
+        // Ensure Assignment for HCM: Custom PO <-> Province Warehouse (as fallback warehouse)
+        if (hcmPost != null && hcmProvinceWH != null) {
+             OfficePair hcmPair = ensureOfficePair(hcmProvinceWH, hcmPost);
+             ensureWardAssignment(hcmWard, hcmPair);
+             log.info("Assigned Ward {} to Custom PO {}", hcmWard.getName(), hcmPost.getOfficeName());
+        }
+
+        log.info("Finished staff creation and ward assignment.");
 
         // 5. Create Main Customer & Receiver
         Customer sender = ensureCustomerWithAccount("Trần Nguyễn Đức Phúc", "0912345678",
@@ -147,6 +148,7 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
                 "Khu phố 34, Phường Linh Xuân", hcmWard);
 
         // 6. Create Lifecycle Orders
+        // Creator should be staff at Hanoi Post
         Employee creator = employeeRepository.findByOfficeId(hanoiPost.getId()).stream().findFirst()
                 .orElse(employeeRepository.findAll().stream().findFirst().orElse(null));
 
@@ -294,6 +296,33 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         h.setDescription(desc);
         orderStatusHistoryRepository.save(h);
     }
+    
+    private Office ensurePostOffice(String name, String address, Ward ward) {
+         if (ward == null) {
+            log.error("Cannot create Post Office '{}': Ward provided is NULL", name);
+            return null; 
+        }
+
+        return officeRepository.findByOfficeName(name).orElseGet(() -> {
+            Office office = new Office();
+            office.setOfficeCode("PO-Custom-" + ward.getCode());
+            office.setOfficeName(name);
+            office.setOfficeAddressLine1(address);
+            office.setWard(ward);
+            office.setRegion(ward.getProvince().getAdministrativeRegion());
+            office.setOfficeType(OfficeType.WARD_POST);
+            office.setOfficeEmail("po.custom." + ward.getCode() + "@f3postal.com");
+            office.setOfficePhoneNumber("09" + ward.getCode() + "999");
+            
+            // Fallback for parent: find warehouse in same province
+            office.setParent(officeRepository.findByProvinceCodeAndOfficeType(
+                    ward.getProvince().getCode(), OfficeType.PROVINCE_WAREHOUSE)
+                    .stream().findFirst().orElse(null));
+            
+            log.info("Created Demo Post Office: {}", name);
+            return officeRepository.save(office);
+        });
+    }
 
     private Ward ensureWard(String provinceCode, String wardName) {
         return wardRepository.findByProvince_Code(provinceCode).stream()
@@ -321,39 +350,6 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         // Fallback: find any office of this type
         List<Office> offices = officeRepository.findAllByOfficeType(type);
         return offices.isEmpty() ? null : offices.get(0);
-    }
-
-    private Office ensurePostOffice(String name, String address, Ward ward) {
-        // 1. Critical Check: Ensure Ward is not null before proceeding
-        if (ward == null) {
-            log.error("Cannot create Post Office '{}': Ward provided is NULL", name);
-            return null; // Or throw new RuntimeException("Ward is required");
-        }
-
-        return officeRepository.findByOfficeName(name).orElseGet(() -> {
-            Office office = new Office();
-            // Use ward.getCode() for the string generation, but rely on the relationship for the DB column
-            office.setOfficeCode("PO-SPX-" + ward.getCode() + "-DEMO");
-            office.setOfficeName(name);
-            office.setOfficeAddressLine1(address);
-            
-            // 2. Correctly set the relationship. 
-            // Hibernate extracts the Primary Key from this object to populate the 'ward_code' column.
-            office.setWard(ward);
-
-            office.setRegion(ward.getProvince().getAdministrativeRegion());
-            office.setOfficeType(OfficeType.PROVINCE_POST);
-            office.setOfficeEmail("po." + ward.getCode() + ".demo@f3postal.com");
-            office.setOfficePhoneNumber("09" + ward.getCode() + "1234");
-            
-            // Fallback for parent: find warehouse in same province
-            office.setParent(officeRepository.findByProvinceCodeAndOfficeType(
-                    ward.getProvince().getCode(), OfficeType.PROVINCE_WAREHOUSE)
-                    .stream().findFirst().orElse(null));
-            
-            log.info("Created Demo Post Office: {}", name);
-            return officeRepository.save(office);
-        });
     }
 
     private Employee ensureStaffForOffice(Office office, String phone, String name, Role role) {
@@ -411,26 +407,45 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         });
     }
 
-    private OfficePair createOfficePairIfNotExists(Office whOffice, Office poOffice) {
-        // Check if pair already exists
+    private OfficePair ensureOfficePair(Office whOffice, Office poOffice) {
+        return officePairRepository.findAll().stream()
+            .filter(pair -> pair.getWhOffice().getId().equals(whOffice.getId()) &&
+                           pair.getPoOffice().getId().equals(poOffice.getId()))
+            .findFirst()
+            .orElseGet(() -> {
+                OfficePair pair = new OfficePair();
+                pair.setWhOffice(whOffice);
+                pair.setPoOffice(poOffice);
+                return officePairRepository.save(pair);
+            });
+    }
+
+    private void ensureWardAssignment(Ward ward, OfficePair officePair) {
+        Optional<WardOfficeAssignment> existing = wardOfficeAssignmentRepository.findByWardCode(ward.getCode());
+        if (!existing.isPresent()) {
+            WardOfficeAssignment assignment = new WardOfficeAssignment();
+            assignment.setWard(ward);
+            assignment.setOfficePair(officePair);
+            wardOfficeAssignmentRepository.save(assignment);
+        }
+    }
+
+    private OfficePair findOfficePair(Office whOffice, Office poOffice) {
+        // Find existing pair (should have been created by DataInitializer)
         Optional<OfficePair> existingPair = officePairRepository.findAll().stream()
             .filter(pair -> pair.getWhOffice().getId().equals(whOffice.getId()) &&
                            pair.getPoOffice().getId().equals(poOffice.getId()))
             .findFirst();
 
         if (existingPair.isPresent()) {
-            log.info("Office pair already exists for WH: {} and PO: {}",
+            log.info("Found office pair: WH={} <-> PO={}",
                 whOffice.getOfficeName(), poOffice.getOfficeName());
             return existingPair.get();
         }
 
-        OfficePair pair = new OfficePair();
-        pair.setWhOffice(whOffice);
-        pair.setPoOffice(poOffice);
-        OfficePair saved = officePairRepository.save(pair);
-        log.info("Created office pair: WH={} <-> PO={}",
+        log.warn("Office pair not found for WH: {} and PO: {}",
             whOffice.getOfficeName(), poOffice.getOfficeName());
-        return saved;
+        return null;
     }
 
     private void assignWardsToOfficePair(String provinceCode, OfficePair officePair) {

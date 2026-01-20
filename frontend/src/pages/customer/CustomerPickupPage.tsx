@@ -206,9 +206,9 @@ export function CustomerPickupPage() {
 
     const nextStep = () => {
         if (currentStep === "INFO") {
-            if (!formData.senderName || !formData.senderPhone || !formData.senderWardCode ||
-                !formData.receiverName || !formData.receiverPhone || !formData.receiverWardCode) {
-                toast.error("Vui lòng điền đủ thông tin bắt buộc (địa chỉ người gửi và người nhận)");
+            if (!formData.senderName || !formData.senderPhone || !formData.senderWardCode || !formData.senderAddressLine1 ||
+                !formData.receiverName || !formData.receiverPhone || !formData.receiverWardCode || !formData.receiverAddressLine1) {
+                toast.error("Vui lòng điền đủ thông tin bắt buộc (địa chỉ chi tiết, người gửi và người nhận)");
                 return;
             }
             setCurrentStep("DETAILS");

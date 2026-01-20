@@ -47,14 +47,15 @@
   1. Login as CUSTOMER                                                          
   2. Navigate to "Tạo đơn lấy hàng tại nhà" (/customer/pickup)                  
   3. Fill multi-step form:                                                      
-    - Step 1: Sender info (your home address)                                   
+    - Step 1: Sender info (120 Yên Lãng, Đống Đa, Hà Nội)    
+    - Step 2: Receiver info (your home address)                               
     - Step 2: Package details (watch price auto-calculate)                      
     - Step 3: Confirm and submit                                                
   4. Order status: PENDING_PICKUP                                               
                                                                                 
   Part B - PO Staff assigns shipper:                                            
                                                                                 
-  👤 Account: 0901000006 (PO_STAFF HN)                                          
+  👤 Account: 0901000007 (PO_STAFF HN)                                          
                                                                                 
   Steps:                                                                        
   1. Navigate to "Đơn hàng chờ lấy" (/orders/pending-pickups)                   
