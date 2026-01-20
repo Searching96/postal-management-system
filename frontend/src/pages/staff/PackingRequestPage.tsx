@@ -270,6 +270,12 @@ export function PackingRequestPage() {
                             <div>
                                 <p className="text-sm font-medium text-gray-500">Xe tiếp theo</p>
                                 <h3 className="text-xl font-bold text-gray-900">16:30</h3>
+                                {/* License Plate Style */}
+                                <div className="px-2 py-0.5 bg-yellow-400 border-2 border-black rounded shadow-sm">
+                                    <span className="text-lg font-mono font-bold text-black tracking-wider uppercase">
+                                        50AB-26244
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -364,7 +370,7 @@ export function PackingRequestPage() {
                                                             }`}
                                                     >
                                                         <Play className="w-3 h-3 fill-current" />
-                                                        {isPacked ? 'Xem lại đóng gói' : 'Bắt đầu đóng gói'}
+                                                        {isPacked ? 'Xem lại đóng gói' : 'Hướng dẫn đóng gói'}
                                                     </button>
                                                 </td>
                                             </tr>

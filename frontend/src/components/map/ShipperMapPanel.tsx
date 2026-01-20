@@ -16,7 +16,7 @@ L.Icon.Default.mergeOptions({
 
 // Custom delivery location icon
 const deliveryIcon = new L.Icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/447/447031.png', // User requested marker icon
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/535/535137.png',
     iconSize: [35, 35],
     iconAnchor: [17, 35],
     popupAnchor: [0, -35],
@@ -32,13 +32,11 @@ interface GeocodedOrder extends Order {
 const geocodeCache = new Map<string, [number, number] | null>();
 
 async function geocodeAddress(address: string): Promise<[number, number] | null> {
-    // Check cache first
     if (geocodeCache.has(address)) {
         return geocodeCache.get(address) ?? null;
     }
 
     try {
-        // Using Nominatim (free OSM geocoding service)
         const response = await fetch(
             `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=vn`
         );
@@ -59,8 +57,6 @@ async function geocodeAddress(address: string): Promise<[number, number] | null>
     }
 }
 
-
-
 function MapBoundsFitter({ orders }: { orders: GeocodedOrder[] }) {
     const map = useMap();
 
@@ -78,10 +74,9 @@ function MapBoundsFitter({ orders }: { orders: GeocodedOrder[] }) {
     return null;
 }
 
-
 // Driver/Current Location icon
 const driverIcon = new L.Icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/535/535137.png', // Car/Navigation icon
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/447/447031.png',
     iconSize: [40, 40],
     iconAnchor: [20, 20],
     popupAnchor: [0, -20],
@@ -90,47 +85,26 @@ const driverIcon = new L.Icon({
 interface ShipperMapPanelProps {
     orders: Order[];
     mode?: 'delivery' | 'pickup';
+    currentLocation?: { lat: number; lng: number }; // Added prop here
 }
 
-export function ShipperMapPanel({ orders, mode = 'delivery' }: ShipperMapPanelProps) {
+export function ShipperMapPanel({ orders, mode = 'delivery', currentLocation: propLocation }: ShipperMapPanelProps) {
     const [geocodedOrders, setGeocodedOrders] = useState<GeocodedOrder[]>([]);
     const [isGeocoding, setIsGeocoding] = useState(true);
 
-    // MOCK GPS: Using HCM ward office coordinates (SPX TP.HCM - Thủ Đức area)
+    // Default MOCK GPS: Using HCM ward office coordinates (SPX TP.HCM - Thủ Đức area)
     const MOCK_WARD_OFFICE_LOCATION: [number, number] = [10.8506, 106.7630];
-    const [currentLocation] = useState<[number, number] | null>(MOCK_WARD_OFFICE_LOCATION);
 
-    // Original geolocation code (commented out for demo)
-    // useEffect(() => {
-    //     if ('geolocation' in navigator) {
-    //         navigator.geolocation.getCurrentPosition(
-    //             (position) => {
-    //                 setCurrentLocation([position.coords.latitude, position.coords.longitude]);
-    //             },
-    //             (error) => {
-    //                 console.error("Error getting location:", error);
-    //             }
-    //         );
-
-    //         const watchId = navigator.geolocation.watchPosition(
-    //             (position) => {
-    //                 setCurrentLocation([position.coords.latitude, position.coords.longitude]);
-    //             },
-    //             (error) => {
-    //                 console.error("Error watching location:", error);
-    //             }
-    //         );
-
-    //         return () => navigator.geolocation.clearWatch(watchId);
-    //     }
-    // }, []);
+    // Use prop location if available, otherwise default to mock/real GPS logic
+    const currentLocation: [number, number] | null = propLocation
+        ? [propLocation.lat, propLocation.lng]
+        : MOCK_WARD_OFFICE_LOCATION;
 
     useEffect(() => {
         const geocodeOrders = async () => {
             setIsGeocoding(true);
             const results = await Promise.all(
                 orders.map(async (order) => {
-                    // Determined target fields based on mode
                     const targetLat = mode === 'delivery' ? order.receiverLatitude : order.senderLatitude;
                     const targetLng = mode === 'delivery' ? order.receiverLongitude : order.senderLongitude;
 
@@ -138,7 +112,6 @@ export function ShipperMapPanel({ orders, mode = 'delivery' }: ShipperMapPanelPr
                     const ward = mode === 'delivery' ? order.receiverWardName : order.senderWardName;
                     const province = mode === 'delivery' ? order.receiverProvinceName : order.senderProvinceName;
 
-                    // Priority: Use exact lat/long if available from backend
                     if (targetLat && targetLng) {
                         return {
                             ...order,
@@ -148,7 +121,6 @@ export function ShipperMapPanel({ orders, mode = 'delivery' }: ShipperMapPanelPr
                         };
                     }
 
-                    // Validation: minimal check
                     if (!address) {
                         return {
                             ...order,
@@ -157,20 +129,14 @@ export function ShipperMapPanel({ orders, mode = 'delivery' }: ShipperMapPanelPr
                         };
                     }
 
-                    // Attempt 1: Full Address
-                    let coordinates: [number, number] | null = null;
-                    const isApproximate = false;
-
                     const fullAddress = `${address}, ${ward || ''}, ${province || ''}`;
-
-                    coordinates = await geocodeAddress(fullAddress);
-
+                    const coordinates = await geocodeAddress(fullAddress);
 
                     return {
                         ...order,
                         coordinates: coordinates || undefined,
                         geocodingError: !coordinates,
-                        isApproximate
+                        isApproximate: false
                     };
                 })
             );
@@ -194,21 +160,24 @@ export function ShipperMapPanel({ orders, mode = 'delivery' }: ShipperMapPanelPr
     );
 
     const centerPoint = useMemo(() => {
-        // If we have current location, prioritize it or include it?
-        // For now, let's keep the logic focused on orders, but maybe we can fit bounds to include driver later.
+        // If propLocation is provided (Debug Mode), center map on it
+        if (propLocation) {
+            return [propLocation.lat, propLocation.lng] as [number, number];
+        }
+
         if (successfullyGeocoded.length === 0) {
             return currentLocation || undefined;
         }
         if (successfullyGeocoded.length === 1) {
             return successfullyGeocoded[0].coordinates;
         }
-        // Calculate center of all points
+
         const lats = successfullyGeocoded.map((o) => (o.coordinates ? o.coordinates[0] : 0));
         const lngs = successfullyGeocoded.map((o) => (o.coordinates ? o.coordinates[1] : 0));
         const avgLat = lats.reduce((a, b) => a + b, 0) / lats.length;
         const avgLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
         return [avgLat, avgLng] as [number, number];
-    }, [successfullyGeocoded, currentLocation]);
+    }, [successfullyGeocoded, currentLocation, propLocation]);
 
     if (isGeocoding) {
         return (
@@ -237,7 +206,7 @@ export function ShipperMapPanel({ orders, mode = 'delivery' }: ShipperMapPanelPr
         <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
             <div className="h-[400px] w-full relative">
                 <MapContainer
-                    center={centerPoint || [16.0376, 107.0]}
+                    center={centerPoint || [10.8231, 106.6297]} // Default to Ho Chi Minh City if all else fails
                     zoom={13}
                     style={{ height: '100%', width: '100%' }}
                     scrollWheelZoom={false}
@@ -252,13 +221,12 @@ export function ShipperMapPanel({ orders, mode = 'delivery' }: ShipperMapPanelPr
                         <Marker
                             position={currentLocation}
                             icon={driverIcon}
-                            zIndexOffset={1000} // Keep on top
+                            zIndexOffset={1000}
                         >
                             <Popup>
                                 <div className="text-center">
-                                    <p className="font-bold text-blue-600 text-sm">Vị trí Bưu cục</p>
-                                    <p className="text-xs text-gray-600 mt-1">SPX TP.HCM - Thủ Đức</p>
-                                    <p className="text-xs text-gray-500">86 Quốc lộ 1K, Thủ Đức</p>
+                                    <p className="font-bold text-blue-600 text-sm">Vị trí của bạn</p>
+                                    <p className="text-xs text-gray-600 mt-1">Shipper</p>
                                 </div>
                             </Popup>
                         </Marker>
@@ -285,7 +253,7 @@ export function ShipperMapPanel({ orders, mode = 'delivery' }: ShipperMapPanelPr
                                         {order.isApproximate && (
                                             <div className="flex items-center gap-1.5 mb-2 px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded border border-amber-100">
                                                 <AlertCircle size={12} />
-                                                <span className="font-medium">Vị trí tương đối (Khu vực Phường)</span>
+                                                <span className="font-medium">Vị trí tương đối</span>
                                             </div>
                                         )}
 
@@ -326,10 +294,9 @@ export function ShipperMapPanel({ orders, mode = 'delivery' }: ShipperMapPanelPr
                                 <span>Lỗi: {failedGeocoding.length}</span>
                             </div>
                         )}
-                        {/* Driver status */}
                         <div className="flex items-center gap-1.5">
                             <div className={`w-2.5 h-2.5 rounded-full ${currentLocation ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                            <span>{currentLocation ? 'Vị trí Bưu cục (Demo)' : 'Đang tìm GPS...'}</span>
+                            <span>{currentLocation ? (propLocation ? 'Vị trí Debug' : 'Vị trí Bưu cục') : 'Đang tìm GPS...'}</span>
                         </div>
                     </div>
                     <span className="text-gray-400">Nhấp vào marker để xem chi tiết</span>

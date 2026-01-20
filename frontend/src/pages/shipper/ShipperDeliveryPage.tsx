@@ -8,6 +8,23 @@ import { ShipperMapPanel } from '../../components/map/ShipperMapPanel';
 import { useAuth } from '../../lib/AuthContext';
 import { EmployeeMeResponse } from '../../models';
 
+// --- Helper: Geocode function for Debug Mode ---
+async function geocodeAddressDebug(address: string): Promise<{ lat: number; lng: number } | null> {
+    try {
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=vn`
+        );
+        const data = await response.json();
+        if (data && data.length > 0) {
+            return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        }
+        return null;
+    } catch (error) {
+        console.error('Debug geocoding error:', error);
+        return null;
+    }
+}
+
 const ShipperDeliveryPage = () => {
     const [page, setPage] = useState(0);
     const [orders, setOrders] = useState<Order[]>([]);
@@ -24,6 +41,7 @@ const ShipperDeliveryPage = () => {
     // State to simulate "Arrived at location"
     const [isAtLocation, setIsAtLocation] = useState(false);
     const [debugLocation, setDebugLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
+    const [isDebugLoading, setIsDebugLoading] = useState(false); // Loading state for debug button
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -93,26 +111,43 @@ const ShipperDeliveryPage = () => {
         }
     };
 
-    // --- DEBUG LOGIC ---
-    const handleDebugMoveToNextOrder = () => {
+    // --- UPDATED DEBUG LOGIC ---
+    const handleDebugMoveToNextOrder = async () => {
         if (orders.length === 0) {
             toast.error("Không có đơn hàng để di chuyển đến");
             return;
         }
 
         const nextOrder = orders[0];
-        // In a real app, use nextOrder.latitude/longitude
-        // Here we simulate coordinates for the map
-        const targetLat = 10.7769;
-        const targetLng = 106.7009;
+        setIsDebugLoading(true);
+
+        let targetLat = nextOrder.receiverLatitude;
+        let targetLng = nextOrder.receiverLongitude;
+
+        // If backend didn't provide coords, geocode them now
+        if (!targetLat || !targetLng) {
+            const fullAddress = `${nextOrder.receiverAddressLine1}, ${nextOrder.receiverWardName || ''}, ${nextOrder.receiverProvinceName || ''}`;
+            const coords = await geocodeAddressDebug(fullAddress);
+
+            if (coords) {
+                targetLat = coords.lat;
+                targetLng = coords.lng;
+            } else {
+                // Fallback if geocoding fails completely
+                targetLat = 10.7769;
+                targetLng = 106.7009;
+                toast.warning("Không tìm thấy tọa độ, sử dụng vị trí mặc định");
+            }
+        }
 
         setDebugLocation({ lat: targetLat, lng: targetLng });
-        setIsAtLocation(true); // Enable buttons
-        toast.success(`Debug: Đã đến địa điểm giao hàng cho đơn ${nextOrder.trackingNumber}`);
+        setIsAtLocation(true);
+        setIsDebugLoading(false);
+        toast.success(`Debug: Đã đến ${nextOrder.receiverAddressLine1}`);
     };
 
     const handleDeliverOrder = async (orderId: string) => {
-        if (!isAtLocation) return; // Guard clause
+        if (!isAtLocation) return;
         if (!window.confirm('Xác nhận giao hàng thành công?')) return;
 
         setProcessingId(orderId);
@@ -120,7 +155,6 @@ const ShipperDeliveryPage = () => {
             const res = await orderService.markOrderDelivered(orderId);
             if (res.success) {
                 toast.success('Đơn hàng đã được giao');
-                // Reset location state (simulate moving away)
                 setIsAtLocation(false);
                 setDebugLocation(undefined);
                 refreshData();
@@ -146,7 +180,6 @@ const ShipperDeliveryPage = () => {
                 setShowFailDialog(false);
                 setFailReason('');
                 setSelectedOrder(null);
-                // Reset location state
                 setIsAtLocation(false);
                 setDebugLocation(undefined);
                 refreshData();
@@ -219,13 +252,20 @@ const ShipperDeliveryPage = () => {
                 {/* DEBUG BUTTON */}
                 <button
                     onClick={handleDebugMoveToNextOrder}
+                    disabled={isDebugLoading}
                     className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded border transition-colors shadow-sm ${isAtLocation
-                        ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                        : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200"
+                            ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                            : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200"
                         }`}
                     title="Mô phỏng shipper di chuyển đến vị trí đơn hàng"
                 >
-                    {isAtLocation ? <CheckCircle className="h-4 w-4" /> : <Bug className="h-4 w-4" />}
+                    {isDebugLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isAtLocation ? (
+                        <CheckCircle className="h-4 w-4" />
+                    ) : (
+                        <Bug className="h-4 w-4" />
+                    )}
                     <span>{isAtLocation ? "Đã đến điểm giao" : "Debug: Đến địa điểm giao"}</span>
                 </button>
             </div>
@@ -255,7 +295,7 @@ const ShipperDeliveryPage = () => {
                 ) : (
                     <div className="space-y-4">
                         {orders.map((order) => (
-                            <div key={order.orderId} className={`bg-white rounded-xl shadow-md overflow-hidden border ${isAtLocation ? 'border-primary-200 ring-1 ring-primary-100' : 'border-gray-100'} transition-all`}>
+                            <div key={order.orderId} className={`bg-white rounded-xl shadow-md overflow-hidden border ${isAtLocation ? 'border-primary-200 ring-1 ring-primary-50' : 'border-gray-100'} transition-all`}>
                                 <div className="bg-gray-50 p-3 border-b border-gray-100 flex justify-between items-center">
                                     <span className="font-mono font-bold text-primary-700">{order.trackingNumber}</span>
                                     {order.codAmount > 0 && (
@@ -309,7 +349,6 @@ const ShipperDeliveryPage = () => {
                                                 setSelectedOrder(order);
                                                 setShowFailDialog(true);
                                             }}
-                                            // DISABLED UNTIL AT LOCATION
                                             disabled={!isAtLocation || processingId === order.orderId}
                                             className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
                                             title={!isAtLocation ? "Cần đến địa điểm giao hàng trước" : "Giao hàng thất bại"}
@@ -326,7 +365,6 @@ const ShipperDeliveryPage = () => {
 
                                         <button
                                             onClick={() => handleDeliverOrder(order.orderId)}
-                                            // DISABLED UNTIL AT LOCATION
                                             disabled={!isAtLocation || processingId === order.orderId}
                                             className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
                                             title={!isAtLocation ? "Cần đến địa điểm giao hàng trước" : "Giao thành công"}
