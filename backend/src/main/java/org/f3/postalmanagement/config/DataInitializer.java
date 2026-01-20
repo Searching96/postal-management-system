@@ -145,6 +145,25 @@ public class DataInitializer implements CommandLineRunner {
                      address = "Khu công nghiệp Tân Phú Trung, Quốc lộ 22, Ấp Trạm Bơm, xã Tân Phú Trung, huyện Củ Chi, TP. Hồ Chí Minh";
                 }
 
+                // --- FIX: Assign default Ward to HUB to prevent NPE in Office.getProvince() ---
+                Province firstProvinceInRegion = provinceRepository.findAll().stream()
+                        .filter(p -> p.getAdministrativeRegion().getId().equals(region.getId()))
+                        .findFirst()
+                        .orElse(null);
+
+                Ward defaultWard = null;
+                if (firstProvinceInRegion != null) {
+                    defaultWard = wardRepository.findByProvince_Code(firstProvinceInRegion.getCode())
+                            .stream().findFirst().orElse(null);
+                }
+
+                if (defaultWard != null) {
+                    hub.setWard(defaultWard); 
+                } else {
+                    log.warn("Could not find a default ward for HUB in region {}", region.getName());
+                }
+                // --- END FIX ---
+
                 hub.setOfficeCode(officeCode);
                 hub.setOfficeName(hubName);
                 hub.setOfficeEmail("hub" + region.getId() + "@f3postal.com");
@@ -249,9 +268,16 @@ public class DataInitializer implements CommandLineRunner {
             Office provincePo = officeRepository.findByOfficeEmail(poEmail).orElse(null);
 
             if (provinceWh != null && provincePo != null) {
-                // Lookup default ward (created in initWards)
-                String defaultWardCode = provinceCode + "00001";
-                Ward defaultWard = wardRepository.findById(defaultWardCode).orElse(null);
+                // --- FIX: Robustly find a real ward in this province ---
+                Ward defaultWard = wardRepository.findByProvince_Code(provinceCode)
+                        .stream().findFirst()
+                        .orElse(null);
+
+                // Critical safety check
+                if (defaultWard == null) {
+                    log.warn("Skipping Ward Office creation for province {}: No wards found in DB.", province.getName());
+                    continue; 
+                }
 
                 // Create Ward Warehouse
                 Office wardWh = new Office();
@@ -261,14 +287,15 @@ public class DataInitializer implements CommandLineRunner {
                 wardWh.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + province.getCode() + "2000"));
                 wardWh.setOfficeAddressLine1("Address Kho Ward 1 " + province.getName());
                 wardWh.setRegion(province.getAdministrativeRegion());
-                wardWh.setWard(defaultWard);
+                
+                wardWh.setWard(defaultWard); // Now guaranteed to be a valid object
+                
                 wardWh.setParent(provinceWh);
                 wardWh.setOfficeType(OfficeType.WARD_WAREHOUSE);
                 wardWh.setCapacity(2000);
-                // Note: setProvince removed as per new design
+                
                 Office savedWardWh = officeRepository.save(wardWh);
                 
-                // Create Ward Manager for Warehouse
                 createOfficeManager(savedWardWh, Role.WH_WARD_MANAGER, "wh.manager.w1." + provinceCode, PhoneNumberValidator.padToTenDigits("093" + province.getCode() + "10"));
 
                 // Create Ward Post Office
@@ -279,13 +306,14 @@ public class DataInitializer implements CommandLineRunner {
                 wardPo.setOfficePhoneNumber(PhoneNumberValidator.padToTenDigits("09" + province.getCode() + "3000"));
                 wardPo.setOfficeAddressLine1("Address PO Ward 1 " + province.getName());
                 wardPo.setRegion(province.getAdministrativeRegion());
-                wardPo.setWard(defaultWard);
+                
+                wardPo.setWard(defaultWard); // Now guaranteed to be a valid object
+                
                 wardPo.setParent(provincePo);
                 wardPo.setOfficeType(OfficeType.WARD_POST);
-                // Note: setProvince removed as per new design
+                
                 Office savedWardPo = officeRepository.save(wardPo);
                 
-                // Create Ward Manager for Post Office
                 createOfficeManager(savedWardPo, Role.PO_WARD_MANAGER, "po.manager.w1." + provinceCode, PhoneNumberValidator.padToTenDigits("094" + province.getCode() + "10"));
 
                 // Create OfficePair

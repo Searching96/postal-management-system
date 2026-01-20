@@ -120,6 +120,29 @@ export interface PriceCalculationRequest {
     addInsurance?: boolean;
 }
 
+export interface CustomerCreateOrderRequest {
+    originOfficeId: string;
+    pickupAddressLine1: string;
+    pickupWardCode: string;
+    pickupInstructions?: string;
+    receiverName: string;
+    receiverPhone: string;
+    receiverAddressLine1: string;
+    receiverWardCode: string;
+    packageType?: string;
+    packageDescription?: string;
+    weightKg: number;
+    lengthCm?: number;
+    widthCm?: number;
+    heightCm?: number;
+    serviceType: string;
+    codAmount?: number;
+    declaredValue?: number;
+    addInsurance?: boolean;
+    deliveryInstructions?: string;
+    preferredPickupTime?: string;
+}
+
 export interface AssignShipperRequest {
     orderId: string;
     shipperId: string;
@@ -187,7 +210,7 @@ export const orderService = {
         return response.data;
     },
 
-    createCustomerPickupOrder: async (data: CreateOrderRequest): Promise<Order> => {
+    createCustomerPickupOrder: async (data: CustomerCreateOrderRequest): Promise<Order> => {
         const response = await api.post<Order>("/orders/customer/pickup", data);
         return response.data;
     },

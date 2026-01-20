@@ -9,6 +9,8 @@ import org.f3.postalmanagement.entity.administrative.Ward;
 import org.f3.postalmanagement.entity.order.Order;
 import org.f3.postalmanagement.entity.order.OrderStatusHistory;
 import org.f3.postalmanagement.entity.unit.Office;
+import org.f3.postalmanagement.entity.unit.OfficePair;
+import org.f3.postalmanagement.entity.unit.WardOfficeAssignment;
 import org.f3.postalmanagement.enums.OfficeType;
 import org.f3.postalmanagement.enums.OrderStatus;
 import org.f3.postalmanagement.enums.PackageType;
@@ -40,6 +42,8 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
     private final OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final OfficePairRepository officePairRepository;
+    private final WardOfficeAssignmentRepository wardOfficeAssignmentRepository;
 
     @Override
     @Transactional
@@ -113,6 +117,27 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
             ensureStaffForOffice(hcmWardPO, "0979000007", "PO Ward Manager HCM", Role.PO_WARD_MANAGER);
         }
         Employee hcmShipper = ensureStaffForOffice(hcmPost, "0979000008", "Shipper Thủ Đức HCM", Role.SHIPPER);
+
+        // 4.5. Create Office Pairs and Ward Assignments
+        log.info("Creating office pairs and ward assignments...");
+
+        // Create office pair for Hanoi ward if both WH and PO exist
+        if (hanoiWardWH != null && hanoiWardPO != null) {
+            OfficePair hanoiPair = createOfficePairIfNotExists(hanoiWardWH, hanoiWardPO);
+            // Assign all wards in Hanoi to this office pair
+            assignWardsToOfficePair("01", hanoiPair);
+        } else {
+            log.warn("Skipping Hanoi ward assignments - missing WH or PO");
+        }
+
+        // Create office pair for HCM ward if both WH and PO exist
+        if (hcmWardWH != null && hcmWardPO != null) {
+            OfficePair hcmPair = createOfficePairIfNotExists(hcmWardWH, hcmWardPO);
+            // Assign all wards in HCM to this office pair
+            assignWardsToOfficePair("79", hcmPair);
+        } else {
+            log.warn("Skipping HCM ward assignments - missing WH or PO");
+        }
 
         // 5. Create Main Customer & Receiver
         Customer sender = ensureCustomerWithAccount("Trần Nguyễn Đức Phúc", "0912345678",
@@ -299,18 +324,29 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
     }
 
     private Office ensurePostOffice(String name, String address, Ward ward) {
-         return officeRepository.findByOfficeName(name).orElseGet(() -> {
+        // 1. Critical Check: Ensure Ward is not null before proceeding
+        if (ward == null) {
+            log.error("Cannot create Post Office '{}': Ward provided is NULL", name);
+            return null; // Or throw new RuntimeException("Ward is required");
+        }
+
+        return officeRepository.findByOfficeName(name).orElseGet(() -> {
             Office office = new Office();
+            // Use ward.getCode() for the string generation, but rely on the relationship for the DB column
             office.setOfficeCode("PO-SPX-" + ward.getCode() + "-DEMO");
             office.setOfficeName(name);
             office.setOfficeAddressLine1(address);
+            
+            // 2. Correctly set the relationship. 
+            // Hibernate extracts the Primary Key from this object to populate the 'ward_code' column.
             office.setWard(ward);
+
             office.setRegion(ward.getProvince().getAdministrativeRegion());
             office.setOfficeType(OfficeType.PROVINCE_POST);
             office.setOfficeEmail("po." + ward.getCode() + ".demo@f3postal.com");
             office.setOfficePhoneNumber("09" + ward.getCode() + "1234");
             
-            // Set parent to a warehouse in same province (fallback)
+            // Fallback for parent: find warehouse in same province
             office.setParent(officeRepository.findByProvinceCodeAndOfficeType(
                     ward.getProvince().getCode(), OfficeType.PROVINCE_WAREHOUSE)
                     .stream().findFirst().orElse(null));
@@ -373,6 +409,55 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
             c.setWard(ward);
             return customerRepository.save(c);
         });
+    }
+
+    private OfficePair createOfficePairIfNotExists(Office whOffice, Office poOffice) {
+        // Check if pair already exists
+        Optional<OfficePair> existingPair = officePairRepository.findAll().stream()
+            .filter(pair -> pair.getWhOffice().getId().equals(whOffice.getId()) &&
+                           pair.getPoOffice().getId().equals(poOffice.getId()))
+            .findFirst();
+
+        if (existingPair.isPresent()) {
+            log.info("Office pair already exists for WH: {} and PO: {}",
+                whOffice.getOfficeName(), poOffice.getOfficeName());
+            return existingPair.get();
+        }
+
+        OfficePair pair = new OfficePair();
+        pair.setWhOffice(whOffice);
+        pair.setPoOffice(poOffice);
+        OfficePair saved = officePairRepository.save(pair);
+        log.info("Created office pair: WH={} <-> PO={}",
+            whOffice.getOfficeName(), poOffice.getOfficeName());
+        return saved;
+    }
+
+    private void assignWardsToOfficePair(String provinceCode, OfficePair officePair) {
+        List<Ward> wards = wardRepository.findByProvince_Code(provinceCode);
+        log.info("Assigning {} wards in province {} to office pair", wards.size(), provinceCode);
+
+        int created = 0;
+        int skipped = 0;
+
+        for (Ward ward : wards) {
+            // Check if assignment already exists
+            Optional<WardOfficeAssignment> existing = wardOfficeAssignmentRepository.findByWardCode(ward.getCode());
+
+            if (existing.isPresent()) {
+                skipped++;
+                continue;
+            }
+
+            WardOfficeAssignment assignment = new WardOfficeAssignment();
+            assignment.setWard(ward);
+            assignment.setOfficePair(officePair);
+            wardOfficeAssignmentRepository.save(assignment);
+            created++;
+        }
+
+        log.info("Ward assignments for province {}: {} created, {} skipped",
+            provinceCode, created, skipped);
     }
 
     @lombok.AllArgsConstructor

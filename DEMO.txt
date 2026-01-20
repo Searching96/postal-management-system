@@ -41,7 +41,7 @@
                                                                                 
   Part A - Customer creates pickup request:                                     
                                                                                 
-  👤 Account: Register as CUSTOMER or use existing customer account             
+  👤 Account: Register as CUSTOMER or use existing customer account(0912345678)      
                                                                                 
   Steps:                                                                        
   1. Login as CUSTOMER                                                          

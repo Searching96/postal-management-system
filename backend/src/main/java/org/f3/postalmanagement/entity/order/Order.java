@@ -243,7 +243,7 @@ public class Order extends BaseEntity {
      * Staff who created the order
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by_employee_id", nullable = false)
+    @JoinColumn(name = "created_by_employee_id", nullable = true)
     private Employee createdByEmployee;
 
     /**

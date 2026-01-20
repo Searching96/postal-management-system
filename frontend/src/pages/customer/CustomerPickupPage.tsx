@@ -22,6 +22,7 @@ import {
 } from "../../components/ui";
 import { toast } from "sonner";
 import { orderService } from "../../services/orderService";
+import { administrativeService } from "../../services/administrativeService";
 import { formatCurrency } from "../../lib/utils";
 
 type Step = "INFO" | "DETAILS" | "CONFIRM";
@@ -70,25 +71,58 @@ export function CustomerPickupPage() {
     });
 
     const [priceResult, setPriceResult] = useState<any>(null);
+    const [originOfficeId, setOriginOfficeId] = useState<string | null>(null);
 
     const handleInputChange = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
+    // Fetch origin office when sender ward code changes
+    useEffect(() => {
+        if (!formData.senderWardCode) {
+            setOriginOfficeId(null);
+            return;
+        }
+
+        const fetchOriginOffice = async () => {
+            try {
+                console.log("Fetching office for ward code:", formData.senderWardCode);
+                const response = await administrativeService.getOfficeByWardCode(formData.senderWardCode);
+                console.log("Office response:", response);
+                if (response.success && response.data) {
+                    console.log("Setting origin office ID:", response.data.officeId);
+                    setOriginOfficeId(response.data.officeId);
+                } else {
+                    console.log("No office found for ward");
+                    setOriginOfficeId(null);
+                    toast.warning("Không tìm thấy bưu cục phục vụ khu vực này");
+                }
+            } catch (error) {
+                console.error("Failed to fetch origin office:", error);
+                setOriginOfficeId(null);
+            }
+        };
+
+        fetchOriginOffice();
+    }, [formData.senderWardCode]);
+
     // Auto-calculate Price Effect
     useEffect(() => {
-        // Need both sender and receiver ward codes for customer pickup
-        if (!formData.senderWardCode || !formData.receiverWardCode || formData.weightKg <= 0) {
+        console.log("Price calc effect triggered. originOfficeId:", originOfficeId, "receiverWardCode:", formData.receiverWardCode, "weightKg:", formData.weightKg);
+        // Need origin office ID, receiver ward code, and valid weight for customer pickup
+        if (!originOfficeId || !formData.receiverWardCode || formData.weightKg <= 0) {
+            console.log("Price calc skipped - missing required fields");
             setPriceResult(null);
             return;
         }
 
+        console.log("Starting price calculation...");
         setIsCalculating(true);
 
         const timeoutId = setTimeout(async () => {
             try {
                 const payload = {
-                    originWardCode: formData.senderWardCode, // REQUIRED for customer orders
+                    originOfficeId: originOfficeId, // REQUIRED UUID for customer orders
                     destinationWardCode: formData.receiverWardCode,
                     packageType: formData.packageType,
                     weightKg: formData.weightKg,
@@ -100,7 +134,9 @@ export function CustomerPickupPage() {
                     addInsurance: formData.addInsurance
                 };
 
+                console.log("Calling calculatePrice with payload:", payload);
                 const res = await orderService.calculatePrice(payload);
+                console.log("Price calculation result:", res);
                 setPriceResult(res);
             } catch (error) {
                 console.error("Calculation failed", error);
@@ -113,7 +149,7 @@ export function CustomerPickupPage() {
         return () => clearTimeout(timeoutId);
 
     }, [
-        formData.senderWardCode, // Added to dependencies
+        originOfficeId, // Changed from senderWardCode to originOfficeId
         formData.receiverWardCode,
         formData.packageType,
         formData.weightKg,
@@ -126,14 +162,38 @@ export function CustomerPickupPage() {
     ]);
 
     const handleSubmit = async () => {
+        if (!originOfficeId) {
+            toast.error("Không tìm thấy bưu cục phục vụ khu vực của bạn");
+            return;
+        }
         if (!priceResult && !isCalculating) {
             toast.error("Vui lòng đợi tính cước phí hoàn tất");
             return;
         }
         setIsSubmitting(true);
         try {
-            // Use customer pickup endpoint instead of regular createOrder
-            const res = await orderService.createCustomerPickupOrder(formData);
+            // Map formData to match backend CustomerCreateOrderRequest
+            const payload = {
+                originOfficeId: originOfficeId,
+                pickupAddressLine1: formData.senderAddressLine1,
+                pickupWardCode: formData.senderWardCode,
+                receiverName: formData.receiverName,
+                receiverPhone: formData.receiverPhone,
+                receiverAddressLine1: formData.receiverAddressLine1,
+                receiverWardCode: formData.receiverWardCode,
+                packageType: formData.packageType,
+                packageDescription: formData.packageDescription,
+                weightKg: formData.weightKg,
+                lengthCm: formData.lengthCm,
+                widthCm: formData.widthCm,
+                heightCm: formData.heightCm,
+                serviceType: formData.serviceType,
+                codAmount: formData.codAmount,
+                declaredValue: formData.declaredValue,
+                addInsurance: formData.addInsurance
+            };
+
+            const res = await orderService.createCustomerPickupOrder(payload);
             toast.success("Tạo đơn hàng thành công! Bưu tá sẽ đến lấy hàng.");
             navigate(`/orders/${res.orderId || res.id}`);
         } catch (error) {
