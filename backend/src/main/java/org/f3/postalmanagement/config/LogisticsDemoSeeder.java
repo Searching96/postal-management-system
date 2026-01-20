@@ -2,9 +2,9 @@ package org.f3.postalmanagement.config;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.f3.postalmanagement.entity.actor.Account;
 import org.f3.postalmanagement.entity.actor.Customer;
 import org.f3.postalmanagement.entity.actor.Employee;
-import org.f3.postalmanagement.entity.administrative.Province;
 import org.f3.postalmanagement.entity.administrative.Ward;
 import org.f3.postalmanagement.entity.order.Order;
 import org.f3.postalmanagement.entity.order.OrderStatusHistory;
@@ -12,12 +12,12 @@ import org.f3.postalmanagement.entity.unit.Office;
 import org.f3.postalmanagement.enums.*;
 import org.f3.postalmanagement.repository.*;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Component
 @org.springframework.core.annotation.Order(3) // Runs LAST
@@ -32,6 +32,10 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
     private final ProvinceRepository provinceRepository;
     private final EmployeeRepository employeeRepository;
     private final OrderStatusHistoryRepository orderStatusHistoryRepository;
+    
+    // NEW DEPENDENCIES
+    private final AccountRepository accountRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
@@ -61,9 +65,31 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         Office hcmPost = ensurePostOffice("SPX TP.HCM - Thủ Đức", 
                 "86 Quốc lộ 1K", hcmWard, hcmProvinceWH);
 
+        // === 1. CREATE STAFF FOR HANOI HUB ===
+        Employee hubStaff = ensureStaff(
+            "staff_hub_hn",          // Username
+            "123456",           // Password
+            "staff.hub.hn@f3.com",   // Email
+            "0991112222",            // Phone
+            "Nguyễn Văn Hub",        // Full Name
+            hanoiHub                 // Office
+        );
+
+        // === 2. CREATE STAFF FOR HANOI POST OFFICE ===
+        Employee postStaff = ensureStaff(
+            "staff_post_hn",         // Username
+            "123456",           // Password
+            "staff.post.hn@f3.com",  // Email
+            "0993334444",            // Phone
+            "Trần Thị Post",         // Full Name
+            hanoiPost                // Office
+        );
+
         Customer sender = ensureCustomer("Phùng Thanh Độ", "0912345678", "120 P.Yên Lãng", hanoiWard);
         Customer receiver = ensureCustomer("Trường ĐH CNTT", "02837252002", "Khu phố 34", hcmWard);
-        Employee defaultCreator = employeeRepository.findAll().stream().findFirst().orElse(null);
+        
+        // Use the new staff as creator if available
+        Employee defaultCreator = (hubStaff != null) ? hubStaff : employeeRepository.findAll().stream().findFirst().orElse(null);
 
         // CREATE DEMO ORDERS
         createInterRegionDemoOrder(sender, receiver, hanoiPost, hcmPost, hanoiHub, hcmHub, hanoiProvinceWH, hcmProvinceWH, defaultCreator);
@@ -73,12 +99,37 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         log.info("=== Logistics Demo Scenarios Created Successfully ===");
     }
 
+    // === HELPER TO CREATE STAFF ACCOUNT + EMPLOYEE ===
+    private Employee ensureStaff(String username, String rawPass, String email, String phone, String fullName, Office office) {
+        if (accountRepository.findByUsername(username).isPresent()) {
+            return employeeRepository.findByAccount_Username(username).orElse(null);
+        }
+
+        // 1. Create Account
+        Account account = new Account();
+        account.setUsername(username);
+        account.setPassword(passwordEncoder.encode(rawPass));
+        account.setEmail(email);
+        account.setRole(Role.WH_STAFF); // Role for internal staff
+        account.setActive(true);
+        Account savedAccount = accountRepository.save(account);
+
+        // 2. Create Employee (Linked via @MapsId)
+        Employee employee = new Employee();
+        employee.setAccount(savedAccount);
+        employee.setFullName(fullName);
+        employee.setPhoneNumber(phone);
+        employee.setOffice(office);
+        
+        log.info("Created Staff: {} at Office: {}", username, office.getOfficeName());
+        return employeeRepository.save(employee);
+    }
+
     private void createInterRegionDemoOrder(Customer sender, Customer receiver, 
                                             Office originPost, Office destPost, 
                                             Office hubOrigin, Office hubDest, 
                                             Office provinceOrigin, Office provinceDest,
                                             Employee creator) {
-        // Ensure short unique tracking number < 15 chars
         String trackingNum = "DEMO-HN-HCM-01"; 
         if (orderRepository.existsByTrackingNumber(trackingNum)) return;
 
@@ -101,7 +152,6 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         order.setDestinationOffice(destPost);
         order.setCreatedByEmployee(creator);
         
-        // MANDATORY FIELDS
         order.setPackageType(PackageType.BOX);
         order.setServiceType(ServiceType.STANDARD);
         order.setWeightKg(BigDecimal.valueOf(2.5));
@@ -116,7 +166,6 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
 
         Order savedOrder = orderRepository.save(order);
         
-        // Create History
         LocalDateTime t = LocalDateTime.now().minusHours(48);
         createHistory(savedOrder, OrderStatus.CREATED, originPost, t, "Created");
         createHistory(savedOrder, OrderStatus.AT_ORIGIN_OFFICE, originPost, t.plusMinutes(30), "At Origin");
@@ -154,7 +203,6 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         order.setOriginOffice(origin);
         order.setCreatedByEmployee(creator);
         
-        // MANDATORY FIELDS
         order.setPackageType(PackageType.DOCUMENT);
         order.setServiceType(ServiceType.STANDARD);
         order.setWeightKg(BigDecimal.valueOf(0.5));
@@ -193,7 +241,6 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         order.setDestinationOffice(origin);
         order.setCreatedByEmployee(creator);
         
-        // MANDATORY FIELDS
         order.setPackageType(PackageType.BOX);
         order.setServiceType(ServiceType.EXPRESS);
         order.setWeightKg(BigDecimal.valueOf(1.0));
@@ -210,7 +257,6 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         createHistory(saved, OrderStatus.CREATED, origin, LocalDateTime.now().minusMinutes(30), "Created");
     }
 
-    // Helpers
     private Office ensureHub(String provinceCode, String name, String address) {
         Province prov = provinceRepository.findById(provinceCode).orElse(null);
         if (prov == null) return null;

@@ -28,3 +28,4 @@ export { default as MessagesPage } from './common/MessagesPage';
 export { default as ShipperDashboardPage } from './shipper/ShipperDashboardPage';
 export { default as ShipperDeliveryPage } from './shipper/ShipperDeliveryPage';
 export { default as ShipperPickupPage } from './shipper/ShipperPickupPage';
+export { PackingRequestPage } from "./staff/PackingRequestPage";

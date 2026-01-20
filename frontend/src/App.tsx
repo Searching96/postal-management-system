@@ -28,7 +28,8 @@ import {
   ShipperPickupPage,
   DebugLoginPage,
   ConsolidationRouteManagementPage,
-  UnifiedRouteManagementPage
+  UnifiedRouteManagementPage,
+  PackingRequestPage
 } from "./pages";
 
 function App() {
@@ -103,6 +104,11 @@ function App() {
                 <Route path="/orders/delivery" element={<AssignDeliveryPage />} />
                 <Route path="/batches" element={<BatchListPage />} />
                 <Route path="/batches/:id" element={<BatchDetailsPage />} />
+              </Route>
+
+              {/* Warehouse Staff - Packing Requests */}
+              <Route element={<RoleRoute allowedRoles={["WH_STAFF"]} />}>
+                <Route path="/staff/packing-requests" element={<PackingRequestPage />} />
               </Route>
 
               {/* Shipper specifics */}
