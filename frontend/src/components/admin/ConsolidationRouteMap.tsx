@@ -10,7 +10,6 @@ const PROVINCE_COORDINATES: Record<string, [number, number]> = {
     '01': [21.0285, 105.8542], // Hà Nội Center (Warehouse)
 };
 
-// ... (Keep HARDCODED_WARD_NAMES)
 const HARDCODED_WARD_NAMES: Record<string, string> = {
     '00103': 'Tây Hồ', '00091': 'Phú Thượng', '00611': 'Xuân Đỉnh',
     '00619': 'Phú Diễn', '00622': 'Xuân Phương', '00634': 'Tây Mỗ',
@@ -81,25 +80,30 @@ export function ConsolidationRouteMap({
         return getWardCoordinates(id);
     };
 
-    // 1. Markers (Now unified loop)
+    // 1. RENDERING NODES (MARKERS) - Strictly responsible for placing dots
     const markers = useMemo<MapMarker[]>(() => {
         const list: MapMarker[] = [];
+        const processedNodes = new Set<string>(); // Prevent duplicate markers if nodes appear in multiple logic paths
 
         routes.forEach(route => {
             if (!route.status.isActive) return;
 
             route.routeStops.forEach(stop => {
-                // Determine if this stop is the Warehouse or a Ward
+                const uniqueKey = `${stop.officeCode}-${route.id}`;
+
+                // Determine coordinates
                 const isWarehouse = stop.officeCode === 'warehouse-01';
                 const position = isWarehouse ? warehousePos : getWardCoordinates(stop.officeCode);
 
-                if (position) {
+                if (position && !processedNodes.has(uniqueKey)) {
+                    processedNodes.add(uniqueKey);
+
                     const isSelected = selectedOfficeCode === stop.officeCode;
                     const type = isWarehouse ? 'PROVINCE_WAREHOUSE' : 'WARD_OFFICE';
                     const name = isWarehouse ? 'Hanoi Central (PW)' : (HARDCODED_WARD_NAMES[stop.officeCode] || stop.officeCode);
 
                     list.push({
-                        id: `${stop.officeCode}-${route.id}`, // Unique ID per route instance
+                        id: uniqueKey,
                         position,
                         icon: createOfficeIcon(type, isSelected, isSelectionMode),
                         popupContent: (
@@ -128,7 +132,7 @@ export function ConsolidationRouteMap({
         return list;
     }, [routes, selectedOfficeCode, isSelectionMode, onOfficeClick, warehousePos]);
 
-    // 2. Polylines
+    // 2. RENDERING LINKS (POLYLINES) - Strictly responsible for connecting dots
     const polylines = useMemo<MapPolyline[]>(() => {
         const edges: MapPolyline[] = [];
 
@@ -138,6 +142,8 @@ export function ConsolidationRouteMap({
             const isRouteSelected = selectedRoute?.id === route.id;
 
             route.routeStops.forEach((stop) => {
+                // LOGIC: Only draw a line IF a destination exists
+                // This allows standalone nodes to exist without crashing or drawing phantom lines
                 if ((stop as any).nextDestinationId) {
                     const startPos = stop.officeCode === 'warehouse-01' ? warehousePos : getWardCoordinates(stop.officeCode);
                     const endPos = getPos((stop as any).nextDestinationId);

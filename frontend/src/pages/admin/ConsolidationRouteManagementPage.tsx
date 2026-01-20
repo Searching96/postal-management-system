@@ -144,9 +144,13 @@ export function ConsolidationRouteManagementPage() {
 
                                             <div className="mt-2 text-xs flex items-center gap-1 text-gray-500 bg-gray-100/50 p-1.5 rounded">
                                                 <ArrowRight className="w-3 h-3 text-gray-400" />
-                                                <span className={stopNextId === 'warehouse-01' ? 'text-orange-600 font-bold' : ''}>
-                                                    {stopNextId === 'warehouse-01' ? 'PW (Warehouse)' : `Office ${stopNextId}`}
-                                                </span>
+                                                {!nextId ? (
+                                                    <span className="text-gray-400 italic">Disconnected (End of Line)</span>
+                                                ) : (
+                                                    <span className={nextId === 'warehouse-01' ? 'text-orange-600 font-bold' : ''}>
+                                                        {nextId === 'warehouse-01' ? 'PW (Warehouse)' : `Office ${nextId}`}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     );
