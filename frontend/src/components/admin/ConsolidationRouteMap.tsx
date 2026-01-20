@@ -1,68 +1,51 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { ConsolidationRoute } from '../../models/consolidationRoute';
 import { VietnamMap, MapMarker, MapPolyline } from '../common/VietnamMap';
-import { MapPin } from 'lucide-react';
+import { MapPin, Warehouse } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet-arrowheads';
-import { WARD_COORDINATES, getWardCoordinates } from '../../constants/wardCoordinates';
-
-interface ConsolidationRouteMapProps {
-    routes: ConsolidationRoute[];
-    selectedRoute?: ConsolidationRoute | null;
-    onRouteClick?: (route: ConsolidationRoute) => void;
-}
-
-// 1. DATA SOURCE: Extracted names from your SQL Dump
-const HARDCODED_WARD_NAMES: Record<string, string> = {
-    // ... (keep your existing ward names)
-    '00103': 'Tây Hồ',
-    '00091': 'Phú Thượng',
-    '00611': 'Xuân Đỉnh',
-    '00619': 'Phú Diễn',
-    '00622': 'Xuân Phương',
-    '00634': 'Tây Mỗ',
-    '00199': 'Láng',
-    '00226': 'Văn Miếu - QTGiám',
-    '00229': 'Kim Liên',
-    '00364': 'Khương Đình',
-    '00664': 'Đại Thanh',
-    '00679': 'Ngọc Hồi',
-    '00340': 'Yên Sở',
-    '00283': 'Vĩnh Tuy',
-    '00577': 'Bát Tràng',
-    '00565': 'Gia Lâm',
-    '00541': 'Phù Đổng',
-    '00127': 'Việt Hưng',
-    '00118': 'Bồ Đề',
-    '00145': 'Long Biên',
-    // ... add any other wards you need
-};
+import { getWardCoordinates } from '../../constants/wardCoordinates';
 
 const PROVINCE_COORDINATES: Record<string, [number, number]> = {
     '01': [21.0285, 105.8542], // Hà Nội Center (Warehouse)
 };
 
-function createOfficeIcon(type: string, isSelected: boolean = false): L.DivIcon {
-    let color = type === 'PROVINCE_WAREHOUSE' ? '#ea580c' : '#16a34a';
-    let size = type === 'PROVINCE_WAREHOUSE' ? 32 : 24;
-    let label = type === 'PROVINCE_WAREHOUSE' ? 'PW' : 'WO';
-    let zIndex = type === 'PROVINCE_WAREHOUSE' ? 1000 : 100;
+// ... (Keep HARDCODED_WARD_NAMES)
+const HARDCODED_WARD_NAMES: Record<string, string> = {
+    '00103': 'Tây Hồ', '00091': 'Phú Thượng', '00611': 'Xuân Đỉnh',
+    '00619': 'Phú Diễn', '00622': 'Xuân Phương', '00634': 'Tây Mỗ',
+    '00199': 'Láng', '00226': 'Văn Miếu - QTGiám', '00229': 'Kim Liên',
+    '00364': 'Khương Đình', '00664': 'Đại Thanh', '00679': 'Ngọc Hồi',
+    '00340': 'Yên Sở', '00283': 'Vĩnh Tuy', '00577': 'Bát Tràng',
+    '00565': 'Gia Lâm', '00541': 'Phù Đổng', '00127': 'Việt Hưng',
+    '00118': 'Bồ Đề', '00145': 'Long Biên',
+};
+
+function createOfficeIcon(type: string, isSelected: boolean = false, isSelectionMode: boolean = false): L.DivIcon {
+    const isWarehouse = type === 'PROVINCE_WAREHOUSE';
+    const color = isWarehouse ? '#ea580c' : '#16a34a';
+    const size = isWarehouse ? 32 : 24;
+    const label = isWarehouse ? 'PW' : 'WO';
+    const zIndex = isWarehouse ? 400 : 300;
+
+    // Visual cues
+    const borderColor = isSelected ? '#fbbf24' : (isSelectionMode ? '#3b82f6' : 'white');
+    const borderWidth = isSelected ? '3px' : (isSelectionMode ? '2px' : '2px');
+    const scale = isSelectionMode ? 'scale(1.1)' : 'scale(1)';
 
     return L.divIcon({
         className: 'custom-office-marker',
         html: `
       <div style="
-        width: ${size}px;
-        height: ${size}px;
-        background-color: ${color};
-        border: 2px solid ${isSelected ? '#fbbf24' : 'white'};
+        width: ${size}px; height: ${size}px; background-color: ${color};
+        border: ${borderWidth} solid ${borderColor};
         border-radius: 50% 50% 50% 0;
         box-shadow: 0 3px 5px rgba(0,0,0,0.3);
-        transform: rotate(-45deg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        transform: rotate(-45deg) ${scale};
+        transition: all 0.2s ease;
+        display: flex; align-items: center; justify-content: center;
         z-index: ${zIndex};
+        cursor: pointer;
       ">
         <span style="color: white; font-weight: bold; font-size: ${size * 0.4}px; transform: rotate(45deg);">
           ${label}
@@ -71,125 +54,142 @@ function createOfficeIcon(type: string, isSelected: boolean = false): L.DivIcon 
     `,
         iconSize: [size, size],
         iconAnchor: [size / 2, size],
-        popupAnchor: [0, -size * 0.8],
     });
 }
 
-export function ConsolidationRouteMap({ routes, selectedRoute, onRouteClick }: ConsolidationRouteMapProps) {
-    // Markers (Warehouse + All Wards)
+interface ConsolidationRouteMapProps {
+    routes: ConsolidationRoute[];
+    selectedRoute?: ConsolidationRoute | null;
+    selectedOfficeCode?: string | null;
+    isSelectionMode?: boolean;
+    onRouteClick?: (route: ConsolidationRoute) => void;
+    onOfficeClick?: (officeCode: string, route: ConsolidationRoute) => void;
+}
+
+export function ConsolidationRouteMap({
+    routes,
+    selectedRoute,
+    selectedOfficeCode,
+    isSelectionMode = false,
+    onRouteClick,
+    onOfficeClick,
+}: ConsolidationRouteMapProps) {
+    const warehousePos = PROVINCE_COORDINATES['01'];
+
+    const getPos = (id: string) => {
+        if (id === 'warehouse-01') return warehousePos;
+        return getWardCoordinates(id);
+    };
+
+    // 1. Markers (Now unified loop)
     const markers = useMemo<MapMarker[]>(() => {
-        const markerList: MapMarker[] = [];
+        const list: MapMarker[] = [];
 
-        // Warehouse
-        markerList.push({
-            id: 'warehouse-01',
-            position: PROVINCE_COORDINATES['01'],
-            icon: createOfficeIcon('PROVINCE_WAREHOUSE'),
-            popupContent: <div className="p-1 text-sm font-bold">Hanoi Central Warehouse</div>,
-        });
+        routes.forEach(route => {
+            if (!route.status.isActive) return;
 
-        // Ward markers
-        Object.entries(HARDCODED_WARD_NAMES).forEach(([code, name]) => {
-            const position = getWardCoordinates(code);
-            if (position) {
-                markerList.push({
-                    id: `ward-${code}`,
-                    position,
-                    icon: createOfficeIcon('WARD_OFFICE'),
-                    popupContent: (
-                        <div className="p-1 min-w-[120px]">
-                            <div className="flex items-center gap-2 mb-1">
-                                <MapPin className="w-4 h-4 text-green-600" />
-                                <h3 className="font-bold text-sm text-gray-900">{name}</h3>
+            route.routeStops.forEach(stop => {
+                // Determine if this stop is the Warehouse or a Ward
+                const isWarehouse = stop.officeCode === 'warehouse-01';
+                const position = isWarehouse ? warehousePos : getWardCoordinates(stop.officeCode);
+
+                if (position) {
+                    const isSelected = selectedOfficeCode === stop.officeCode;
+                    const type = isWarehouse ? 'PROVINCE_WAREHOUSE' : 'WARD_OFFICE';
+                    const name = isWarehouse ? 'Hanoi Central (PW)' : (HARDCODED_WARD_NAMES[stop.officeCode] || stop.officeCode);
+
+                    list.push({
+                        id: `${stop.officeCode}-${route.id}`, // Unique ID per route instance
+                        position,
+                        icon: createOfficeIcon(type, isSelected, isSelectionMode),
+                        popupContent: (
+                            <div
+                                className="p-1 min-w-[120px] cursor-pointer"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOfficeClick?.(stop.officeCode, route);
+                                }}
+                            >
+                                <div className="flex items-center gap-2 mb-1">
+                                    {isWarehouse ? <Warehouse className="w-4 h-4 text-orange-600" /> : <MapPin className="w-4 h-4 text-green-600" />}
+                                    <h3 className="font-bold text-sm text-gray-900">{name}</h3>
+                                </div>
+                                {isSelectionMode ? (
+                                    <p className="text-xs text-blue-600 font-bold animate-pulse">Click to set Destination</p>
+                                ) : (
+                                    <p className="text-xs text-gray-500">Route: {route.name}</p>
+                                )}
                             </div>
-                            <p className="text-xs text-gray-500">Code: {code}</p>
-                        </div>
-                    ),
-                });
-            } else {
-                console.warn(`Missing coordinates for ward: ${name} (${code})`);
-            }
+                        ),
+                    });
+                }
+            });
         });
+        return list;
+    }, [routes, selectedOfficeCode, isSelectionMode, onOfficeClick, warehousePos]);
 
-        return markerList;
-    }, []);
-
-    // Polylines: 3 closed loops with arrows along the lines
+    // 2. Polylines
     const polylines = useMemo<MapPolyline[]>(() => {
-        const warehousePos = PROVINCE_COORDINATES['01'];
-        const getPos = (code: string) => getWardCoordinates(code) || warehousePos;
+        const edges: MapPolyline[] = [];
 
-        const routesData = [
-            {
-                id: 'vong-1',
-                name: 'Vòng 1 - Tây Bắc',
-                color: '#22c55e', // green
-                codes: ['00103', '00091', '00611', '00619', '00622', '00634', '00199', '00226'],
-            },
-            {
-                id: 'vong-2',
-                name: 'Vòng 2 - Nam',
-                color: '#3b82f6', // blue ← fixed from green
-                codes: ['00229', '00364', '00664', '00679', '00340', '00283'],
-            },
-            {
-                id: 'vong-3',
-                name: 'Vòng 3 - Đông',
-                color: '#ef4444', // red ← fixed from green
-                codes: ['00577', '00565', '00541', '00127', '00118'],
-            },
-        ];
+        routes.forEach(route => {
+            if (!route.status.isActive) return;
+            const routeColor = (route as any).color || '#3b82f6';
+            const isRouteSelected = selectedRoute?.id === route.id;
 
-        return routesData.map((route) => {
-            // Create closed loop: start ward → other wards → warehouse → back to start ward
-            const positions = [
-                ...route.codes.map(getPos),
-                warehousePos,
-                getPos(route.codes[0]), // close the loop
-            ];
+            route.routeStops.forEach((stop) => {
+                if ((stop as any).nextDestinationId) {
+                    const startPos = stop.officeCode === 'warehouse-01' ? warehousePos : getWardCoordinates(stop.officeCode);
+                    const endPos = getPos((stop as any).nextDestinationId);
 
-            return {
-                id: route.id,
-                positions,
-                color: route.color,
-                weight: 3,
-                opacity: 0.9,
-                // Arrows appear repeatedly along the line (in the middle of segments)
-                arrowheads: {
-                    size: '20px',      // Use pixels (approx 15-25px is good)
-                    frequency: '100px', // Draw an arrow every 100 pixels on screen
-                    fill: true,
-                    color: route.color,
-                    // 'repeat' is NOT supported by this library, use 'frequency'
-                    // 'm' (meters) units are NOT supported, use 'px'
-                },
-                popupContent: (
-                    <div className="p-1 text-xs font-bold">
-                        {route.name} ({route.codes.length} wards)
-                    </div>
-                ),
-            };
+                    if (startPos && endPos) {
+                        const isNodeSelected = selectedOfficeCode === stop.officeCode;
+
+                        let color = routeColor;
+                        let opacity = 0.6;
+                        let weight = 2;
+
+                        if (isSelectionMode) {
+                            color = '#9ca3af';
+                            opacity = 0.2;
+                        } else if (isNodeSelected) {
+                            color = '#f59e0b';
+                            weight = 5;
+                            opacity = 1;
+                        } else if (isRouteSelected) {
+                            weight = 3;
+                            opacity = 0.8;
+                        }
+
+                        edges.push({
+                            id: `${route.id}-${stop.officeCode}-${(stop as any).nextDestinationId}`,
+                            positions: [startPos, endPos],
+                            color,
+                            weight,
+                            opacity,
+                            arrowheads: {
+                                size: '15px',
+                                frequency: 'end',
+                                fill: true,
+                                color: color,
+                            },
+                            onClick: () => !isSelectionMode && onRouteClick?.(route),
+                        });
+                    }
+                }
+            });
         });
-    }, []);
+        return edges;
+    }, [routes, selectedRoute, selectedOfficeCode, isSelectionMode, warehousePos]);
 
     return (
-        <div className="relative border border-gray-200 rounded-xl overflow-hidden shadow-sm h-[650px] bg-slate-50">
-            {/* Legend */}
-            <div className="absolute top-4 right-4 z-[1000] bg-white/95 p-3 rounded-lg shadow border text-sm">
-                <div className="font-bold mb-2">Tuyến thu gom Hà Nội</div>
-                <div className="flex items-center gap-2 mb-1">
-                    <div className="w-3 h-3 bg-orange-600 rounded-full"></div>
-                    <span>Kho tỉnh (PW)</span>
+        <div className={`relative border border-gray-200 rounded-xl overflow-hidden shadow-sm h-[650px] bg-slate-50 z-0 transition-all ${isSelectionMode ? 'ring-4 ring-blue-100' : ''}`}>
+            {isSelectionMode && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-blue-600 text-white px-6 py-2 rounded-full shadow-lg font-bold flex items-center gap-2 animate-bounce-slight pointer-events-none">
+                    <MapPin className="w-5 h-5" />
+                    Select a destination node on the map
                 </div>
-                <div className="flex items-center gap-2 mb-1">
-                    <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-                    <span>Phường/Xã (WO)</span>
-                </div>
-                <div className="text-xs text-gray-500 mt-2">
-                    Mũi tên chỉ hướng di chuyển
-                </div>
-            </div>
-
+            )}
             <VietnamMap markers={markers} polylines={polylines} height="100%" />
         </div>
     );

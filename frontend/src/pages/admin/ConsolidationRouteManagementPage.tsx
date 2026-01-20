@@ -1,463 +1,217 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Loader2, RefreshCw, Info, LayoutList, Map as MapIcon } from 'lucide-react';
+import { AlertCircle, Loader2, Info, ArrowRight, Navigation, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '../../lib/AuthContext';
-import { EmployeeMeResponse } from '../../models/user';
-import {
-    ConsolidationRoute,
-    ConsolidationStatusResponse,
-    CreateConsolidationRouteRequest,
-    RouteLevel,
-    getRouteLevelLabel,
-    TemporaryReroute,
-} from '../../models/consolidationRoute';
-import {
-    getAllConsolidationRoutes,
-    createConsolidationRoute,
-    activateConsolidationRoute,
-    deactivateConsolidationRoute,
-    getConsolidationRouteStatus,
-} from '../../services/consolidationRouteService';
-import {
-    getAllProvinces,
-    getHubWarehouses,
-    getProvinceWarehouses,
-    getWardOfficesByProvince,
-} from '../../services/officeDataService';
-import { HierarchicalRouteVisualization } from '../../components/admin/HierarchicalRouteVisualization';
+import { ConsolidationRoute } from '../../models/consolidationRoute';
 import { ConsolidationRouteMap } from '../../components/admin/ConsolidationRouteMap';
-import { CreateConsolidationRouteModal } from '../../components/admin/modals/CreateConsolidationRouteModal';
-import { RerouteModal } from '../../components/admin/modals/RerouteModal';
+import { generateMockRoutes } from '../../hooks/realData';
 
 export function ConsolidationRouteManagementPage() {
     const { user: currentUser } = useAuth();
     const [routes, setRoutes] = useState<ConsolidationRoute[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+
     const [selectedRoute, setSelectedRoute] = useState<ConsolidationRoute | null>(null);
-    const [routeStatus, setRouteStatus] = useState<ConsolidationStatusResponse | null>(null);
-    const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+    const [selectedOfficeCode, setSelectedOfficeCode] = useState<string | null>(null);
+    const [interactionMode, setInteractionMode] = useState<'VIEW' | 'PICK_DESTINATION'>('VIEW');
 
-    // Modal states
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [createRouteLevel, setCreateRouteLevel] = useState<RouteLevel | null>(null);
-    const [showRerouteModal, setShowRerouteModal] = useState(false);
-    const [rerouteTargets, setRerouteTargets] = useState<any[]>([]);
-    const [rerouteLoading, setRerouteLoading] = useState(false);
-
-    // Data options from API
-    const [provinces, setProvinces] = useState<any[]>([]);
-    const [warehouses, setWarehouses] = useState<any[]>([]);
+    const [pendingReroute, setPendingReroute] = useState<{
+        sourceCode: string;
+        targetId: string;
+        targetName: string;
+    } | null>(null);
 
     useEffect(() => {
-        loadAllData();
+        setTimeout(() => {
+            setRoutes(generateMockRoutes());
+            setLoading(false);
+        }, 500);
     }, []);
 
-    useEffect(() => {
-        if (selectedRoute) {
-            loadRouteStatus(selectedRoute.id);
+    // 1. Interaction Handler
+    const handleNodeInteraction = (targetId: string, targetName: string, route?: ConsolidationRoute) => {
+        if (interactionMode === 'PICK_DESTINATION' && selectedOfficeCode) {
+            if (targetId === selectedOfficeCode) {
+                alert("Cannot route a node to itself.");
+                return;
+            }
+            setPendingReroute({
+                sourceCode: selectedOfficeCode,
+                targetId: targetId,
+                targetName: targetName
+            });
+            return;
         }
-    }, [selectedRoute]);
 
-    async function loadAllData() {
-        try {
-            setLoading(true);
-            setError(null);
-
-            // Load routes
-            const routesData = await getAllConsolidationRoutes();
-            setRoutes(routesData);
-
-            // Load provinces and warehouses
-            const provincesData = await getAllProvinces();
-            setProvinces(provincesData);
-
-            // Load all warehouses (both hub and province)
-            const [hubWarehouses, provinceWarehouses] = await Promise.all([
-                getHubWarehouses(),
-                getProvinceWarehouses(),
-            ]);
-            setWarehouses([...hubWarehouses, ...provinceWarehouses]);
-        } catch (err: any) {
-            console.error('Error loading data:', err);
-            setError('Không thể tải dữ liệu. Vui lòng thử lại.');
-        } finally {
-            setLoading(false);
+        if (route) {
+            setSelectedRoute(route);
+            setSelectedOfficeCode(targetId);
         }
-    }
+    };
 
-    async function loadRoutes() {
-        try {
-            const data = await getAllConsolidationRoutes();
-            setRoutes(data);
-            setError(null);
-        } catch (err: any) {
-            setError('Không thể tải dữ liệu tuyến đường');
-            console.error(err);
+    const handleOfficeClick = (officeCode: string, route: ConsolidationRoute) => {
+        // officeCode could be 'warehouse-01' or '00123'
+        const name = officeCode === 'warehouse-01' ? 'Hanoi Central (PW)' : `Office ${officeCode}`;
+        handleNodeInteraction(officeCode, name, route);
+    };
+
+    // 2. Actions
+    const startRerouteSelection = () => setInteractionMode('PICK_DESTINATION');
+
+    const cancelRerouteSelection = () => {
+        setInteractionMode('VIEW');
+        setPendingReroute(null);
+    };
+
+    const confirmReroute = () => {
+        if (!selectedRoute || !pendingReroute) return;
+
+        const updatedRoutes = [...routes];
+        const routeIdx = updatedRoutes.findIndex(r => r.id === selectedRoute.id);
+
+        if (routeIdx > -1) {
+            const stopIdx = updatedRoutes[routeIdx].routeStops.findIndex(s => s.officeCode === pendingReroute.sourceCode);
+            if (stopIdx > -1) {
+                (updatedRoutes[routeIdx].routeStops[stopIdx] as any).nextDestinationId = pendingReroute.targetId;
+                setRoutes(updatedRoutes);
+                setSelectedRoute({ ...updatedRoutes[routeIdx] });
+            }
         }
-    }
+        setPendingReroute(null);
+        setInteractionMode('VIEW');
+    };
 
-    async function loadRouteStatus(routeId: string) {
-        try {
-            const status = await getConsolidationRouteStatus(routeId);
-            setRouteStatus(status);
-        } catch (err) {
-            console.error(err);
-        }
-    }
+    if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
-    async function handleCreateRoute(level: RouteLevel) {
-        setCreateRouteLevel(level);
-        setShowCreateModal(true);
-    }
-
-    async function handleFetchWardOffices(provinceCode: string) {
-        try {
-            console.log('Fetching ward offices for province:', provinceCode);
-            const wardOffices = await getWardOfficesByProvince(provinceCode);
-            console.log('Ward offices received:', wardOffices);
-            console.log('Ward offices count:', wardOffices.length);
-            return wardOffices;
-        } catch (err) {
-            console.error('Error fetching ward offices:', err);
-            return [];
-        }
-    }
-
-    async function handleSubmitCreate(request: CreateConsolidationRouteRequest) {
-        try {
-            const newRoute = await createConsolidationRoute(request);
-            setRoutes([...routes, newRoute]);
-            setError(null);
-        } catch (err: any) {
-            throw err;
-        }
-    }
-
-    async function handleDeactivateRoute() {
-        if (!selectedRoute) return;
-
-        try {
-            // Load available reroute targets
-            setRerouteLoading(true);
-            // In real app: const targets = await getRerouteTargets(selectedRoute.id);
-            // For now, show available routes
-            const availableTargets = routes
-                .filter((r) => r.id !== selectedRoute.id && r.status.isActive)
-                .map((r) => ({
-                    routeId: r.id,
-                    routeName: r.name,
-                    level: 'SAME' as const,
-                    capacity: {
-                        currentOrderCount: 0,
-                        maxOrders: r.capacity.maxOrders || 100,
-                    },
-                }));
-            setRerouteTargets(availableTargets);
-            setShowRerouteModal(true);
-        } finally {
-            setRerouteLoading(false);
-        }
-    }
-
-    async function handleSubmitReroute(reroute: TemporaryReroute) {
-        if (!selectedRoute) return;
-
-        try {
-            await deactivateConsolidationRoute(selectedRoute.id, reroute);
-            // Update route to inactive
-            setRoutes(
-                routes.map((r) =>
-                    r.id === selectedRoute.id
-                        ? { ...r, status: { ...r.status, isActive: false } }
-                        : r
-                )
-            );
-            setSelectedRoute(null);
-            setShowRerouteModal(false);
-        } catch (err: any) {
-            throw err;
-        }
-    }
-
-    async function handleActivateRoute() {
-        if (!selectedRoute) return;
-
-        try {
-            const updated = await activateConsolidationRoute(selectedRoute.id);
-            setRoutes(routes.map((r) => (r.id === selectedRoute.id ? updated : r)));
-            setSelectedRoute(null);
-        } catch (err) {
-            setError('Lỗi khi kích hoạt tuyến');
-            console.error(err);
-        }
-    }
-
-    if (!currentUser || !('office' in currentUser)) {
-        return (
-            <div className="p-6 text-center text-gray-500">
-                Vui lòng đăng nhập với tài khoản nhân viên
-            </div>
-        );
-    }
-
-    const employeeUser = currentUser as EmployeeMeResponse;
+    const selectedStop = selectedRoute?.routeStops.find(s => s.officeCode === selectedOfficeCode);
+    const nextId = (selectedStop as any)?.nextDestinationId;
 
     return (
         <div className="space-y-6 p-6 max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Quản Lý Tuyến Đường Phân Cấp</h1>
-                    <p className="text-gray-600 mt-1">
-                        Tổng cộng: {routes.length} tuyến ({routes.filter((r) => r.status.isActive).length} hoạt động)
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    {/* View Mode Toggle */}
-                    <div className="inline-flex rounded-lg border border-gray-300 bg-white p-1">
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                                viewMode === 'list'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'text-gray-700 hover:bg-gray-100'
-                            }`}
-                        >
-                            <LayoutList className="w-4 h-4" />
-                            List
-                        </button>
-                        <button
-                            onClick={() => setViewMode('map')}
-                            className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                                viewMode === 'map'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'text-gray-700 hover:bg-gray-100'
-                            }`}
-                        >
-                            <MapIcon className="w-4 h-4" />
-                            Map
-                        </button>
-                    </div>
-
-                    <button
-                        onClick={loadRoutes}
-                        disabled={loading}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
-                    >
-                        <RefreshCw className="w-4 h-4" />
-                        Làm mới
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold text-gray-900">Route Graph Management</h1>
+                {interactionMode === 'PICK_DESTINATION' && (
+                    <button onClick={cancelRerouteSelection} className="px-4 py-2 bg-red-100 text-red-700 font-bold rounded-lg flex items-center gap-2">
+                        <XCircle className="w-5 h-5" /> Cancel Reroute
                     </button>
+                )}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                    <ConsolidationRouteMap
+                        routes={routes}
+                        selectedRoute={selectedRoute}
+                        selectedOfficeCode={selectedOfficeCode}
+                        isSelectionMode={interactionMode === 'PICK_DESTINATION'}
+                        onRouteClick={(r) => interactionMode === 'VIEW' && setSelectedRoute(r)}
+                        onOfficeClick={handleOfficeClick}
+                    />
+                </div>
+
+                <div className="lg:col-span-1">
+                    {selectedRoute ? (
+                        <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full flex flex-col sticky top-6">
+                            <div className="bg-gray-50 p-4 border-b border-gray-200">
+                                <h3 className="font-semibold text-lg">{selectedRoute.name}</h3>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-4 space-y-2 max-h-[500px]">
+                                {selectedRoute.routeStops.map((stop, idx) => {
+                                    const isSelected = selectedOfficeCode === stop.officeCode;
+                                    const isWarehouse = stop.officeCode === 'warehouse-01';
+                                    const stopNextId = (stop as any).nextDestinationId;
+
+                                    return (
+                                        <div
+                                            key={stop.officeCode}
+                                            onClick={() => interactionMode === 'VIEW' && setSelectedOfficeCode(stop.officeCode)}
+                                            className={`p-3 rounded-lg border cursor-pointer transition-all ${isSelected
+                                                ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 shadow-sm'
+                                                : (interactionMode === 'VIEW' ? 'hover:border-blue-300' : 'opacity-40')
+                                                } ${isWarehouse ? 'bg-orange-50/50 border-orange-100' : ''}`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${isWarehouse ? 'bg-orange-200 text-orange-800' : 'bg-gray-200 text-gray-600'}`}>
+                                                        {idx + 1}
+                                                    </div>
+                                                    <span className={`font-medium text-sm ${isWarehouse ? 'text-orange-900' : ''}`}>
+                                                        {isWarehouse ? 'Hanoi Central (PW)' : `Office ${stop.officeCode}`}
+                                                    </span>
+                                                </div>
+                                                {isSelected && <div className="w-2 h-2 bg-blue-600 rounded-full" />}
+                                            </div>
+
+                                            <div className="mt-2 text-xs flex items-center gap-1 text-gray-500 bg-gray-100/50 p-1.5 rounded">
+                                                <ArrowRight className="w-3 h-3 text-gray-400" />
+                                                <span className={stopNextId === 'warehouse-01' ? 'text-orange-600 font-bold' : ''}>
+                                                    {stopNextId === 'warehouse-01' ? 'PW (Warehouse)' : `Office ${stopNextId}`}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="p-4 border-t border-gray-200 bg-gray-50">
+                                {interactionMode === 'VIEW' ? (
+                                    <button
+                                        onClick={startRerouteSelection}
+                                        disabled={!selectedOfficeCode}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium shadow-sm"
+                                    >
+                                        <Navigation className="w-4 h-4" />
+                                        {selectedOfficeCode ? 'Reroute Selected Node' : 'Select a Node to Reroute'}
+                                    </button>
+                                ) : (
+                                    <div className="text-center p-3 text-blue-800 bg-blue-50 rounded-lg border border-blue-200 animate-pulse">
+                                        <p className="font-bold text-sm">Selection Mode Active</p>
+                                        <p className="text-xs">Click a target node on the map</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="h-full flex flex-col items-center justify-center bg-gray-50 border border-dashed border-gray-300 rounded-lg text-gray-500 p-8">
+                            <Info className="w-12 h-12 mb-2 opacity-20" />
+                            <p>Select a route or node on the map</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Error message */}
-            {error && (
-                <div className="flex gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-700">{error}</p>
-                </div>
-            )}
-
-            {loading ? (
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left: Route Visualization (List or Map) */}
-                    <div className="lg:col-span-2">
-                        {viewMode === 'list' ? (
-                            <HierarchicalRouteVisualization
-                                routes={routes}
-                                currentUser={employeeUser}
-                                selectedRoute={selectedRoute}
-                                onSelectRoute={setSelectedRoute}
-                                onCreateRoute={handleCreateRoute}
-                            />
-                        ) : (
-                            <ConsolidationRouteMap
-                                routes={routes}
-                                selectedRoute={selectedRoute}
-                                onRouteClick={setSelectedRoute}
-                            />
-                        )}
-                    </div>
-
-                    {/* Right: Route Details */}
-                    <div>
-                        {selectedRoute ? (
-                            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                                <div className="bg-gray-50 p-4 border-b border-gray-200">
-                                    <h3 className="font-semibold text-gray-900">{selectedRoute.name}</h3>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        {getRouteLevelLabel(
-                                            selectedRoute.routeStops.length > 0
-                                                ? RouteLevel.WARD
-                                                : RouteLevel.PROVINCE
-                                        )}
-                                    </p>
-                                </div>
-
-                                <div className="p-4 space-y-4">
-                                    {/* Status */}
-                                    <div>
-                                        <p className="text-xs uppercase text-gray-500 mb-1">Trạng thái</p>
-                                        <div
-                                            className={`inline-flex items-center gap-2 px-3 py-1 rounded text-sm font-medium ${
-                                                selectedRoute.status.isActive
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-gray-100 text-gray-600'
-                                            }`}
-                                        >
-                                            <div
-                                                className={`w-2 h-2 rounded-full ${
-                                                    selectedRoute.status.isActive
-                                                        ? 'bg-green-600'
-                                                        : 'bg-gray-400'
-                                                }`}
-                                            />
-                                            {selectedRoute.status.isActive ? 'Hoạt động' : 'Không hoạt động'}
-                                        </div>
-                                    </div>
-
-                                    {/* Consolidation Status */}
-                                    {routeStatus && (
-                                        <>
-                                            <div>
-                                                <p className="text-xs uppercase text-gray-500 mb-2">Trạng thái tập kết</p>
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-sm text-gray-600">Đơn đang chờ:</span>
-                                                        <span className="font-medium">{routeStatus.pendingOrderCount}</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-sm text-gray-600">Trọng lượng:</span>
-                                                        <span className="font-medium">
-                                                            {routeStatus.pendingWeightKg.toFixed(2)} kg
-                                                        </span>
-                                                    </div>
-                                                    <div
-                                                        className={`p-2 rounded text-sm ${
-                                                            routeStatus.canConsolidate
-                                                                ? 'bg-green-50 text-green-700'
-                                                                : 'bg-amber-50 text-amber-700'
-                                                        }`}
-                                                    >
-                                                        {routeStatus.canConsolidate ? (
-                                                            <>
-                                                                <p className="font-medium">Sẵn sàng tập kết</p>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <p className="font-medium">Chưa sẵn sàng</p>
-                                                                {routeStatus.consolidationBlockReason && (
-                                                                    <p className="text-xs mt-1">
-                                                                        {routeStatus.consolidationBlockReason}
-                                                                    </p>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-
-                                    {/* Destination */}
-                                    <div>
-                                        <p className="text-xs uppercase text-gray-500 mb-1">Kho đích</p>
-                                        <p className="text-sm text-gray-900 font-medium">
-                                            {selectedRoute.destinationWarehouse.name}
-                                        </p>
-                                        <p className="text-xs text-gray-600">{selectedRoute.destinationWarehouse.code}</p>
-                                    </div>
-
-                                    {/* Capacity */}
-                                    <div>
-                                        <p className="text-xs uppercase text-gray-500 mb-2">Dung lượng</p>
-                                        <div className="space-y-1 text-sm">
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Trọng lượng tối đa:</span>
-                                                <span className="font-medium">
-                                                    {selectedRoute.capacity.maxWeightKg} kg
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Đơn tối đa:</span>
-                                                <span className="font-medium">
-                                                    {selectedRoute.capacity.maxOrders} đơn
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="pt-4 border-t border-gray-200 space-y-2">
-                                        {selectedRoute.status.isActive ? (
-                                            <button
-                                                onClick={handleDeactivateRoute}
-                                                disabled={rerouteLoading}
-                                                className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
-                                            >
-                                                {rerouteLoading ? (
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                                        Đang tải...
-                                                    </div>
-                                                ) : (
-                                                    'Vô hiệu hóa'
-                                                )}
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={handleActivateRoute}
-                                                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
-                                            >
-                                                Kích hoạt
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {/* Last Update */}
-                                    {selectedRoute.status.lastConsolidationAt && (
-                                        <div className="p-2 bg-blue-50 rounded text-xs text-blue-700">
-                                            <p>Tập kết lần cuối: {new Date(selectedRoute.status.lastConsolidationAt).toLocaleString('vi-VN')}</p>
-                                        </div>
-                                    )}
-                                </div>
+            {/* Confirmation Modal */}
+            {pendingReroute && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="p-2.5 bg-blue-100 rounded-full text-blue-600">
+                                <Navigation className="w-6 h-6" />
                             </div>
-                        ) : (
-                            <div className="bg-white rounded-lg border border-gray-200 p-6 text-center text-gray-500">
-                                <Info className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                                <p>Chọn một tuyến để xem chi tiết</p>
+                            <h3 className="text-xl font-bold text-gray-900">Confirm Reroute</h3>
+                        </div>
+
+                        <div className="flex items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 relative">
+                            <div className="text-center z-10">
+                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">From</p>
+                                <p className="font-bold text-lg text-gray-800">{pendingReroute.sourceCode === 'warehouse-01' ? 'PW' : pendingReroute.sourceCode}</p>
                             </div>
-                        )}
+                            <ArrowRight className="w-6 h-6 text-blue-300" />
+                            <div className="text-center z-10">
+                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">To</p>
+                                <p className="font-bold text-lg text-blue-600 truncate max-w-[120px]">{pendingReroute.targetId === 'warehouse-01' ? 'PW' : pendingReroute.targetId}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button onClick={cancelRerouteSelection} className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">Cancel</button>
+                            <button onClick={confirmReroute} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex justify-center items-center gap-2">
+                                <CheckCircle2 className="w-4 h-4" /> Confirm
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
-
-            {/* Modals */}
-            <CreateConsolidationRouteModal
-                isOpen={showCreateModal}
-                routeLevel={createRouteLevel || RouteLevel.WARD}
-                onClose={() => {
-                    setShowCreateModal(false);
-                    setCreateRouteLevel(null);
-                }}
-                onSubmit={handleSubmitCreate}
-                onFetchWardOffices={handleFetchWardOffices}
-                provinces={provinces}
-                warehouses={warehouses}
-            />
-
-            <RerouteModal
-                isOpen={showRerouteModal}
-                route={selectedRoute}
-                availableTargets={rerouteTargets}
-                onClose={() => setShowRerouteModal(false)}
-                onSubmit={handleSubmitReroute}
-                loading={rerouteLoading}
-            />
         </div>
     );
 }
