@@ -85,8 +85,11 @@ export function Layout() {
 
     if (isPO || isWH) {
       primaryNav.push({ to: "/orders/delivery", icon: Send, label: "Giao Bưu tá" });
-      primaryNav.push({ to: "/staff/packing-requests", icon: Package, label: "Quản lý kiện hàng" });
       primaryNav.push({ to: "/complaints", icon: MessageSquare, label: "Khiếu nại" });
+    }
+
+    if (isWH) {
+      primaryNav.push({ to: "/staff/packing-requests", icon: Package, label: "Quản lý kiện hàng" });
     }
   }
 

@@ -133,7 +133,7 @@ const parseCSVData = (csv: string) => {
     }).filter((item): item is { description: string, aspects: AspectScores } => item !== null);
 };
 
-export function ComplaintPage() {
+export function CustomerRatingsPage() {
     const [complaints, setComplaints] = useState<Complaint[]>([]);
     const [page, setPage] = useState(0);
     const pageSize = 10;

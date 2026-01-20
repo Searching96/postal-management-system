@@ -31,6 +31,7 @@ import {
   ConsolidationRouteManagementPage,
   UnifiedRouteManagementPage,
   PackingRequestPage,
+  CustomerRatingsPage,
   ComplaintPage,
   WHWardManagerDashboard,
   POWardManagerDashboard
@@ -116,6 +117,7 @@ function App() {
                 <Route path="/batches" element={<BatchListPage />} />
                 <Route path="/batches/:id" element={<BatchDetailsPage />} />
                 <Route path="/complaints" element={<ComplaintPage />} />
+                <Route path="/customer-ratings" element={<CustomerRatingsPage />} />
               </Route>
 
               {/* Warehouse Staff - Packing Requests */}

@@ -306,7 +306,7 @@
   Role-Based Demo Path:                                                         
                                                                                 
   Path 1 - Customer Journey:                                                    
-  Customer Account → Create pickup order (Flow 2)                               
+  Customer Account (0912345678) → Create pickup order (Flow 2)                               
                   → Track order (Flow 3)                                        
                   → View delivery location (Flow 3)                             
                                                                                 
