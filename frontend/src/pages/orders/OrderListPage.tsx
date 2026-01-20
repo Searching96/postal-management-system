@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, Plus, Package, Eye, MessageCircle, AlertTriangle, X } from "lucide-react";
+import { Search, Plus, Package, Eye, MessageCircle, AlertTriangle, X, Star } from "lucide-react";
 import {
     Card,
     Button,
@@ -27,6 +27,8 @@ export function OrderListPage() {
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
+    const [rating, setRating] = useState(5);
+    const [hoveredRating, setHoveredRating] = useState(0);
     const pageSize = 10;
 
     // Modal states
@@ -350,17 +352,49 @@ export function OrderListPage() {
                         </div>
 
                         {/* Body */}
-                        <div className="p-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Nội dung đánh giá <span className="text-red-500">*</span>
-                            </label>
-                            <textarea
-                                value={commentText}
-                                onChange={(e) => setCommentText(e.target.value)}
-                                placeholder="Nhập đánh giá của bạn về dịch vụ..."
-                                rows={6}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none resize-none"
-                            />
+                        <div className="p-6 space-y-5">
+                            {/* Star Rating Section */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Mức độ hài lòng
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            key={star}
+                                            type="button"
+                                            onClick={() => setRating(star)}
+                                            onMouseEnter={() => setHoveredRating(star)}
+                                            onMouseLeave={() => setHoveredRating(0)}
+                                            className="focus:outline-none transition-transform hover:scale-110"
+                                        >
+                                            <Star
+                                                className={`h-8 w-8 transition-colors ${star <= (hoveredRating || rating)
+                                                    ? "fill-yellow-400 text-yellow-400"
+                                                    : "text-gray-300 fill-gray-100"
+                                                    }`}
+                                            />
+                                        </button>
+                                    ))}
+                                    <span className="ml-2 text-sm font-medium text-gray-600">
+                                        {hoveredRating || rating}/5
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Comment Textarea */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Nội dung đánh giá <span className="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                    value={commentText}
+                                    onChange={(e) => setCommentText(e.target.value)}
+                                    placeholder="Nhập đánh giá của bạn về dịch vụ..."
+                                    rows={5}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none resize-none"
+                                />
+                            </div>
                         </div>
 
                         {/* Footer */}
@@ -373,11 +407,11 @@ export function OrderListPage() {
                                 Hủy
                             </Button>
                             <Button
-                                onClick={handleSubmitComment}
+                                onClick={handleSubmitComment} // Make sure to include 'rating' in this function
                                 isLoading={isSubmitting}
                                 className="bg-green-600 hover:bg-green-700"
                             >
-                                Gửi
+                                Gửi đánh giá
                             </Button>
                         </div>
                     </div>

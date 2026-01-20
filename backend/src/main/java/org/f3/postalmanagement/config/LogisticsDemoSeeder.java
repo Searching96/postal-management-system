@@ -118,7 +118,7 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         // Assign Demo Staff to the specific HCM Post Office
         if (hcmPost != null) {
             ensureStaffForOffice(hcmPost, "0979000007", "PO Ward Manager HCM", Role.PO_WARD_MANAGER);
-            hcmShipper = ensureStaffForOffice(hcmPost, "0979000008", "Shipper Thủ Đức HCM", Role.SHIPPER);
+            hcmShipper = ensureStaffForOffice(hcmPost, "0979000008", "Lê Văn Hùng", Role.SHIPPER);
         }
 
         // 4.5. Find existing Office Pairs (created by DataInitializer) and create Ward Assignments
@@ -163,18 +163,18 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
                                      Employee creator, Employee hcmShipper) {
         
         List<OrderInfo> ordersToCreate = Arrays.asList(
-            new OrderInfo("ORDER-01", OrderStatus.CREATED, "Đơn hàng mới tạo từ Hà Nội đi TP.HCM"),
-            new OrderInfo("ORDER-02", OrderStatus.PENDING_PICKUP, "Chờ lấy hàng tại Hà Nội"),
-            new OrderInfo("ORDER-03", OrderStatus.PICKED_UP, "Đã lấy hàng tại Hà Nội"),
-            new OrderInfo("ORDER-04", OrderStatus.AT_ORIGIN_OFFICE, "Tại bưu cục Hà Nội"),
-            new OrderInfo("ORDER-05", OrderStatus.IN_TRANSIT_TO_HUB, "Đang vận chuyển tới hub Hà Nội"),
-            new OrderInfo("ORDER-06", OrderStatus.AT_HUB, "Tại hub Hà Nội", hnHub),
-            new OrderInfo("ORDER-07", OrderStatus.IN_TRANSIT_TO_DESTINATION, "Đang vận chuyển từ HN tới HCM"),
-            new OrderInfo("ORDER-08", OrderStatus.AT_DESTINATION_HUB, "Tại hub TP.HCM", hcmHub),
-            new OrderInfo("ORDER-09", OrderStatus.IN_TRANSIT_TO_OFFICE, "Đang vận chuyển tới bưu cục HCM"),
-            new OrderInfo("ORDER-10", OrderStatus.AT_DESTINATION_OFFICE, "Tại bưu cục TP.HCM", hcmPost),
-            new OrderInfo("ORDER-11", OrderStatus.OUT_FOR_DELIVERY, "Đang giao hàng tại TP.HCM", hcmPost, hcmShipper),
-            new OrderInfo("ORDER-12", OrderStatus.DELIVERED, "Đã giao thành công tại TP.HCM", hcmPost, hcmShipper)
+            new OrderInfo("VN492103857", OrderStatus.CREATED, "Đơn hàng mới tạo từ Hà Nội đi TP.HCM"),
+            new OrderInfo("VN582910394", OrderStatus.PENDING_PICKUP, "Chờ lấy hàng tại Hà Nội"),
+            new OrderInfo("VN192837465", OrderStatus.PICKED_UP, "Đã lấy hàng tại Hà Nội"),
+            new OrderInfo("VN674829102", OrderStatus.AT_ORIGIN_OFFICE, "Tại bưu cục Hà Nội"),
+            new OrderInfo("VN928371625", OrderStatus.IN_TRANSIT_TO_HUB, "Đang vận chuyển tới hub Hà Nội"),
+            new OrderInfo("VN384726152", OrderStatus.AT_HUB, "Tại hub Hà Nội", hnHub),
+            new OrderInfo("VN829103847", OrderStatus.IN_TRANSIT_TO_DESTINATION, "Đang vận chuyển từ HN tới HCM"),
+            new OrderInfo("VN273849102", OrderStatus.AT_DESTINATION_HUB, "Tại hub TP.HCM", hcmHub),
+            new OrderInfo("VN564738291", OrderStatus.IN_TRANSIT_TO_OFFICE, "Đang vận chuyển tới bưu cục HCM"),
+            new OrderInfo("VN102938476", OrderStatus.AT_DESTINATION_OFFICE, "Tại bưu cục TP.HCM", hcmPost),
+            new OrderInfo("VN748291038", OrderStatus.OUT_FOR_DELIVERY, "Đang giao hàng tại TP.HCM", hcmPost, hcmShipper),
+            new OrderInfo("VN918273645", OrderStatus.DELIVERED, "Đã giao thành công tại TP.HCM", hcmPost, hcmShipper)
         );
 
         for (OrderInfo info : ordersToCreate) {

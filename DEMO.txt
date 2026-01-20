@@ -206,41 +206,16 @@
                                                                                 
   ---                                                                           
   ❌ FLOW 7: Customer comments + ABSA (Backend ready, UI incomplete)            
-                                                                                
-  Current Status:                                                               
-  - ✅ Backend: Full ABSA API + Python service                                  
-  - ❌ Frontend: No comment UI in OrderDetailsPage                              
-                                                                                
-  Workaround Demo (Backend API):                                                
-                                                                                
-  Using Postman/cURL:                                                           
-  # 1. Add comment to order                                                     
-  POST /api/orders/{orderId}/comment                                            
-  {                                                                             
-    "commentText": "Shipper thái độ thô lỗ, trả lời cọc cằn, cũng may là hàng   
-  giao nhanh chứ ko thì ko dùng dịch vụ này nữa."                               
-  }                                                                             
-                                                                                
-  # 2. Trigger ABSA analysis                                                    
-  POST /api/absa/trigger-batch                                                  
-                                                                                
-  # 3. Get sentiment result                                                     
-  GET /api/absa/results/{orderCommentId}                                        
-  Response:                                                                     
-  {                                                                             
-    "aspects": {                                                                
-      "shipper_attitude": "NEGATIVE",                                           
-      "delivery_speed": "POSITIVE",                                             
-      "service_quality": "NEGATIVE"                                             
-    },                                                                          
-    "shipperName": "Shipper Thủ Đức",                                           
-    "shipperPhone": "0940100001"                                                
-  }                                                                             
-                                                                                
-  TO IMPLEMENT:                                                                 
-  1. Add comment textarea in OrderDetailsPage                                   
-  2. Add sentiment display (badges with colors)                                 
-  3. Show shipper info from ABSA result                                         
+
+  Use user account (0912345678)
+
+  Complain content: 
+  "
+  Shipper thái độ thô lỗ, trả lời cọc cằn, cũng may la hang giao nhanh chứ ko thì ko dung dịch vụ nãy nữa.
+  "          
+
+  Use PO_WARD_MANAGER account (0901000007)
+
                                                                                 
   ---                                                                           
   ✅ FLOW 8: Customer complaints (MOCKED - FULLY WORKING)                       

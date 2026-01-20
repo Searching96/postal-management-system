@@ -562,12 +562,12 @@ public class OrderServiceImpl implements IOrderService {
     }
 
     private String generateTrackingNumber() {
-        // Format: VN + 9 digits + VN (e.g., VN123456789VN)
+        // Format: VN + 9 digits(e.g., VN123456789)
         Random random = new Random();
         String number;
         do {
             int randomNumber = 100000000 + random.nextInt(900000000);
-            number = "VN" + randomNumber + "VN";
+            number = "VN" + randomNumber;
         } while (orderRepository.existsByTrackingNumber(number));
 
         return number;
