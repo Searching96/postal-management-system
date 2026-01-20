@@ -379,7 +379,3 @@
   But all flows visually work for demo purposes! 🎉                             
                                                                                 
 ✻ Worked for 59s                                                                
-                                                                                
-❯ Replace DEMO.md                                                               
-  ⎿  Interrupted · What should Claude do instead?                               
-
