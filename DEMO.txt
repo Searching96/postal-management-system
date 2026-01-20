@@ -63,25 +63,13 @@
   3. Click "Gán bưu tá"                                                         
   4. Select shipper: 0901000008 (Shipper HN)                                    
   5. Confirm assignment                                                         
-                                                                                
-  Part C - Shipper picks up order:                                              
-                                                                                
-  👤 Account: 0901000008 (SHIPPER HN)                                           
-                                                                                
-  Steps:                                                                        
-  1. Navigate to "Đơn hàng cần lấy" (/shipper/pickups)                          
-  2. View list of assigned pickup orders                                        
-  3. See map with pickup locations (if GPS enabled)                             
-  4. Click on order → "Xác nhận đã lấy hàng"                                    
-  5. Upload photo (optional)                                                    
-  6. Order status changes to PICKED_UP                                          
-                                                                                
-  Demo Points:                                                                  
-  - Customer-facing pickup request form                                         
-  - Staff assignment interface                                                  
-  - Shipper mobile view with map                                                
-  - Photo upload capability                                                     
-                                                                                
+
+VN748291038: OFD
+VN192837465: 
+VN273849102: Trung chuyển
+VN582910394: Mới tạo
+
+                                                                                                                     
   ---                                                                           
   ✅ FLOW 3: Customer tracks order                                              
                                                                                 
