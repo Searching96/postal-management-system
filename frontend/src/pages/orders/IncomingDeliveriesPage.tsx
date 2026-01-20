@@ -1,63 +1,67 @@
-import { useState } from "react";
-import { Package, User, Calendar, DollarSign, Phone } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Package, User, Calendar, Phone } from "lucide-react";
 import {
     Card,
     Table,
     PageHeader,
     Badge
 } from "../../components/ui";
-import { formatCurrency, formatDate } from "../../lib/utils";
-
-// Mock data type
-interface IncomingDelivery {
-    id: string;
-    trackingNumber: string;
-    senderName: string;
-    senderPhone: string;
-    sendDate: string;
-    shippingFee: number;
-    shipperName: string;
-    shipperPhone: string;
-    status: string;
-}
-
-// Generate mock data
-const MOCK_INCOMING_DELIVERIES: IncomingDelivery[] = [
-    {
-        id: "1",
-        trackingNumber: "VN0000000001",
-        senderName: "Nguyễn Văn A",
-        senderPhone: "0901234567",
-        sendDate: "2026-01-18T08:30:00",
-        shippingFee: 35000,
-        shipperName: "Shipper Đống Đa 1",
-        shipperPhone: "0940100001",
-        status: "OUT_FOR_DELIVERY"
-    },
-    {
-        id: "2",
-        trackingNumber: "VN0000000002",
-        senderName: "Trần Thị B",
-        senderPhone: "0912345678",
-        sendDate: "2026-01-18T09:15:00",
-        shippingFee: 42000,
-        shipperName: "Shipper Đống Đa 2",
-        shipperPhone: "0940100002",
-        status: "OUT_FOR_DELIVERY"
-    }
-];
+import { formatDate } from "../../lib/utils";
+import { orderService, Order } from "../../services/orderService";
+import { toast } from "sonner";
+import { useAuth } from "../../lib/AuthContext";
 
 export function IncomingDeliveriesPage() {
-    const [deliveries] = useState<IncomingDelivery[]>(MOCK_INCOMING_DELIVERIES);
+    const { user } = useAuth();
+    const [deliveries, setDeliveries] = useState<Order[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const fetchDeliveries = async () => {
+        if (!user || !("id" in user)) {
+            toast.error("Không tìm thấy thông tin người dùng");
+            setIsLoading(false);
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            // Fetch incoming deliveries using the new endpoint
+            const response = await orderService.getIncomingDeliveriesByCustomerId(user.id, {
+                page: 0,
+                size: 100
+            });
+
+            if (response && response.content) {
+                setDeliveries(response.content);
+            }
+        } catch (error) {
+            console.error("Error fetching incoming deliveries:", error);
+            toast.error("Không thể tải danh sách đơn hàng đang đến");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (user) {
+            fetchDeliveries();
+        }
+    }, [user]);
 
     const getStatusBadge = (status: string) => {
-        const map: Record<string, "info" | "warning"> = {
+        const map: Record<string, "info" | "warning" | "secondary"> = {
+            IN_TRANSIT_TO_DESTINATION: "secondary",
+            AT_DESTINATION_HUB: "secondary",
+            IN_TRANSIT_TO_OFFICE: "secondary",
             AT_DESTINATION_OFFICE: "info",
             OUT_FOR_DELIVERY: "warning"
         };
         const labels: Record<string, string> = {
+            IN_TRANSIT_TO_DESTINATION: "Đang vận chuyển",
+            AT_DESTINATION_HUB: "Tại Hub đích",
+            IN_TRANSIT_TO_OFFICE: "Đang về bưu cục",
             AT_DESTINATION_OFFICE: "Tại bưu cục",
-            OUT_FOR_DELIVERY: "Đang giao"
+            OUT_FOR_DELIVERY: "Đang giao hàng"
         };
 
         return (
@@ -93,6 +97,7 @@ export function IncomingDeliveriesPage() {
                                         Ngày gửi
                                     </div>
                                 </th>
+                                <th className="py-3 px-4 text-center">Trạng thái</th>
                                 <th className="py-3 px-4 text-left">
                                     <div className="flex items-center gap-2">
                                         <Phone className="h-4 w-4 text-gray-400" />
@@ -103,7 +108,13 @@ export function IncomingDeliveriesPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {deliveries.length === 0 ? (
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={6} className="text-center py-8">
+                                        Đang tải...
+                                    </td>
+                                </tr>
+                            ) : deliveries.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} className="text-center py-8 text-gray-500">
                                         <div className="flex flex-col items-center justify-center p-4">
@@ -114,7 +125,7 @@ export function IncomingDeliveriesPage() {
                                 </tr>
                             ) : (
                                 deliveries.map((delivery) => {
-                                    const estimatedDelivery = new Date(delivery.sendDate);
+                                    const estimatedDelivery = new Date(delivery.createdAt);
                                     if (delivery.status === "OUT_FOR_DELIVERY") {
                                         estimatedDelivery.setHours(estimatedDelivery.getHours() + 2);
                                     } else {
@@ -122,7 +133,7 @@ export function IncomingDeliveriesPage() {
                                     }
 
                                     return (
-                                        <tr key={delivery.id} className="border-t hover:bg-gray-50 transition-colors">
+                                        <tr key={delivery.orderId} className="border-t hover:bg-gray-50 transition-colors">
                                             <td className="py-3 px-4 font-medium text-primary-600">
                                                 {delivery.trackingNumber}
                                             </td>
@@ -137,17 +148,21 @@ export function IncomingDeliveriesPage() {
                                                 </div>
                                             </td>
                                             <td className="py-3 px-4 text-sm text-gray-600">
-                                                {formatDate(delivery.sendDate)}
+                                                {formatDate(delivery.createdAt)}
+                                            </td>
+                                            <td className="py-3 px-4 text-center">
+                                                {getStatusBadge(delivery.status)}
                                             </td>
                                             <td className="py-3 px-4">
                                                 <div>
                                                     <p className="text-sm font-medium text-gray-900">
-                                                        {delivery.shipperName}
+                                                        {delivery.assignedShipperName || "Chưa phân công"}
                                                     </p>
-                                                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                        <Phone className="h-3 w-3" />
-                                                        {delivery.shipperPhone}
-                                                    </p>
+                                                    {delivery.currentOfficeName && (
+                                                        <p className="text-xs text-gray-500">
+                                                            {delivery.currentOfficeName}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="py-3 px-4 text-center text-sm text-gray-600">

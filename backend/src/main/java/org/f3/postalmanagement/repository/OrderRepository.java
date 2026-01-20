@@ -181,4 +181,14 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("SELECT o FROM Order o WHERE o.assignedConsolidationRoute.id = :routeId " +
            "ORDER BY o.createdAt ASC")
     List<Order> findByAssignedConsolidationRouteId(@Param("routeId") UUID routeId);
+
+    /**
+     * Find incoming deliveries for a customer (where they are the receiver)
+     */
+    @Query("SELECT o FROM Order o WHERE o.receiverPhone = :receiverPhone AND " +
+           "o.status IN :statuses " +
+           "ORDER BY o.createdAt DESC")
+    Page<Order> findByReceiverPhoneAndStatusIn(@Param("receiverPhone") String receiverPhone,
+                                                @Param("statuses") java.util.List<OrderStatus> statuses,
+                                                Pageable pageable);
 }

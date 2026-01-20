@@ -210,6 +210,11 @@ export const orderService = {
         return response.data;
     },
 
+    getIncomingDeliveriesByCustomerId: async (customerId: string, params?: PaginationParams): Promise<PageResponse<Order>> => {
+        const response = await api.get<PageResponse<Order>>(`/orders/customer/${customerId}/incoming`, { params });
+        return response.data;
+    },
+
     createCustomerPickupOrder: async (data: CustomerCreateOrderRequest): Promise<Order> => {
         const response = await api.post<Order>("/orders/customer/pickup", data);
         return response.data;

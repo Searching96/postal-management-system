@@ -214,6 +214,28 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/customer/{customerId}/incoming")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(
+            summary = "Get incoming deliveries for customer",
+            description = "Find all incoming deliveries where the customer is the receiver. Shows orders that are currently being delivered to the customer.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Incoming deliveries found",
+                    content = @Content(schema = @Schema(implementation = PageResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Customer can only view their own incoming deliveries")
+    })
+    public ResponseEntity<PageResponse<OrderResponse>> getIncomingDeliveriesByCustomerId(
+            @Parameter(description = "Customer ID (UUID)") @PathVariable UUID customerId,
+            @ParameterObject
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @AuthenticationPrincipal(expression = "account") Account currentAccount
+    ) {
+        PageResponse<OrderResponse> response = orderService.getIncomingDeliveriesByCustomerId(customerId, pageable, currentAccount);
+        return ResponseEntity.ok(response);
+    }
+
     // ==================== CUSTOMER ONLINE ORDER ====================
 
     @PostMapping("/customer/pickup")

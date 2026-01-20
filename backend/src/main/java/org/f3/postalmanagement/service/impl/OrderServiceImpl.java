@@ -437,6 +437,42 @@ public class OrderServiceImpl implements IOrderService {
         return mapToPageResponse(responsePage);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<OrderResponse> getIncomingDeliveriesByCustomerId(UUID customerId, Pageable pageable, Account currentAccount) {
+        // Get the actual customer for authorization
+        Customer customer = customerRepository.findByAccountId(currentAccount.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Customer not found for account"));
+
+        // Customers can only view their own incoming deliveries
+        if (currentAccount.getRole() == Role.CUSTOMER) {
+            // Allow if requested ID is either the Customer ID or the Account ID
+            if (!customer.getId().equals(customerId) && !currentAccount.getId().equals(customerId)) {
+                throw new AccessDeniedException("You can only view your own incoming deliveries");
+            }
+        }
+
+        // Define incoming delivery statuses
+        java.util.List<OrderStatus> incomingStatuses = java.util.Arrays.asList(
+                OrderStatus.IN_TRANSIT_TO_DESTINATION,
+                OrderStatus.AT_DESTINATION_HUB,
+                OrderStatus.IN_TRANSIT_TO_OFFICE,
+                OrderStatus.AT_DESTINATION_OFFICE,
+                OrderStatus.OUT_FOR_DELIVERY
+        );
+
+        // Use customer's phone number to find orders where they are the receiver
+        Page<Order> orderPage = orderRepository.findByReceiverPhoneAndStatusIn(
+                customer.getPhoneNumber(),
+                incomingStatuses,
+                pageable
+        );
+
+        Page<OrderResponse> responsePage = orderPage.map(this::mapToOrderResponse);
+
+        return mapToPageResponse(responsePage);
+    }
+
     // ==================== PRIVATE HELPER METHODS ====================
 
     private void validateStaffRole(Account account) {

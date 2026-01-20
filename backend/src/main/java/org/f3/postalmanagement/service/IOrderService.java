@@ -89,6 +89,16 @@ public interface IOrderService {
      */
     PageResponse<OrderResponse> getOrdersByCustomerId(UUID customerId, Pageable pageable, Account currentAccount);
 
+    /**
+     * Get incoming deliveries for a customer (where they are the receiver).
+     *
+     * @param customerId the customer ID
+     * @param pageable pagination parameters
+     * @param currentAccount the account of the customer making the request
+     * @return paginated list of incoming deliveries
+     */
+    PageResponse<OrderResponse> getIncomingDeliveriesByCustomerId(UUID customerId, Pageable pageable, Account currentAccount);
+
     // ==================== CUSTOMER ONLINE ORDER ====================
 
     /**

@@ -144,8 +144,8 @@ public class LogisticsDemoSeeder implements CommandLineRunner {
         Customer sender = ensureCustomerWithAccount("Trần Nguyễn Đức Phúc", "0912345678",
                 "120 P.Yên Lãng, Đống Đa", hanoiWard, "tranducphuc@gmail.com");
 
-        Customer receiver = ensureCustomer("Trường Đại học Công nghệ Thông tin", "02837252002",
-                "Khu phố 34, Phường Linh Xuân", hcmWard);
+        Customer receiver = ensureCustomerWithAccount("Trường Đại học Công nghệ Thông tin", "0283725201",
+                "Khu phố 34, Phường Linh Xuân", hcmWard, "truongdaihoc@gmail.com");
 
         // 6. Create Lifecycle Orders
         // Creator should be staff at Hanoi Post

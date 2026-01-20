@@ -84,8 +84,6 @@ export function ConsolidationRouteManagementPage() {
 
     if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
-    const selectedStop = selectedRoute?.routeStops.find(s => s.officeCode === selectedOfficeCode);
-
     return (
         <div className="space-y-6 p-6 max-w-7xl mx-auto">
             <div className="flex justify-between items-center">
