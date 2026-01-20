@@ -229,7 +229,7 @@
         - Tracking: VN000123456                                                 
       - Sender: Nguyễn Văn A (0901234567)                                       
       - Staff: Trần Thị Hồng (0993334444)                                       
-      - Shipper: Shipper Thủ Đức 1 (0940100001)                                 
+      - Shipper: Shipper Thủ Đức 1 (0979000008)                                 
     - Complaint 2: "Kiện hàng bị móp méo khi nhận tại bưu cục"                  
         - Shipper info: NULL (as requested)                                     
   3. Click ✓ button to mark complaint as "Đã giải quyết"                        
@@ -316,7 +316,7 @@
                         → View complaints (Flow 8)                              
                                                                                 
   Path 3 - Shipper Experience:                                                  
-  SHIPPER (0901000008) → View assigned pickups (Flow 2)                         
+  SHIPPER (0979000008) → View assigned pickups (Flow 2)                         
                        → Pick up order with photo                               
                        → Deliver order                                          
                                                                                 
@@ -330,27 +330,3 @@
   WH_STAFF (0901000003) → Open Packing Requests                                 
                         → Watch 3D animation (Flow 6) ⭐⭐⭐                    
                         → Auto-batch orders                                     
-                                                                                
-  ---                                                                           
-  ⚡ PRO TIPS:                                                                  
-                                                                                
-  1. Start with Flow 6 (3D Packing) - It's visually impressive and unique       
-  2. Use HN accounts for demos - Phone numbers starting with 0901... are easier 
-  to remember                                                                   
-  3. Prepare data first - Create a few orders before the demo                   
-  4. Use debug login - /debug/{phone} is faster than typing password            
-  5. Show the map features - Vietnam map in routes, shipper tracking map        
-  6. Highlight real-time features - Live tracking, WebSocket notifications      
-  7. Demo complaint mock data - It matches the user's exact example text        
-                                                                                
-  ---                                                                           
-  🚨 KNOWN LIMITATIONS TO MENTION:                                              
-                                                                                
-  1. Flow 4 (Notifications): Backend works, but no UI bell icon yet             
-  2. Flow 7 (Comments/ABSA): Backend API works, but no comment input in         
-  OrderDetails                                                                  
-  3. Flow 9 (Analytics): Using mock data, needs backend API connection          
-                                                                                
-  But all flows visually work for demo purposes! 🎉                             
-                                                                                
-✻ Worked for 59s                                                                

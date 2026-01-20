@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { orderService, Order } from '../../services/orderService';
 import {
-    Package, MapPin, Navigation, Phone, CheckCircle, XCircle, Loader2
+    Package, MapPin, Navigation, Phone, CheckCircle, XCircle, Loader2, Bug, Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShipperMapPanel } from '../../components/map/ShipperMapPanel';
 import { useAuth } from '../../lib/AuthContext';
 import { EmployeeMeResponse } from '../../models';
-
 
 const ShipperDeliveryPage = () => {
     const [page, setPage] = useState(0);
@@ -21,17 +20,19 @@ const ShipperDeliveryPage = () => {
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [pageSize, setPageSize] = useState(10);
+
+    // State to simulate "Arrived at location"
+    const [isAtLocation, setIsAtLocation] = useState(false);
+    const [debugLocation, setDebugLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
+
     const abortControllerRef = useRef<AbortController | null>(null);
-    // const listContainerRef = useRef<HTMLDivElement>(null);
 
     // Calculate page size based on screen height
     useEffect(() => {
         const updatePageSize = () => {
             const height = window.innerHeight;
-            // Mobile: Calculate based on full viewport - header and controls
-            // Each order card is approximately 160px tall on mobile, 120px on wide screens
             const itemHeight = window.innerWidth >= 1024 ? 120 : 160;
-            const availableHeight = height - 400; // Subtract header, search bar, padding
+            const availableHeight = height - 400;
             const calculatedSize = Math.max(5, Math.floor(availableHeight / itemHeight));
             setPageSize(calculatedSize);
         };
@@ -41,7 +42,7 @@ const ShipperDeliveryPage = () => {
         return () => window.removeEventListener('resize', updatePageSize);
     }, []);
 
-    const fetchOrders = useCallback(async (searchQuery: string) => {
+    const fetchOrders = useCallback(async (query: string) => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
@@ -53,7 +54,7 @@ const ShipperDeliveryPage = () => {
             const res = await orderService.getShipperDeliveryOrders({
                 page,
                 size: pageSize,
-                search: searchQuery.trim() || undefined
+                search: query.trim() || undefined
             });
             if (controller.signal.aborted) return;
             setOrders(res.content);
@@ -72,21 +73,46 @@ const ShipperDeliveryPage = () => {
         }
     }, [page, pageSize]);
 
-    // Pagination on page/size change
     useEffect(() => {
         fetchOrders(searchQuery);
     }, [page, pageSize]);
 
-    // Debounce search
     useEffect(() => {
         const timer = setTimeout(() => {
             setPage(0);
             fetchOrders(searchQuery);
         }, 300);
         return () => clearTimeout(timer);
-    }, [searchQuery, fetchOrders]);
+    }, [searchQuery]);
+
+    const refreshData = () => {
+        if (orders.length === 1 && page > 0) {
+            setPage(p => p - 1);
+        } else {
+            fetchOrders(searchQuery);
+        }
+    };
+
+    // --- DEBUG LOGIC ---
+    const handleDebugMoveToNextOrder = () => {
+        if (orders.length === 0) {
+            toast.error("Không có đơn hàng để di chuyển đến");
+            return;
+        }
+
+        const nextOrder = orders[0];
+        // In a real app, use nextOrder.latitude/longitude
+        // Here we simulate coordinates for the map
+        const targetLat = 10.7769;
+        const targetLng = 106.7009;
+
+        setDebugLocation({ lat: targetLat, lng: targetLng });
+        setIsAtLocation(true); // Enable buttons
+        toast.success(`Debug: Đã đến địa điểm giao hàng cho đơn ${nextOrder.trackingNumber}`);
+    };
 
     const handleDeliverOrder = async (orderId: string) => {
+        if (!isAtLocation) return; // Guard clause
         if (!window.confirm('Xác nhận giao hàng thành công?')) return;
 
         setProcessingId(orderId);
@@ -94,7 +120,10 @@ const ShipperDeliveryPage = () => {
             const res = await orderService.markOrderDelivered(orderId);
             if (res.success) {
                 toast.success('Đơn hàng đã được giao');
-                fetchOrders(searchQuery);
+                // Reset location state (simulate moving away)
+                setIsAtLocation(false);
+                setDebugLocation(undefined);
+                refreshData();
             } else {
                 toast.error(res.message || 'Không thể cập nhật đơn hàng');
             }
@@ -117,7 +146,10 @@ const ShipperDeliveryPage = () => {
                 setShowFailDialog(false);
                 setFailReason('');
                 setSelectedOrder(null);
-                fetchOrders(searchQuery);
+                // Reset location state
+                setIsAtLocation(false);
+                setDebugLocation(undefined);
+                refreshData();
             } else {
                 toast.error(res.message || 'Không thể cập nhật đơn hàng');
             }
@@ -133,20 +165,17 @@ const ShipperDeliveryPage = () => {
 
     const handleNavigate = (destinationAddress: string) => {
         let originAddress = '';
-
-        // Type guard to check if user is an employee and has office details
         const isEmployee = (u: any): u is EmployeeMeResponse => {
             return u && 'office' in u;
         };
 
         if (user && isEmployee(user) && user.office) {
             const office = user.office;
-            // Construct address from office details
             const parts = [
                 office.addressLine1,
                 office.wardName,
                 office.province?.name
-            ].filter(Boolean); // Remove null/undefined/empty strings
+            ].filter(Boolean);
 
             if (parts.length > 0) {
                 originAddress = parts.join(', ');
@@ -156,7 +185,6 @@ const ShipperDeliveryPage = () => {
         const encodedDest = encodeURIComponent(destinationAddress);
         let url = `https://www.google.com/maps/dir/?api=1&destination=${encodedDest}`;
 
-        // If we have an origin address, add it to the URL
         if (originAddress) {
             const encodedOrigin = encodeURIComponent(originAddress);
             url += `&origin=${encodedOrigin}`;
@@ -169,7 +197,6 @@ const ShipperDeliveryPage = () => {
         window.open(`tel:${phone}`, '_self');
     };
 
-
     if (isLoading && orders.length === 0) {
         return (
             <div className="flex justify-center items-center h-[calc(100vh-4rem)]">
@@ -180,17 +207,31 @@ const ShipperDeliveryPage = () => {
 
     return (
         <div className="pb-20">
-            <div className="p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
-                <h1 className="text-2xl font-bold mb-2 flex items-center">
-                    <Package className="mr-2 h-6 w-6 text-primary-600" />
-                    Đơn hàng cần giao
-                </h1>
-                <p className="text-gray-600 text-sm">Danh sách đơn hàng cần giao cho khách hàng (Giai đoạn giao hàng)</p>
+            <div className="p-4 border-b border-gray-200 bg-white sticky top-0 z-10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <div>
+                    <h1 className="text-2xl font-bold mb-1 flex items-center">
+                        <Package className="mr-2 h-6 w-6 text-primary-600" />
+                        Đơn hàng cần giao
+                    </h1>
+                    <p className="text-gray-600 text-sm">Danh sách đơn hàng cần giao cho khách hàng</p>
+                </div>
+
+                {/* DEBUG BUTTON */}
+                <button
+                    onClick={handleDebugMoveToNextOrder}
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded border transition-colors shadow-sm ${isAtLocation
+                        ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                        : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200"
+                        }`}
+                    title="Mô phỏng shipper di chuyển đến vị trí đơn hàng"
+                >
+                    {isAtLocation ? <CheckCircle className="h-4 w-4" /> : <Bug className="h-4 w-4" />}
+                    <span>{isAtLocation ? "Đã đến điểm giao" : "Debug: Đến địa điểm giao"}</span>
+                </button>
             </div>
 
-            {/* Mobile layout - full width list */}
+            {/* Mobile layout */}
             <div className="lg:hidden p-4">
-                {/* Search card for mobile */}
                 <div className="mb-4 bg-white border border-gray-200 rounded-lg p-3 flex items-center gap-3">
                     <div className="flex items-center gap-2 whitespace-nowrap">
                         <span className="inline-block bg-primary-100 text-primary-700 text-xs font-bold px-2.5 py-1 rounded-full">
@@ -210,13 +251,11 @@ const ShipperDeliveryPage = () => {
                 {orders.length === 0 ? (
                     <div className="text-center py-10 text-gray-500 bg-white rounded-lg shadow p-4">
                         <p>Không có đơn hàng nào cần giao lúc này</p>
-                        <p className="text-gray-400 text-sm mt-2">Đơn hàng mới trong giai đoạn giao hàng sẽ xuất hiện ở đây</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
                         {orders.map((order) => (
-                            <div key={order.orderId} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-                                {/* Header - Tracking & Price */}
+                            <div key={order.orderId} className={`bg-white rounded-xl shadow-md overflow-hidden border ${isAtLocation ? 'border-primary-200 ring-1 ring-primary-100' : 'border-gray-100'} transition-all`}>
                                 <div className="bg-gray-50 p-3 border-b border-gray-100 flex justify-between items-center">
                                     <span className="font-mono font-bold text-primary-700">{order.trackingNumber}</span>
                                     {order.codAmount > 0 && (
@@ -227,12 +266,10 @@ const ShipperDeliveryPage = () => {
                                 </div>
 
                                 <div className="p-4">
-                                    {/* Receiver Info */}
                                     <div className="mb-4">
                                         <h3 className="font-semibold text-gray-900">{order.receiverName}</h3>
                                         <div className="flex items-start mt-1 text-gray-600 text-sm">
                                             <MapPin className="h-4 w-4 mt-0.5 mr-1 flex-shrink-0" />
-                                            {/* Refactored: Display receiver address using names for UI (codes available for API) */}
                                             <p>{order.receiverAddressLine1}, {order.receiverWardName || ''}, {order.receiverProvinceName || ''}</p>
                                         </div>
                                         <div className="flex items-center mt-1 text-gray-600 text-sm">
@@ -241,7 +278,6 @@ const ShipperDeliveryPage = () => {
                                         </div>
                                     </div>
 
-                                    {/* Package Info */}
                                     <div className="text-sm text-gray-500 mb-4 bg-gray-50 p-2 rounded">
                                         <p>Loại: {order.packageType}</p>
                                         {order.deliveryInstructions && (
@@ -251,7 +287,6 @@ const ShipperDeliveryPage = () => {
                                         )}
                                     </div>
 
-                                    {/* Actions Row */}
                                     <div className="grid grid-cols-4 gap-2 mt-2">
                                         <button
                                             onClick={() => handleNavigate(`${order.receiverAddressLine1}, ${order.receiverWardName || ''}, ${order.receiverProvinceName || ''}`)}
@@ -274,10 +309,14 @@ const ShipperDeliveryPage = () => {
                                                 setSelectedOrder(order);
                                                 setShowFailDialog(true);
                                             }}
-                                            disabled={processingId === order.orderId}
-                                            className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition disabled:opacity-50"
+                                            // DISABLED UNTIL AT LOCATION
+                                            disabled={!isAtLocation || processingId === order.orderId}
+                                            className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                                            title={!isAtLocation ? "Cần đến địa điểm giao hàng trước" : "Giao hàng thất bại"}
                                         >
-                                            {processingId === order.orderId ? (
+                                            {!isAtLocation ? (
+                                                <Lock className="h-5 w-5 mb-1" />
+                                            ) : processingId === order.orderId ? (
                                                 <Loader2 className="h-5 w-5 mb-1 animate-spin" />
                                             ) : (
                                                 <XCircle className="h-5 w-5 mb-1" />
@@ -287,10 +326,14 @@ const ShipperDeliveryPage = () => {
 
                                         <button
                                             onClick={() => handleDeliverOrder(order.orderId)}
-                                            disabled={processingId === order.orderId}
-                                            className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 transition disabled:opacity-50"
+                                            // DISABLED UNTIL AT LOCATION
+                                            disabled={!isAtLocation || processingId === order.orderId}
+                                            className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                                            title={!isAtLocation ? "Cần đến địa điểm giao hàng trước" : "Giao thành công"}
                                         >
-                                            {processingId === order.orderId ? (
+                                            {!isAtLocation ? (
+                                                <Lock className="h-5 w-5 mb-1" />
+                                            ) : processingId === order.orderId ? (
                                                 <Loader2 className="h-5 w-5 mb-1 animate-spin" />
                                             ) : (
                                                 <CheckCircle className="h-5 w-5 mb-1" />
@@ -304,7 +347,6 @@ const ShipperDeliveryPage = () => {
                     </div>
                 )}
 
-                {/* Mobile Pagination */}
                 {totalPages > 1 && (
                     <div className="flex justify-center mt-6 gap-2">
                         <button
@@ -328,12 +370,15 @@ const ShipperDeliveryPage = () => {
                 )}
             </div>
 
-            {/* Wide screen layout: Map + List side by side */}
+            {/* Wide screen layout */}
             <div className="hidden lg:grid lg:grid-cols-2 lg:gap-4 lg:p-4 lg:h-[calc(100vh-10rem)]">
-                {/* Map panel - left side */}
                 <div className="overflow-y-auto">
                     {!isLoading && orders.length > 0 ? (
-                        <ShipperMapPanel orders={orders} mode="delivery" />
+                        <ShipperMapPanel
+                            orders={orders}
+                            mode="delivery"
+                            currentLocation={debugLocation}
+                        />
                     ) : (
                         <div className="h-[400px] rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center">
                             <div className="text-center text-gray-500">
@@ -344,7 +389,6 @@ const ShipperDeliveryPage = () => {
                     )}
                 </div>
 
-                {/* List panel - right side */}
                 <div className="overflow-y-auto border-l border-gray-200 pl-4">
                     <div className="sticky top-0 bg-white mb-3">
                         <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-center gap-3">
@@ -373,8 +417,7 @@ const ShipperDeliveryPage = () => {
                         <>
                             <div className="space-y-2 mt-2">
                                 {orders.map((order) => (
-                                    <div key={order.orderId} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow flex items-stretch">
-                                        {/* Left Section - Tracking */}
+                                    <div key={order.orderId} className={`bg-white rounded-lg shadow-sm overflow-hidden border ${isAtLocation ? 'border-primary-200 ring-1 ring-primary-50' : 'border-gray-100'} hover:shadow-md transition-all flex items-stretch`}>
                                         <div className="bg-gray-50 px-3 py-2 border-r border-gray-200 flex items-center min-w-fit">
                                             <div>
                                                 <p className="font-mono font-bold text-primary-700 text-xs">{order.trackingNumber}</p>
@@ -384,13 +427,11 @@ const ShipperDeliveryPage = () => {
                                             </div>
                                         </div>
 
-                                        {/* Middle Section - Info */}
                                         <div className="flex-1 px-3 py-2 flex flex-col justify-center min-w-0">
                                             <p className="font-semibold text-gray-900 text-xs truncate">{order.receiverName}</p>
                                             <div className="flex items-center gap-2 text-gray-600 text-xs mt-0.5">
                                                 <div className="flex items-center gap-0.5 truncate">
                                                     <MapPin className="h-3 w-3 flex-shrink-0" />
-                                                    {/* Refactored: Display receiver address using names for UI */}
                                                     <p className="truncate">{order.receiverAddressLine1}, {order.receiverWardName || ''}, {order.receiverProvinceName || ''}</p>
                                                 </div>
                                                 <span className="text-gray-400">•</span>
@@ -406,7 +447,6 @@ const ShipperDeliveryPage = () => {
                                             )}
                                         </div>
 
-                                        {/* Right Section - Actions */}
                                         <div className="flex items-center gap-1 px-2 py-2 bg-gray-50 border-l border-gray-200 flex-shrink-0">
                                             <button
                                                 onClick={() => handleNavigate(`${order.receiverAddressLine1}, ${order.receiverWardName || ''}, ${order.receiverProvinceName || ''}`)}
@@ -429,11 +469,14 @@ const ShipperDeliveryPage = () => {
                                                     setSelectedOrder(order);
                                                     setShowFailDialog(true);
                                                 }}
-                                                disabled={processingId === order.orderId}
-                                                className="p-1.5 rounded text-red-700 hover:bg-red-100 transition disabled:opacity-50"
-                                                title="Giao hàng thất bại"
+                                                // DISABLED UNTIL AT LOCATION
+                                                disabled={!isAtLocation || processingId === order.orderId}
+                                                className="p-1.5 rounded text-red-700 hover:bg-red-100 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                                                title={!isAtLocation ? "Cần đến địa điểm giao hàng trước" : "Giao hàng thất bại"}
                                             >
-                                                {processingId === order.orderId ? (
+                                                {!isAtLocation ? (
+                                                    <Lock className="h-4 w-4" />
+                                                ) : processingId === order.orderId ? (
                                                     <Loader2 className="h-4 w-4 animate-spin" />
                                                 ) : (
                                                     <XCircle className="h-4 w-4" />
@@ -442,11 +485,14 @@ const ShipperDeliveryPage = () => {
 
                                             <button
                                                 onClick={() => handleDeliverOrder(order.orderId)}
-                                                disabled={processingId === order.orderId}
-                                                className="p-1.5 rounded bg-primary-100 text-primary-700 hover:bg-primary-200 transition disabled:opacity-50"
-                                                title="Đã giao"
+                                                // DISABLED UNTIL AT LOCATION
+                                                disabled={!isAtLocation || processingId === order.orderId}
+                                                className="p-1.5 rounded bg-primary-100 text-primary-700 hover:bg-primary-200 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                                                title={!isAtLocation ? "Cần đến địa điểm giao hàng trước" : "Đã giao"}
                                             >
-                                                {processingId === order.orderId ? (
+                                                {!isAtLocation ? (
+                                                    <Lock className="h-4 w-4" />
+                                                ) : processingId === order.orderId ? (
                                                     <Loader2 className="h-4 w-4 animate-spin" />
                                                 ) : (
                                                     <CheckCircle className="h-4 w-4" />
@@ -457,7 +503,6 @@ const ShipperDeliveryPage = () => {
                                 ))}
                             </div>
 
-                            {/* Wide-screen Pagination */}
                             {orders.length > 0 && (
                                 <div className="flex justify-between items-center py-3 border-t border-gray-200 mt-3 px-2">
                                     <span className="text-xs text-gray-600">
