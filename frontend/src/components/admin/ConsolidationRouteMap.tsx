@@ -165,10 +165,11 @@ export function ConsolidationRouteMap({
                             weight,
                             opacity,
                             arrowheads: {
-                                size: '15px',
-                                frequency: 'end',
+                                size: isNodeSelected ? '20px' : '16px',
+                                frequency: '100px', // Arrow every 100 pixels along the line
                                 fill: true,
                                 color: color,
+                                yawn: 40, // Width of the arrowhead (degrees)
                             },
                             onClick: () => !isSelectionMode && onRouteClick?.(route),
                         });

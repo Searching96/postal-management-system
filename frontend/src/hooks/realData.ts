@@ -45,7 +45,7 @@ const DEFAULT_ROUTES_CONFIG = [
     {
         id: 'vong-1',
         name: 'Vòng 1 - Tây Bắc',
-        color: '#22c55e',
+        color: '#3b82f6',
         codes: ['00091', '00619', '00622', '00199', '00226']
     },
     {
@@ -57,13 +57,13 @@ const DEFAULT_ROUTES_CONFIG = [
     {
         id: 'vong-3',
         name: 'Vòng 3 - Đông',
-        color: '#ef4444',
+        color: '#3b82f6',
         codes: ['00577', '00565', '00541', '00127', '00118']
     },
     {
         id: 'vong-4',
         name: 'Node Lẻ - Long Biên',
-        color: '#a855f7', // Purple
+        color: '#3b82f6', // Purple
         codes: ['00145'],
         isDisconnected: true // This will now prevent the Warehouse connection
     }
