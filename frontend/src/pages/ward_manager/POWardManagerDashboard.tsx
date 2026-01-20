@@ -1,3 +1,4 @@
+import React, { useMemo } from 'react';
 import React, { useMemo } from "react";
 import {
   Package,
@@ -288,13 +289,12 @@ export function POWardManagerDashboard() {
                     <config.icon className="w-6 h-6 text-gray-700" />
                   </div>
                   <div
-                    className={`flex items-center gap-1 text-xs font-bold ${
-                      statData.trend === "up"
+                    className={`flex items-center gap-1 text-xs font-bold ${statData.trend === "up"
                         ? "text-green-600"
                         : statData.trend === "down"
                           ? "text-red-600"
                           : "text-gray-500"
-                    }`}
+                      }`}
                   >
                     {statData.trend === "up" && (
                       <ArrowUpRight className="w-3 h-3" />
@@ -452,13 +452,12 @@ export function POWardManagerDashboard() {
                 className="flex items-start gap-4 p-4 rounded-2xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100 group"
               >
                 <div
-                  className={`mt-1 p-2 rounded-xl scale-95 group-hover:scale-100 transition-transform ${
-                    activity.status === "success"
+                  className={`mt-1 p-2 rounded-xl scale-95 group-hover:scale-100 transition-transform ${activity.status === "success"
                       ? "bg-green-100 text-green-600"
                       : activity.status === "warning"
                         ? "bg-red-100 text-red-600"
                         : "bg-blue-100 text-blue-600"
-                  }`}
+                    }`}
                 >
                   {activity.type === "ORDER" && <Package className="w-4 h-4" />}
                   {activity.type === "SHIPPER" && <Users className="w-4 h-4" />}

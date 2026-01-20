@@ -50,12 +50,11 @@ export function DashboardPage() {
           // Completed (Delivered): 1
           // Shipping (Everything else): 9
 
-          await new Promise((resolve) => setTimeout(resolve, 500)); // Fake delay
+          await new Promise(resolve => setTimeout(resolve, 500)); // Fake delay
 
           newData["shipping"] = "9";
           newData["completed"] = "1";
           newData["pending"] = "2";
-          // Estimate total spend? currently no endpoint, leave as placeholder or calculate later
         }
 
         // 2. Admin Stats
@@ -100,8 +99,8 @@ export function DashboardPage() {
             ),
             isWHStaff
               ? import("../../services/batchService").then((m) =>
-                  m.batchService.getBatches({ size: 1 }),
-                )
+                m.batchService.getBatches({ size: 1 }),
+              )
               : Promise.resolve(null),
           ]);
           newData["unitOrders"] = orders.totalElements.toString();
@@ -124,9 +123,9 @@ export function DashboardPage() {
         const contacts = unreadRes && "data" in unreadRes ? unreadRes.data : [];
         const totalUnread = Array.isArray(contacts)
           ? contacts.reduce(
-              (acc: number, c: any) => acc + (c.unreadCount || 0),
-              0,
-            )
+            (acc: number, c: any) => acc + (c.unreadCount || 0),
+            0,
+          )
           : 0;
         newData["unreadMessages"] = totalUnread.toString();
 
@@ -403,9 +402,8 @@ export function DashboardPage() {
     <div className="space-y-8 pb-8">
       <PageHeader
         title="Tổng quan"
-        description={`Chào mừng trở lại, ${
-          user && "fullName" in user ? user.fullName : "Người dùng"
-        }!`}
+        description={`Chào mừng trở lại, ${user && "fullName" in user ? user.fullName : "Người dùng"
+          }!`}
       />
 
       {/* Hero Card / Welcome */}
