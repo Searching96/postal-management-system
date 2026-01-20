@@ -333,14 +333,19 @@ export function Packing3DAnimation({ data, isOpen, onClose, onConfirm, title, ty
 
 
 
-                            <div className="w-px h-6 bg-gray-300 mx-2 hidden sm:block" />
+                            {type === 'CONTAINER' && (
+                                <>
+                                    <div className="w-px h-6 bg-gray-300 mx-2 hidden sm:block" />
 
-                            <button
-                                onClick={handleCompleteAll}
-                                className="px-4 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100"
-                            >
-                                Complete All
-                            </button>
+                                    <button
+                                        onClick={handleCompleteAll}
+                                        className="px-4 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100"
+                                        title="Mark all bundles as packed and ready to load"
+                                    >
+                                        Mark All Bundles Ready
+                                    </button>
+                                </>
+                            )}
                         </div>
 
                         {onConfirm && (
@@ -349,7 +354,7 @@ export function Packing3DAnimation({ data, isOpen, onClose, onConfirm, title, ty
                                 disabled={currentStep < data.placements.length}
                                 className="ml-4 px-6 py-2 text-sm font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
                             >
-                                {type === 'CONTAINER' ? 'Complete Packing' : 'Confirm & Finish'}
+                                {type === 'CONTAINER' ? 'Complete Packing' : 'Finish'}
                             </button>
                         )}
                     </div>

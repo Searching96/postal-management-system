@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { Package, Box, Truck, CheckSquare, Search, Filter, AlertCircle, Play, CheckCircle2, Container } from 'lucide-react';
 import { Packing3DAnimation, PackingAnimationData } from '../../components/staff/Packing3DAnimation';
 
-// Helper for random VN ID
-const getRandomId = () => `VN${Math.floor(100000 + Math.random() * 900000)}`;
+// Helper for random VN ID (VN + 6 digits)
+const getRandomId = () => {
+    const randomNum = Math.floor(Math.random() * 1000000);
+    return `VN${randomNum.toString().padStart(6, '0')}`;
+};
 
 const BATCH_1_ID = getRandomId();
 const BATCH_2_ID = getRandomId();
@@ -70,42 +73,84 @@ const MOCK_BATCHES: PackingAnimationData[] = [
     }
 ];
 
-// Helper to generate mock placements
-const generateMockPlacements = (total: number) => {
-    const basePlacements = [
-        { "order": 0, "id": BATCH_1_ID, "x": 0, "y": 0, "z": 0, "l": 675, "w": 500, "h": 416, "color": "#F57F17" },
-        { "order": 1, "id": BATCH_2_ID, "x": 675, "y": 0, "z": 0, "l": 675, "w": 500, "h": 450, "color": "#F57F17" },
-        { "order": 2, "id": BATCH_3_ID, "x": 0, "y": 500, "z": 0, "l": 450, "w": 300, "h": 400, "color": "#FFCA28" }
-    ];
-
-    const placements = [...basePlacements];
-
-    // Generate remaining items
-    for (let i = 3; i < total; i++) {
-        // Random VN ID with 6 digits
-        const randomId = getRandomId();
-
-        placements.push({
-            "order": i,
-            "id": randomId,
-            "x": 0, "y": 0, "z": 0, // Dummy coords for list view
-            "l": 600, "w": 400, "h": 400,
-            "color": "#E0E0E0"
-        });
-    }
-    return placements;
-};
+// Real container placements from bin packing algorithm (all 63 bundles)
+// First 3 are linked to the demo batches for status synchronization
+const CONTAINER_PLACEMENTS = [
+    { "order": 0, "id": BATCH_1_ID, "x": 0, "y": 0, "z": 0, "l": 675, "w": 500, "h": 416, "color": "#FF9800" },
+    { "order": 1, "id": BATCH_2_ID, "x": 675, "y": 0, "z": 0, "l": 675, "w": 500, "h": 450, "color": "#FF9800" },
+    { "order": 2, "id": BATCH_3_ID, "x": 1350, "y": 0, "z": 0, "l": 450, "w": 300, "h": 400, "color": "#FFC107" },
+    { "order": 3, "id": getRandomId(), "x": 2700, "y": 0, "z": 0, "l": 900, "w": 750, "h": 500, "color": "#FF5722" },
+    { "order": 4, "id": getRandomId(), "x": 3600, "y": 0, "z": 0, "l": 500, "w": 900, "h": 750, "color": "#FF5722" },
+    { "order": 5, "id": getRandomId(), "x": 0, "y": 750, "z": 0, "l": 900, "w": 750, "h": 500, "color": "#FF5722" },
+    { "order": 6, "id": getRandomId(), "x": 900, "y": 750, "z": 0, "l": 900, "w": 750, "h": 500, "color": "#FF5722" },
+    { "order": 7, "id": getRandomId(), "x": 1800, "y": 750, "z": 0, "l": 900, "w": 750, "h": 500, "color": "#FF5722" },
+    { "order": 8, "id": getRandomId(), "x": 2700, "y": 750, "z": 0, "l": 900, "w": 750, "h": 500, "color": "#FF5722" },
+    { "order": 9, "id": getRandomId(), "x": 3600, "y": 900, "z": 0, "l": 500, "w": 900, "h": 750, "color": "#FF5722" },
+    { "order": 10, "id": getRandomId(), "x": 0, "y": 0, "z": 500, "l": 900, "w": 750, "h": 500, "color": "#FF5722" },
+    { "order": 11, "id": getRandomId(), "x": 900, "y": 0, "z": 500, "l": 900, "w": 750, "h": 500, "color": "#FF5722" },
+    { "order": 12, "id": getRandomId(), "x": 1800, "y": 0, "z": 500, "l": 900, "w": 750, "h": 500, "color": "#FF5722" },
+    { "order": 13, "id": getRandomId(), "x": 2700, "y": 0, "z": 500, "l": 900, "w": 750, "h": 500, "color": "#FF5722" },
+    { "order": 14, "id": getRandomId(), "x": 0, "y": 750, "z": 500, "l": 900, "w": 750, "h": 497, "color": "#FF5722" },
+    { "order": 15, "id": getRandomId(), "x": 900, "y": 750, "z": 500, "l": 900, "w": 750, "h": 497, "color": "#FF5722" },
+    { "order": 16, "id": getRandomId(), "x": 1800, "y": 750, "z": 500, "l": 900, "w": 750, "h": 491, "color": "#FF5722" },
+    { "order": 17, "id": getRandomId(), "x": 2700, "y": 750, "z": 500, "l": 900, "w": 750, "h": 491, "color": "#FF5722" },
+    { "order": 18, "id": getRandomId(), "x": 3600, "y": 0, "z": 750, "l": 491, "w": 900, "h": 750, "color": "#FF5722" },
+    { "order": 19, "id": getRandomId(), "x": 3600, "y": 900, "z": 750, "l": 490, "w": 900, "h": 750, "color": "#FF5722" },
+    { "order": 20, "id": getRandomId(), "x": 1800, "y": 750, "z": 991, "l": 900, "w": 750, "h": 450, "color": "#FF5722" },
+    { "order": 21, "id": getRandomId(), "x": 2700, "y": 750, "z": 991, "l": 675, "w": 500, "h": 450, "color": "#FF9800" },
+    { "order": 22, "id": getRandomId(), "x": 0, "y": 750, "z": 997, "l": 675, "w": 500, "h": 450, "color": "#FF9800" },
+    { "order": 23, "id": getRandomId(), "x": 675, "y": 750, "z": 997, "l": 675, "w": 500, "h": 450, "color": "#FF9800" },
+    { "order": 24, "id": getRandomId(), "x": 1350, "y": 750, "z": 997, "l": 450, "w": 675, "h": 500, "color": "#FF9800" },
+    { "order": 25, "id": getRandomId(), "x": 0, "y": 0, "z": 1000, "l": 675, "w": 500, "h": 450, "color": "#FF9800" },
+    { "order": 26, "id": getRandomId(), "x": 675, "y": 0, "z": 1000, "l": 675, "w": 500, "h": 450, "color": "#FF9800" },
+    { "order": 27, "id": getRandomId(), "x": 1350, "y": 0, "z": 1000, "l": 675, "w": 500, "h": 450, "color": "#FF9800" },
+    { "order": 28, "id": getRandomId(), "x": 2025, "y": 0, "z": 1000, "l": 675, "w": 500, "h": 450, "color": "#FF9800" },
+    { "order": 29, "id": getRandomId(), "x": 2700, "y": 0, "z": 1000, "l": 675, "w": 500, "h": 450, "color": "#FF9800" },
+    { "order": 30, "id": getRandomId(), "x": 2700, "y": 1250, "z": 991, "l": 675, "w": 416, "h": 500, "color": "#FF9800" },
+    { "order": 31, "id": getRandomId(), "x": 0, "y": 1250, "z": 997, "l": 675, "w": 416, "h": 500, "color": "#FF9800" },
+    { "order": 32, "id": getRandomId(), "x": 675, "y": 1250, "z": 997, "l": 675, "w": 416, "h": 500, "color": "#FF9800" },
+    { "order": 33, "id": getRandomId(), "x": 0, "y": 1500, "z": 0, "l": 900, "w": 400, "h": 750, "color": "#FF5722" },
+    { "order": 34, "id": getRandomId(), "x": 900, "y": 1500, "z": 0, "l": 900, "w": 400, "h": 750, "color": "#FF5722" },
+    { "order": 35, "id": getRandomId(), "x": 1800, "y": 1500, "z": 0, "l": 900, "w": 400, "h": 750, "color": "#FF5722" },
+    { "order": 36, "id": getRandomId(), "x": 2700, "y": 1500, "z": 0, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 37, "id": getRandomId(), "x": 3150, "y": 1500, "z": 0, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 38, "id": getRandomId(), "x": 2700, "y": 1500, "z": 300, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 39, "id": getRandomId(), "x": 3150, "y": 1500, "z": 300, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 40, "id": getRandomId(), "x": 2700, "y": 1500, "z": 600, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 41, "id": getRandomId(), "x": 3150, "y": 1500, "z": 600, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 42, "id": getRandomId(), "x": 1800, "y": 1500, "z": 750, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 43, "id": getRandomId(), "x": 2250, "y": 1500, "z": 750, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 44, "id": getRandomId(), "x": 1800, "y": 1500, "z": 1050, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 45, "id": getRandomId(), "x": 2250, "y": 1500, "z": 1050, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 46, "id": getRandomId(), "x": 1800, "y": 1500, "z": 1350, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 47, "id": getRandomId(), "x": 2250, "y": 1500, "z": 1350, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 48, "id": getRandomId(), "x": 1800, "y": 750, "z": 1441, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 49, "id": getRandomId(), "x": 2250, "y": 750, "z": 1441, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 50, "id": getRandomId(), "x": 2700, "y": 750, "z": 1441, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 51, "id": getRandomId(), "x": 0, "y": 750, "z": 1447, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 52, "id": getRandomId(), "x": 450, "y": 750, "z": 1447, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 53, "id": getRandomId(), "x": 900, "y": 750, "z": 1447, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 54, "id": getRandomId(), "x": 0, "y": 0, "z": 1450, "l": 450, "w": 400, "h": 300, "color": "#FFC107" },
+    { "order": 55, "id": getRandomId(), "x": 450, "y": 0, "z": 1450, "l": 450, "w": 399, "h": 300, "color": "#FFC107" },
+    { "order": 56, "id": getRandomId(), "x": 900, "y": 0, "z": 1450, "l": 450, "w": 399, "h": 300, "color": "#FFC107" },
+    { "order": 57, "id": getRandomId(), "x": 1350, "y": 0, "z": 1450, "l": 450, "w": 399, "h": 300, "color": "#FFC107" },
+    { "order": 58, "id": getRandomId(), "x": 1800, "y": 0, "z": 1450, "l": 450, "w": 399, "h": 300, "color": "#FFC107" },
+    { "order": 59, "id": getRandomId(), "x": 2250, "y": 0, "z": 1450, "l": 450, "w": 399, "h": 300, "color": "#FFC107" },
+    { "order": 60, "id": getRandomId(), "x": 2700, "y": 0, "z": 1450, "l": 450, "w": 399, "h": 300, "color": "#FFC107" },
+    { "order": 61, "id": getRandomId(), "x": 2700, "y": 1250, "z": 1491, "l": 450, "w": 397, "h": 300, "color": "#FFC107" },
+    { "order": 62, "id": getRandomId(), "x": 1350, "y": 750, "z": 1497, "l": 450, "w": 397, "h": 300, "color": "#FFC107" },
+];
 
 // MOCK CONTAINER DATA (Loading Bundles into Truck)
 const MOCK_CONTAINER: PackingAnimationData = {
-    id: 'VN669420',
+    id: getRandomId(),
     type: 'TRUCK 2.5T',
-    dim_l: 2500,
-    dim_w: 1800,
+    dim_l: 4200,
+    dim_w: 1900,
     dim_h: 1800,
     items: 63,
     fill_rate: "57.83%",
-    placements: generateMockPlacements(63)
+    placements: CONTAINER_PLACEMENTS
 };
 
 export function PackingRequestPage() {
@@ -174,7 +219,7 @@ export function PackingRequestPage() {
                         <Package className="w-4 h-4" />
                         Bundle Packing
                         <span className="bg-gray-100 text-gray-900 py-0.5 px-2.5 rounded-full text-xs font-medium ml-2">
-                            {MOCK_BATCHES.length - packedBatches.length} Pending
+                            {Math.max(MOCK_BATCHES.length - packedBatches.length, 0)} Pending
                         </span>
                     </button>
                     <button
@@ -189,11 +234,6 @@ export function PackingRequestPage() {
                     >
                         <Container className="w-4 h-4" />
                         Container Loading
-                        {isContainerLoaded && (
-                            <span className="bg-green-100 text-green-800 py-0.5 px-2.5 rounded-full text-xs font-medium ml-2">
-                                Loaded
-                            </span>
-                        )}
                     </button>
                 </nav>
             </div>
