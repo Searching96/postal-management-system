@@ -289,10 +289,10 @@ export function POWardManagerDashboard() {
                   </div>
                   <div
                     className={`flex items-center gap-1 text-xs font-bold ${statData.trend === "up"
-                        ? "text-green-600"
-                        : statData.trend === "down"
-                          ? "text-red-600"
-                          : "text-gray-500"
+                      ? "text-green-600"
+                      : statData.trend === "down"
+                        ? "text-red-600"
+                        : "text-gray-500"
                       }`}
                   >
                     {statData.trend === "up" && (
@@ -452,10 +452,10 @@ export function POWardManagerDashboard() {
               >
                 <div
                   className={`mt-1 p-2 rounded-xl scale-95 group-hover:scale-100 transition-transform ${activity.status === "success"
-                      ? "bg-green-100 text-green-600"
-                      : activity.status === "warning"
-                        ? "bg-red-100 text-red-600"
-                        : "bg-blue-100 text-blue-600"
+                    ? "bg-green-100 text-green-600"
+                    : activity.status === "warning"
+                      ? "bg-red-100 text-red-600"
+                      : "bg-blue-100 text-blue-600"
                     }`}
                 >
                   {activity.type === "ORDER" && <Package className="w-4 h-4" />}
