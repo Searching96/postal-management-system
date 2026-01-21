@@ -914,7 +914,71 @@ export function ProvinceAdminPage() {
               </p>
             </div>
 
-            {/* Warehouse Section */}
+            {/* Post Office Section */}
+            <div className="space-y-6 p-6 bg-primary-50/30 border border-primary-100 rounded-3xl relative">
+              <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
+                <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
+                  <MapPin className="w-32 h-32 text-primary-900" />
+                </div>
+              </div>
+
+              <div className="relative flex items-center gap-3 pb-3 border-b border-primary-100/50">
+                <div className="p-2 bg-primary-100 rounded-xl">
+                  <MapPin className="w-5 h-5 text-primary-600" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-primary-950 leading-tight uppercase tracking-tight">Bưu cục Phường</h4>
+                  <p className="text-[11px] text-primary-500 font-bold uppercase tracking-widest mt-0.5">Dịch vụ bưu chính & Giao nhận</p>
+                </div>
+              </div>
+
+              <div className="relative">
+                <FormInput
+                  label="Tên Bưu Cục"
+                  required
+                  value={officeFormData.postOfficeName}
+                  onChange={e => setOfficeFormData(prev => ({ ...prev, postOfficeName: e.target.value }))}
+                  error={officeErrors.postOfficeName}
+                  className="!bg-white"
+                />
+              </div>
+
+              <div className="relative grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormInput
+                  label="Email Bưu Cục"
+                  type="email"
+                  required
+                  value={officeFormData.postOfficeEmail}
+                  onChange={e => setOfficeFormData(prev => ({ ...prev, postOfficeEmail: e.target.value }))}
+                  error={officeErrors.postOfficeEmail}
+                  className="!bg-white"
+                />
+                <FormInput
+                  label="SĐT Bưu Cục"
+                  required
+                  value={officeFormData.postOfficePhoneNumber}
+                  onChange={e => setOfficeFormData(prev => ({ ...prev, postOfficePhoneNumber: e.target.value }))}
+                  error={officeErrors.postOfficePhoneNumber}
+                  className="!bg-white"
+                />
+              </div>
+
+              <div className="relative">
+                <AddressSelector
+                  label="Địa chỉ Bưu Cục"
+                  required
+                  provinceCode={officeFormData.provinceCode}
+                  hideProvince
+                  hideWard
+                  onChange={(addr) => setOfficeFormData(prev => ({ ...prev, postOfficeAddressLine1: addr.addressLine1 }))}
+                />
+                {officeErrors.postOfficeAddressLine1 && (
+                  <p className="text-xs font-medium text-red-500 mt-1 ml-1">{officeErrors.postOfficeAddressLine1}</p>
+                )}
+              </div>
+            </div>
+
+                        {/* Warehouse Section */}
             <div className="space-y-6 p-6 bg-indigo-50/30 border border-indigo-100 rounded-3xl relative">
               <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
                 <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
@@ -927,7 +991,7 @@ export function ProvinceAdminPage() {
                   <Building2 className="w-5 h-5 text-indigo-600" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-indigo-950 leading-tight uppercase tracking-tight">Kho Phường (Ward Warehouse)</h4>
+                  <h4 className="font-bold text-indigo-950 leading-tight uppercase tracking-tight">Kho Phường</h4>
                   <p className="text-[11px] text-indigo-500 font-bold uppercase tracking-widest mt-0.5">Hệ thống lưu trữ & phân phối</p>
                 </div>
               </div>
@@ -997,70 +1061,6 @@ export function ProvinceAdminPage() {
                 />
                 {officeErrors.warehouseAddressLine1 && (
                   <p className="text-xs font-medium text-red-500 mt-1 ml-1">{officeErrors.warehouseAddressLine1}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Post Office Section */}
-            <div className="space-y-6 p-6 bg-primary-50/30 border border-primary-100 rounded-3xl relative">
-              <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
-                <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
-                  <MapPin className="w-32 h-32 text-primary-900" />
-                </div>
-              </div>
-
-              <div className="relative flex items-center gap-3 pb-3 border-b border-primary-100/50">
-                <div className="p-2 bg-primary-100 rounded-xl">
-                  <MapPin className="w-5 h-5 text-primary-600" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-primary-950 leading-tight uppercase tracking-tight">Bưu cục Phường (Post Office)</h4>
-                  <p className="text-[11px] text-primary-500 font-bold uppercase tracking-widest mt-0.5">Dịch vụ bưu chính & Giao nhận</p>
-                </div>
-              </div>
-
-              <div className="relative">
-                <FormInput
-                  label="Tên Bưu Cục"
-                  required
-                  value={officeFormData.postOfficeName}
-                  onChange={e => setOfficeFormData(prev => ({ ...prev, postOfficeName: e.target.value }))}
-                  error={officeErrors.postOfficeName}
-                  className="!bg-white"
-                />
-              </div>
-
-              <div className="relative grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormInput
-                  label="Email Bưu Cục"
-                  type="email"
-                  required
-                  value={officeFormData.postOfficeEmail}
-                  onChange={e => setOfficeFormData(prev => ({ ...prev, postOfficeEmail: e.target.value }))}
-                  error={officeErrors.postOfficeEmail}
-                  className="!bg-white"
-                />
-                <FormInput
-                  label="SĐT Bưu Cục"
-                  required
-                  value={officeFormData.postOfficePhoneNumber}
-                  onChange={e => setOfficeFormData(prev => ({ ...prev, postOfficePhoneNumber: e.target.value }))}
-                  error={officeErrors.postOfficePhoneNumber}
-                  className="!bg-white"
-                />
-              </div>
-
-              <div className="relative">
-                <AddressSelector
-                  label="Địa chỉ Bưu Cục"
-                  required
-                  provinceCode={officeFormData.provinceCode}
-                  hideProvince
-                  hideWard
-                  onChange={(addr) => setOfficeFormData(prev => ({ ...prev, postOfficeAddressLine1: addr.addressLine1 }))}
-                />
-                {officeErrors.postOfficeAddressLine1 && (
-                  <p className="text-xs font-medium text-red-500 mt-1 ml-1">{officeErrors.postOfficeAddressLine1}</p>
                 )}
               </div>
             </div>

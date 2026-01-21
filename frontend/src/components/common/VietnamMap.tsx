@@ -117,14 +117,17 @@ function ClickablePolyline({ line }: { line: MapPolyline }) {
 // Internal component to handle auto-zooming
 function MapBoundsFitter({ markers }: { markers: MapMarker[] }) {
     const map = useMap();
+    const hasInitialized = useRef(false);
 
     useEffect(() => {
-        if (markers.length > 0) {
+        // Only fit bounds on initial load, not on subsequent marker changes
+        if (markers.length > 0 && !hasInitialized.current) {
             try {
                 // Leaflet expects [lat, lng] tuples, ensure positions are correct
                 const bounds = L.latLngBounds(markers.map(m => m.position as L.LatLngTuple));
                 if (bounds.isValid()) {
                     map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+                    hasInitialized.current = true;
                 }
             } catch (e) {
                 console.warn("Failed to fit bounds:", e);

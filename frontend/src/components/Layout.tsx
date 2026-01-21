@@ -52,15 +52,15 @@ export function Layout() {
   }
 
   if (role === "PO_PROVINCE_ADMIN" || role === "WH_PROVINCE_ADMIN") {
-    primaryNav.push({
-      to: "/admin/province",
-      icon: Building2,
-      label: "Quản lý tỉnh",
-    });
+    // primaryNav.push({
+    //   to: "/admin/province",
+    //   icon: Building2,
+    //   label: "Quản lý tỉnh",
+    // });
   }
 
   if (role === "PO_WARD_MANAGER" || role === "WH_WARD_MANAGER") {
-    primaryNav.push({ to: "/admin/ward", icon: Building2, label: "Quản lý xã" });
+    // primaryNav.push({ to: "/admin/ward", icon: Building2, label: "Quản lý xã" });
     if (role === "WH_WARD_MANAGER") {
       primaryNav.push({ to: "/admin/wh-ward-dashboard", icon: Home, label: "Bảng điều khiển" });
     }
@@ -71,6 +71,7 @@ export function Layout() {
 
   if (role === "HUB_ADMIN" || role === "WH_PROVINCE_ADMIN" || role === "WH_WARD_MANAGER" || role === "PO_PROVINCE_ADMIN" || role === "PO_WARD_MANAGER") {
     primaryNav.push({ to: "/admin/shippers", icon: Truck, label: "Quản lý Bưu tá" });
+    primaryNav.push({ to: "/customer-ratings", icon: MessageSquare, label: "Đánh giá khách hàng" });
   }
 
   const isPO = role.startsWith("PO_");
@@ -80,16 +81,16 @@ export function Layout() {
     primaryNav.push({ to: "/orders", icon: Package, label: "Quản lý đơn hàng" });
 
     if (isPO) {
-      primaryNav.push({ to: "/orders/pending-pickups", icon: Truck, label: "Đơn chờ lấy hàng" });
+      //primaryNav.push({ to: "/orders/pending-pickups", icon: Truck, label: "Đơn chờ lấy hàng" });
     }
 
     if (isPO || isWH) {
-      primaryNav.push({ to: "/orders/delivery", icon: Send, label: "Giao Bưu tá" });
+      //primaryNav.push({ to: "/orders/delivery", icon: Send, label: "Giao Bưu tá" });
       primaryNav.push({ to: "/complaints", icon: MessageSquare, label: "Khiếu nại" });
     }
 
     if (isWH) {
-      primaryNav.push({ to: "/staff/packing-requests", icon: Package, label: "Quản lý kiện hàng" });
+      primaryNav.push({ to: "/staff/packing-requests", icon: Package, label: "Yêu cầu xếp hàng" });
     }
   }
 

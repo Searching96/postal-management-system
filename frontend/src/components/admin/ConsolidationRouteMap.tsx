@@ -99,21 +99,17 @@ export function ConsolidationRouteMap({
                         icon: createOfficeIcon(type, isSelected, isSelectionMode),
                         popupContent: (
                             <div
-                                className="p-1 min-w-[120px] cursor-pointer"
+                                className="cursor-pointer"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onOfficeClick?.(stop.officeCode, route);
                                 }}
                             >
-                                <div className="flex items-center gap-2 mb-1">
+                                <div className="flex items-center gap-1.5">
                                     {isWarehouse ? <Warehouse className="w-4 h-4 text-orange-600" /> : <MapPin className="w-4 h-4 text-green-600" />}
-                                    <h3 className="font-bold text-sm text-gray-900">{name}</h3>
+                                    <h3 className="font-bold text-sm text-gray-900">Kho {name}</h3>
                                 </div>
-                                {isSelectionMode ? (
-                                    <p className="text-xs text-blue-600 font-bold animate-pulse">Click to set Destination</p>
-                                ) : (
-                                    <p className="text-xs text-gray-500">Route: {route.name}</p>
-                                )}
+                                <p className="text-xs text-blue-600 font-bold animate-pulse">Click to set Destination</p>
                             </div>
                         ),
                     });

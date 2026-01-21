@@ -5,3 +5,6 @@
 
 .env
 .agent
+
+.venv
+pack

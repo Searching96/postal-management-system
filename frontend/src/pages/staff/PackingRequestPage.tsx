@@ -23,10 +23,10 @@ const MOCK_BATCHES: PackingAnimationData[] = [
         "items": 4,
         "fill_rate": "69.4%",
         "placements": [
-            { "order": 0, "id": 2882, "x": 0, "y": 0, "z": 0, "l": 400, "w": 375, "h": 183, "color": "#42A5F5" },
-            { "order": 1, "id": 2717, "x": 400, "y": 0, "z": 0, "l": 183, "w": 500, "h": 300, "color": "#64B5F6" },
-            { "order": 2, "id": 2765, "x": 0, "y": 0, "z": 183, "l": 400, "w": 350, "h": 183, "color": "#42A5F5" },
-            { "order": 3, "id": 1690, "x": 0, "y": 375, "z": 0, "l": 400, "w": 110, "h": 300, "color": "#90CAF9" }
+            { "order": 0, "id": getRandomId(), "x": 0, "y": 0, "z": 0, "l": 400, "w": 375, "h": 183, "color": "#42A5F5" },
+            { "order": 1, "id": getRandomId(), "x": 400, "y": 0, "z": 0, "l": 183, "w": 500, "h": 300, "color": "#64B5F6" },
+            { "order": 2, "id": getRandomId(), "x": 0, "y": 0, "z": 183, "l": 400, "w": 350, "h": 183, "color": "#42A5F5" },
+            { "order": 3, "id": getRandomId(), "x": 0, "y": 375, "z": 0, "l": 400, "w": 110, "h": 300, "color": "#90CAF9" }
         ]
     },
     {
@@ -38,10 +38,10 @@ const MOCK_BATCHES: PackingAnimationData[] = [
         "items": 4,
         "fill_rate": "73.1%",
         "placements": [
-            { "order": 0, "id": 2623, "x": 0, "y": 0, "z": 0, "l": 337, "w": 400, "h": 183, "color": "#64B5F6" },
-            { "order": 1, "id": 2608, "x": 337, "y": 0, "z": 0, "l": 183, "w": 400, "h": 337, "color": "#64B5F6" },
-            { "order": 2, "id": 2658, "x": 0, "y": 0, "z": 183, "l": 337, "w": 400, "h": 183, "color": "#64B5F6" },
-            { "order": 3, "id": 2853, "x": 520, "y": 0, "z": 0, "l": 137, "w": 450, "h": 400, "color": "#42A5F5" }
+            { "order": 0, "id": getRandomId(), "x": 0, "y": 0, "z": 0, "l": 337, "w": 400, "h": 183, "color": "#64B5F6" },
+            { "order": 1, "id": getRandomId(), "x": 337, "y": 0, "z": 0, "l": 183, "w": 400, "h": 337, "color": "#64B5F6" },
+            { "order": 2, "id": getRandomId(), "x": 0, "y": 0, "z": 183, "l": 337, "w": 400, "h": 183, "color": "#64B5F6" },
+            { "order": 3, "id": getRandomId(), "x": 520, "y": 0, "z": 0, "l": 137, "w": 450, "h": 400, "color": "#42A5F5" }
         ]
     },
     {
@@ -53,22 +53,22 @@ const MOCK_BATCHES: PackingAnimationData[] = [
         "items": 16,
         "fill_rate": "95.2%",
         "placements": [
-            { "order": 0, "id": 1304, "x": 0, "y": 0, "z": 0, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
-            { "order": 1, "id": 1393, "x": 225, "y": 0, "z": 0, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
-            { "order": 2, "id": 774, "x": 0, "y": 150, "z": 0, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
-            { "order": 3, "id": 862, "x": 225, "y": 150, "z": 0, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
-            { "order": 4, "id": 1544, "x": 0, 'y': 0, "z": 137, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
-            { "order": 5, "id": 1602, "x": 225, 'y': 0, "z": 137, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
-            { "order": 6, "id": 1503, "x": 0, 'y': 150, "z": 137, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
-            { "order": 7, "id": 839, "x": 225, 'y': 150, "z": 137, "l": 137, "w": 150, "h": 200, "color": "#BBDEFB" },
-            { "order": 8, "id": 459, "x": 362, 'y': 150, "z": 137, "l": 44, "w": 150, "h": 180, "color": "#E3F2FD" },
-            { "order": 9, "id": 658, "x": 406, 'y': 150, "z": 137, "l": 44, "w": 150, "h": 180, "color": "#E3F2FD" },
-            { "order": 10, "id": 287, "x": 0, 'y': 0, "z": 274, "l": 180, "w": 150, "h": 43, "color": "#E3F2FD" },
-            { "order": 11, "id": 170, "x": 180, 'y': 0, "z": 274, "l": 180, "w": 150, "h": 42, "color": "#E3F2FD" },
-            { "order": 12, "id": 567, "x": 0, 'y': 150, "z": 274, "l": 150, "w": 150, "h": 50, "color": "#E3F2FD" },
-            { "order": 13, "id": 397, "x": 180, 'y': 0, "z": 316, "l": 220, "w": 150, "h": 34, "color": "#E3F2FD" },
-            { "order": 14, "id": 24, "x": 0, 'y': 0, "z": 317, "l": 180, "w": 150, "h": 33, "color": "#E3F2FD" },
-            { "order": 15, "id": 281, "x": 0, 'y': 150, "z": 324, "l": 180, "w": 150, "h": 25, "color": "#E3F2FD" }
+            { "order": 0, "id": getRandomId(), "x": 0, "y": 0, "z": 0, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
+            { "order": 1, "id": getRandomId(), "x": 225, "y": 0, "z": 0, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
+            { "order": 2, "id": getRandomId(), "x": 0, "y": 150, "z": 0, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
+            { "order": 3, "id": getRandomId(), "x": 225, "y": 150, "z": 0, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
+            { "order": 4, "id": getRandomId(), "x": 0, 'y': 0, "z": 137, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
+            { "order": 5, "id": getRandomId(), "x": 225, 'y': 0, "z": 137, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
+            { "order": 6, "id": getRandomId(), "x": 0, 'y': 150, "z": 137, "l": 225, "w": 150, "h": 137, "color": "#BBDEFB" },
+            { "order": 7, "id": getRandomId(), "x": 225, 'y': 150, "z": 137, "l": 137, "w": 150, "h": 200, "color": "#BBDEFB" },
+            { "order": 8, "id": getRandomId(), "x": 362, 'y': 150, "z": 137, "l": 44, "w": 150, "h": 180, "color": "#E3F2FD" },
+            { "order": 9, "id": getRandomId(), "x": 406, 'y': 150, "z": 137, "l": 44, "w": 150, "h": 180, "color": "#E3F2FD" },
+            { "order": 10, "id": getRandomId(), "x": 0, 'y': 0, "z": 274, "l": 180, "w": 150, "h": 43, "color": "#E3F2FD" },
+            { "order": 11, "id": getRandomId(), "x": 180, 'y': 0, "z": 274, "l": 180, "w": 150, "h": 42, "color": "#E3F2FD" },
+            { "order": 12, "id": getRandomId(), "x": 0, 'y': 150, "z": 274, "l": 150, "w": 150, "h": 50, "color": "#E3F2FD" },
+            { "order": 13, "id": getRandomId(), "x": 180, 'y': 0, "z": 316, "l": 220, "w": 150, "h": 34, "color": "#E3F2FD" },
+            { "order": 14, "id": getRandomId(), "x": 0, 'y': 0, "z": 317, "l": 180, "w": 150, "h": 33, "color": "#E3F2FD" },
+            { "order": 15, "id": getRandomId(), "x": 0, 'y': 150, "z": 324, "l": 180, "w": 150, "h": 25, "color": "#E3F2FD" }
         ]
     }
 ];

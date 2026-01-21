@@ -5,7 +5,7 @@ import { ConsolidationRoute, RouteLevel } from '../models/consolidationRoute';
 const WARD_NAMES: Record<string, string> = {
     '00091': 'Phú Thượng',
     '00619': 'Phú Diễn', '00622': 'Xuân Phương',
-    '00199': 'Láng', '00226': 'Văn Miếu - QTGiám', '00229': 'Kim Liên',
+    '00199': 'Láng', '00226': 'Văn Miếu', '00229': 'Kim Liên',
     '00364': 'Khương Đình', '00664': 'Đại Thanh',
     '00340': 'Yên Sở', '00283': 'Vĩnh Tuy', '00577': 'Bát Tràng',
     '00565': 'Gia Lâm', '00541': 'Phù Đổng', '00127': 'Việt Hưng',
@@ -44,25 +44,25 @@ const createLinkedSequence = (routeId: string, codes: string[], isDisconnected: 
 const DEFAULT_ROUTES_CONFIG = [
     {
         id: 'vong-1',
-        name: 'Vòng 1 - Tây Bắc',
+        name: 'Tuyến tập kết',
         color: '#3b82f6',
         codes: ['00091', '00619', '00622', '00199', '00226']
     },
     {
         id: 'vong-2',
-        name: 'Vòng 2 - Nam',
+        name: 'Tuyến tập kết',
         color: '#3b82f6',
         codes: ['00229', '00364', '00664', '00340', '00283']
     },
     {
         id: 'vong-3',
-        name: 'Vòng 3 - Đông',
+        name: 'Tuyến tập kết',
         color: '#3b82f6',
         codes: ['00577', '00565', '00541', '00127', '00118']
     },
     {
         id: 'vong-4',
-        name: 'Node Lẻ - Long Biên',
+        name: 'Tuyến tập kết',
         color: '#3b82f6', // Purple
         codes: ['00145'],
         isDisconnected: true // This will now prevent the Warehouse connection

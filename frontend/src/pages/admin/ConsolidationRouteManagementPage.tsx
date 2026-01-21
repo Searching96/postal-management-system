@@ -12,10 +12,12 @@ export function ConsolidationRouteManagementPage() {
 
     const [selectedRoute, setSelectedRoute] = useState<ConsolidationRoute | null>(null);
     const [selectedOfficeCode, setSelectedOfficeCode] = useState<string | null>(null);
+    const [selectedOfficeName, setSelectedOfficeName] = useState<string | null>(null);
     const [interactionMode, setInteractionMode] = useState<'VIEW' | 'PICK_DESTINATION'>('VIEW');
 
     const [pendingReroute, setPendingReroute] = useState<{
         sourceCode: string;
+        sourceName: string;
         targetId: string;
         targetName: string;
     } | null>(null);
@@ -29,13 +31,15 @@ export function ConsolidationRouteManagementPage() {
 
     // 1. Interaction Handler
     const handleNodeInteraction = (targetId: string, targetName: string, route?: ConsolidationRoute) => {
-        if (interactionMode === 'PICK_DESTINATION' && selectedOfficeCode) {
+        if (interactionMode === 'PICK_DESTINATION' && selectedOfficeCode && selectedOfficeName) {
             if (targetId === selectedOfficeCode) {
                 alert("Cannot route a node to itself.");
                 return;
             }
+            
             setPendingReroute({
                 sourceCode: selectedOfficeCode,
+                sourceName: selectedOfficeName,
                 targetId: targetId,
                 targetName: targetName
             });
@@ -45,6 +49,7 @@ export function ConsolidationRouteManagementPage() {
         if (route) {
             setSelectedRoute(route);
             setSelectedOfficeCode(targetId);
+            setSelectedOfficeName(targetName);
         }
     };
 
@@ -123,7 +128,12 @@ export function ConsolidationRouteManagementPage() {
                                     return (
                                         <div
                                             key={stop.officeCode}
-                                            onClick={() => interactionMode === 'VIEW' && setSelectedOfficeCode(stop.officeCode)}
+                                            onClick={() => {
+                                                if (interactionMode === 'VIEW') {
+                                                    setSelectedOfficeCode(stop.officeCode);
+                                                    setSelectedOfficeName(stop.officeName);
+                                                }
+                                            }}
                                             className={`p-3 rounded-lg border cursor-pointer transition-all ${isSelected
                                                 ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 shadow-sm'
                                                 : (interactionMode === 'VIEW' ? 'hover:border-blue-300' : 'opacity-40')
@@ -203,12 +213,12 @@ export function ConsolidationRouteManagementPage() {
                         <div className="flex items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 relative">
                             <div className="text-center z-10">
                                 <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">From</p>
-                                <p className="font-bold text-lg text-gray-800">{pendingReroute.sourceCode === 'warehouse-01' ? 'PW' : pendingReroute.sourceCode}</p>
+                                <p className="font-bold text-lg text-gray-800">{pendingReroute.sourceName}</p>
                             </div>
                             <ArrowRight className="w-6 h-6 text-blue-300" />
                             <div className="text-center z-10">
                                 <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">To</p>
-                                <p className="font-bold text-lg text-blue-600 truncate max-w-[120px]">{pendingReroute.targetId === 'warehouse-01' ? 'PW' : pendingReroute.targetId}</p>
+                                <p className="font-bold text-lg text-blue-600 truncate max-w-[120px]">{pendingReroute.targetName}</p>
                             </div>
                         </div>
 
