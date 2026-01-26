@@ -3,7 +3,7 @@
  * Centralizes console logging with proper formatting and control
  */
 
-const isDevelopment = import.meta.env.DEV;
+const isDevelopment = import.meta.env?.DEV ?? true;
 
 /**
  * Log levels for categorizing log messages
