@@ -8,6 +8,7 @@ import {
 import { authService } from "../services/authService";
 import { userService } from "../services/userService";
 import type { MeResponse } from "../models";
+import { logger } from "./logger";
 
 interface AuthContextType {
   user: MeResponse | null;
@@ -33,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error) {
-      console.error("Failed to fetch user:", error);
+      logger.error("Failed to fetch user", error);
       authService.logout();
       setUser(null);
     }
@@ -44,11 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await refreshUser();
       setIsLoading(false);
     };
-    initAuth();
+    
+    void initAuth();
   }, []);
 
   const login = async (username: string, password: string) => {
     const response = await authService.login({ username, password });
+    
     if (response.success && response.data.token) {
       authService.setToken(response.data.token);
       await refreshUser();
@@ -78,10 +81,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Hook to access authentication context
+ * Must be used within AuthProvider
+ * @throws Error if used outside AuthProvider
+ */
 export function useAuth() {
   const context = useContext(AuthContext);
+  
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
+  
   return context;
 }

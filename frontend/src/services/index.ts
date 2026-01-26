@@ -8,4 +8,4 @@ export * from "./wardManagerService";
 export * from "./orderService";
 export * from "./batchService";
 export * from "./uploadService";
-export * from "./ShipperService";
+export * from "./shipperService";

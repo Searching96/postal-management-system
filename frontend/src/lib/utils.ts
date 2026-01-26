@@ -1,65 +1,96 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+/**
+ * Merge Tailwind CSS classes with proper precedence
+ * Uses clsx for conditional classes and tailwind-merge for deduplication
+ */
 export function cn(...inputs: ClassValue[]) {
-    return twMerge(clsx(inputs));
+  return twMerge(clsx(inputs));
 }
-export const getRoleLabel = (role: string): string => {
-    const roles: Record<string, string> = {
-        SYSTEM_ADMIN: "Quản trị hệ thống",
-        HUB_ADMIN: "Quản trị Hub",
-        PO_PROVINCE_ADMIN: "Quản trị Tỉnh (BC)",
-        WH_PROVINCE_ADMIN: "Quản trị Tỉnh (Kho)",
-        PROVINCE_ADMIN: "Quản trị Tỉnh",
-        PO_WARD_MANAGER: "Quản lý Xã (BC)",
-        WH_WARD_MANAGER: "Quản lý Xã (Kho)",
-        WARD_MANAGER: "Quản lý Xã",
 
-        PO_STAFF: "Giao dịch viên",
-        WH_STAFF: "Nhân viên Kho",
-        STAFF: "Nhân viên",
-        SHIPPER: "Bưu tá",
-        CUSTOMER: "Khách hàng",
-    };
+/**
+ * Re-export common utilities from constants
+ * These are now centralized in the constants folder
+ */
+export { getRoleLabel, getOfficeTypeLabel } from "../constants/roles";
 
-    return roles[role] || role;
-};
-
-export const getOfficeTypeLabel = (type: string): string => {
-    const types: Record<string, string> = {
-        SYSTEM_HUB: "Trung tâm Hệ thống",
-        PROVINCE_WAREHOUSE: "Kho cấp Tỉnh",
-        PROVINCE_POST: "Bưu cục cấp Tỉnh",
-        WARD_WAREHOUSE: "Kho cấp Xã/Phường",
-        WARD_POST: "Bưu cục cấp Xã/Phường",
-    };
-
-    return types[type] || type;
-};
-
+/**
+ * Format number as Vietnamese currency (VND)
+ */
 export const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(amount);
 };
 
+/**
+ * Format ISO date string to Vietnamese date format (DD/MM/YYYY)
+ * Handles both UTC and local datetime strings from backend
+ */
 export const formatDate = (dateString: string): string => {
-    if (!dateString) return "";
-    // Backend sends UTC LocalDateTime without 'Z', so we append it to treat it as UTC
-    const normalized = (dateString.endsWith("Z") || dateString.includes("+"))
-        ? dateString
-        : dateString + "Z";
-    return new Date(normalized).toLocaleDateString("vi-VN");
+  if (!dateString) return "";
+  
+  // Backend sends UTC LocalDateTime without 'Z', so we append it to treat it as UTC
+  const normalized =
+    dateString.endsWith("Z") || dateString.includes("+")
+      ? dateString
+      : `${dateString}Z`;
+      
+  return new Date(normalized).toLocaleDateString("vi-VN");
 };
 
+/**
+ * Format ISO date string to Vietnamese datetime format (DD/MM/YYYY HH:mm)
+ * Handles both UTC and local datetime strings from backend
+ */
 export const formatDateTime = (dateString: string): string => {
-    if (!dateString) return "";
-    const normalized = (dateString.endsWith("Z") || dateString.includes("+"))
-        ? dateString
-        : dateString + "Z";
-    return new Date(normalized).toLocaleString("vi-VN", {
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+  if (!dateString) return "";
+  
+  const normalized =
+    dateString.endsWith("Z") || dateString.includes("+")
+      ? dateString
+      : `${dateString}Z`;
+      
+  return new Date(normalized).toLocaleString("vi-VN", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+/**
+ * Format weight to display with unit
+ */
+export const formatWeight = (weightKg: number): string => {
+  return `${weightKg.toFixed(2)} kg`;
+};
+
+/**
+ * Format dimensions (length x width x height)
+ */
+export const formatDimensions = (
+  lengthCm: number,
+  widthCm: number,
+  heightCm: number
+): string => {
+  return `${lengthCm} × ${widthCm} × ${heightCm} cm`;
+};
+
+/**
+ * Truncate text with ellipsis
+ */
+export const truncateText = (text: string, maxLength: number): string => {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength)}...`;
+};
+
+/**
+ * Check if string is empty or only whitespace
+ */
+export const isEmptyString = (value: string | null | undefined): boolean => {
+  return !value || value.trim().length === 0;
 };
